@@ -1,52 +1,54 @@
 const production = {
-    // Startet eine Produktion mit Phasen-Logik
-    startRun: async function(recipeName, totalDays) {
-        // Beispiel-Phase: Pökeln (7 Tage)
-        const poekelEnde = new Date();
-        poekelEnde.setDate(poekelEnde.getDate() + 7); 
+    startRun: async function(recipeName, days) {
+        const ende = new Date();
+        ende.setDate(ende.getDate() + days);
 
-        const { data, error } = await fetch(`${supabaseUrl}/rest/v1/active_productions`, {
+        await fetch(`${supabaseUrl}/rest/v1/active_productions`, {
             method: 'POST',
             headers: {
                 'apikey': supabaseKey,
                 'Authorization': `Bearer ${supabaseKey}`,
-                'Content-Type': 'application/json',
-                'Prefer': 'return=representation'
+                'Content-Type': 'application/json'
             },
             body: JSON.stringify({
                 recipe_name: recipeName,
                 current_phase: 'Pökeln',
-                phase_end_at: poekelEnde.toISOString()
+                phase_end_at: ende.toISOString()
             })
         });
 
-        alert(`Produktion für ${recipeName} gestartet. Pökelphase bis ${poekelEnde.toLocaleDateString()}`);
-        app.switchView('home', document.querySelector('.nav-item'));
-        this.loadActiveProcesses();
+        alert("Produktion gestartet!");
+        app.refreshData(); // Das lädt jetzt auch loadActiveProcesses() mit
     },
 
     loadActiveProcesses: async function() {
-        const response = await fetch(`${supabaseUrl}/rest/v1/active_productions?select=*`, {
-            headers: { 'apikey': supabaseKey, 'Authorization': `Bearer ${supabaseKey}` }
-        });
-        const processes = await response.json();
         const list = document.getElementById('active-processes-list');
-        list.innerHTML = '';
+        if(!list) return;
 
-        processes.forEach(p => {
-            const end = new Date(p.phase_end_at);
-            const diff = end - new Date();
-            const tageRest = Math.ceil(diff / (1000 * 60 * 60 * 24));
+        try {
+            const response = await fetch(`${supabaseUrl}/rest/v1/active_productions?select=*`, {
+                headers: { 'apikey': supabaseKey, 'Authorization': `Bearer ${supabaseKey}` }
+            });
+            const processes = await response.json();
+            
+            list.innerHTML = '';
+            if(processes.length === 0) {
+                list.innerHTML = '<p class="text-muted">Keine aktiven Reifeprozesse.</p>';
+                return;
+            }
 
-            list.innerHTML += `
-                <div class="list-card" style="border-left: 4px solid var(--accent-amber)">
-                    <div class="info">
-                        <h3>${p.recipe_name}</h3>
-                        <p>Phase: <b>${p.current_phase}</b></p>
-                        <p style="color: var(--accent-amber)">Noch ${tageRest} Tage verbleibend</p>
+            processes.forEach(p => {
+                const end = new Date(p.phase_end_at);
+                const tage = Math.ceil((end - new Date()) / (1000*60*60*24));
+                list.innerHTML += `
+                    <div class="list-card" style="border-left: 4px solid var(--accent-amber)">
+                        <div class="info">
+                            <h3>${p.recipe_name}</h3>
+                            <p>Phase: ${p.current_phase} | <b>Noch ${tage} Tage</b></p>
+                        </div>
                     </div>
-                </div>
-            `;
-        });
+                `;
+            });
+        } catch (e) { console.log("Keine Produktionen geladen"); }
     }
 };
