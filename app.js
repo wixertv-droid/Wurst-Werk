@@ -1,41 +1,35 @@
 const app = {
-    
     init: async function() {
-        console.log("Wurstwerk App gestartet!");
         await this.refreshData();
+        await production.loadActiveProcesses();
     },
 
-    // Holt frische Daten aus Supabase und schreibt sie in die App
     refreshData: async function() {
         try {
             const data = await db.getInventory();
             
-            // 1. Dashboard Zahlen füllen
-            const glaeser = data.find(i => i.name === 'Leere Gläser');
+            // Stats
+            const glaeser = data.find(i => i.name.toLowerCase().includes('glas'));
             if(glaeser) document.getElementById('stat-gläser').innerText = glaeser.amount;
+            
+            const wert = data.reduce((sum, item) => sum + Number(item.price || 0), 0);
+            document.getElementById('stat-wert').innerText = wert.toFixed(2);
 
-            const fleisch = data.filter(i => i.category === 'Fleisch');
-            const gesamtFleisch = fleisch.reduce((sum, item) => sum + Number(item.amount), 0);
-            document.getElementById('stat-fleisch').innerText = (gesamtFleisch / 1000) + 'kg';
-
-            // 2. Lager-Liste im Lager-Tab bauen
-            const lagerListe = document.getElementById('inventory-list');
-            lagerListe.innerHTML = '';
+            // Lagerliste
+            const list = document.getElementById('inventory-list');
+            list.innerHTML = '';
             data.forEach(item => {
-                lagerListe.innerHTML += `
+                list.innerHTML += `
                     <div class="list-card">
-                        <div class="icon-box"><span class="material-symbols-outlined">reorder</span></div>
+                        <div class="icon-box"><span class="material-symbols-outlined">inventory</span></div>
                         <div class="info">
                             <h3>${item.name}</h3>
-                            <p>Bestand: ${item.amount} ${item.unit}</p>
+                            <p>${item.amount} ${item.unit} | Wert: ${Number(item.price).toFixed(2)}€</p>
                         </div>
                     </div>
                 `;
             });
-
-        } catch (error) {
-            console.error("Fehler beim Laden:", error);
-        }
+        } catch (e) { console.error(e); }
     },
 
     switchView: function(viewName, clickedElement) {
@@ -43,12 +37,8 @@ const app = {
         document.querySelectorAll('.nav-item').forEach(item => item.classList.remove('active'));
         document.getElementById('view-' + viewName).classList.add('active');
         clickedElement.classList.add('active');
-        
-        // Jedes Mal wenn wir den View wechseln, laden wir die Daten neu
         this.refreshData();
+        production.loadActiveProcesses();
     }
 };
-
-document.addEventListener('DOMContentLoaded', () => {
-    app.init();
-});
+document.addEventListener('DOMContentLoaded', () => app.init());
