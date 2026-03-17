@@ -7,39 +7,83 @@
     <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined" rel="stylesheet" />
     <link rel="stylesheet" href="style.css">
     <style>
-        .lager-input, .lager-select {
-            width: 100%; padding: 15px; background: #222; border: 1px solid #444;
-            color: white; border-radius: 12px; font-size: 1.1rem; box-sizing: border-box;
-            margin-bottom: 15px;
-        }
-        .lager-input:focus, .lager-select:focus { border-color: var(--accent-amber); outline: none; background: #2a2a2a; }
-        .editor-label { display: block; color: var(--text-muted); font-size: 0.85rem; margin-bottom: 8px; text-transform: uppercase; }
+        /* Spezifisches Design aus deinem Screenshot */
+        .glaeser-card { background: #1a1a1a; border-radius: 12px; padding: 15px; margin-bottom: 20px; border: 1px solid #222; }
+        .outline-btn { flex: 1; background: transparent; padding: 12px; border-radius: 8px; font-weight: bold; display: flex; justify-content: center; align-items: center; gap: 5px; cursor: pointer; font-size: 1rem; }
+        .outline-btn.green { border: 1px solid #4caf50; color: #4caf50; }
+        .outline-btn.red { border: 1px solid var(--accent-danger); color: var(--accent-danger); }
+        
+        .filter-container { display: flex; gap: 10px; overflow-x: auto; margin-bottom: 20px; padding-bottom: 5px; scrollbar-width: none; }
+        .filter-pill { background: white; color: black; border-radius: 20px; padding: 8px 16px; border: none; font-weight: bold; font-size: 0.9rem; white-space: nowrap; cursor: pointer; display: flex; align-items: center; gap: 5px; }
+        .filter-pill.inactive { background: #333; color: white; }
+        
+        .lager-item-card { background: #1a1a1a; border-radius: 12px; padding: 15px; display: flex; align-items: center; gap: 15px; margin-bottom: 10px; cursor: pointer; border: 1px solid #222; }
+        .lager-icon-box { background: #2a2a2a; padding: 10px; border-radius: 8px; display: flex; justify-content: center; align-items: center; }
+        
+        /* Editor Felder */
+        .lager-input, .lager-select { width: 100%; padding: 15px; background: #222; border: 1px solid #444; color: white; border-radius: 12px; font-size: 1.1rem; box-sizing: border-box; margin-bottom: 15px; }
+        .lager-input:focus, .lager-select:focus { border-color: #4caf50; outline: none; }
     </style>
 </head>
 <body>
-
-    <header>Lagerbestand</header>
-
+    <header style="text-transform: uppercase; letter-spacing: 2px;">Lagerbestand</header>
+    
     <main>
         <div id="inventory-list-view">
-            <div class="dashboard-grid">
-                <div class="stat-card" style="border-top: 3px solid var(--accent-amber);">
-                    <h3 style="margin: 0 0 5px 0;">Warenwert</h3>
-                    <p style="font-size: 1.5rem; margin: 0; font-weight: bold;"><span id="stat-warenwert">0.00</span> €</p>
+            
+            <div style="color: #4d4dff; text-transform: uppercase; font-size: 0.85rem; letter-spacing: 1px; margin-bottom: 10px; display: flex; align-items: center; gap: 5px;">
+                <span class="material-symbols-outlined" style="font-size: 1.2rem;">kitchen</span> Gläser Zentrale
+            </div>
+            
+            <div class="glaeser-card">
+                <div style="display: flex; justify-content: space-between; align-items: baseline;">
+                    <h3 style="margin: 0; font-size: 1.3rem;">250ml Gläser</h3>
+                    <span style="color: #4caf50; font-size: 1.8rem; font-weight: bold;" id="glass-250-stock">0</span>
                 </div>
-                <div class="stat-card" style="border-top: 3px solid var(--accent-amber);">
-                    <h3 style="margin: 0 0 5px 0;">Gläser (Frei)</h3>
-                    <p style="font-size: 0.9rem; margin: 0; color: #ccc;">
-                        250ml: <b id="glass-250-available" style="color: white; font-size: 1.1rem;">0</b><br>
-                        400ml: <b id="glass-400-available" style="color: white; font-size: 1.1rem;">0</b>
-                    </p>
+                <div style="display: flex; justify-content: space-between; font-size: 0.85rem; margin-bottom: 10px;">
+                    <span style="color: var(--accent-danger);">Beim Kunden: <span id="glass-250-kunden">0</span></span>
+                    <span style="color: var(--text-muted);">im Regal</span>
                 </div>
+                <div style="display: flex; gap: 10px; margin-bottom: 30px;">
+                    <button class="outline-btn green" onclick="window.lagerManager.changeGlass('250', 1)"><span style="font-size: 1.5rem;">+</span> Eingang</button>
+                    <button class="outline-btn red" onclick="window.lagerManager.changeGlass('250', -1)"><span style="font-size: 1.5rem;">-</span> Abziehen</button>
+                </div>
+
+                <hr style="border: 0; border-top: 1px dashed #333; margin-bottom: 30px;">
+
+                <div style="display: flex; justify-content: space-between; align-items: baseline;">
+                    <h3 style="margin: 0; font-size: 1.3rem;">400ml Gläser</h3>
+                    <span style="color: #4caf50; font-size: 1.8rem; font-weight: bold;" id="glass-400-stock">0</span>
+                </div>
+                <div style="display: flex; justify-content: space-between; font-size: 0.85rem; margin-bottom: 10px;">
+                    <span style="color: var(--accent-danger);">Beim Kunden: <span id="glass-400-kunden">0</span></span>
+                    <span style="color: var(--text-muted);">im Regal</span>
+                </div>
+                <div style="display: flex; gap: 10px; margin-bottom: 20px;">
+                    <button class="outline-btn green" onclick="window.lagerManager.changeGlass('400', 1)"><span style="font-size: 1.5rem;">+</span> Eingang</button>
+                    <button class="outline-btn red" onclick="window.lagerManager.changeGlass('400', -1)"><span style="font-size: 1.5rem;">-</span> Abziehen</button>
+                </div>
+
+                <div style="text-align: center; margin-top: 20px; font-size: 0.95rem;">
+                    <span style="color: #4d4dff; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 5px;" onclick="window.location.href='kunden.html'">
+                        <span class="material-symbols-outlined" style="font-size: 1.2rem;">group</span> Zeige Kunden mit Pfandschulden
+                    </span>
+                </div>
+                <p style="color: var(--text-muted); font-size: 0.85rem; margin-top: 15px;" id="pfand-info-text">Keine Gläser im Umlauf.</p>
             </div>
 
-            <button class="action-btn" style="background-color: var(--accent-amber); color: #000; margin-top: 20px; margin-bottom: 25px; height: 55px; font-size: 1.1rem;" onclick="window.lagerManager.openEditor()">
-                <span class="material-symbols-outlined">add_circle</span> Neuer Artikel
+            <div class="filter-container">
+                <button class="filter-pill" id="filter-all" onclick="window.lagerManager.setFilter('Alles')">Alles</button>
+                <button class="filter-pill inactive" id="filter-fleisch" onclick="window.lagerManager.setFilter('Fleisch')">🥩 Fleisch</button>
+                <button class="filter-pill inactive" id="filter-gewuerze" onclick="window.lagerManager.setFilter('Gewürze')">🧂 Gewürze</button>
+                <button class="filter-pill inactive" id="filter-material" onclick="window.lagerManager.setFilter('Verpackung')">📦 Material</button>
+            </div>
+
+            <button class="action-btn" style="background-color: #4caf50; color: white; margin-bottom: 25px; height: 60px; font-size: 1.1rem;" onclick="window.lagerManager.openEditor()">
+                <span class="material-symbols-outlined">add_circle</span> Fleisch / Gewürz / Material eintragen
             </button>
 
+            <div style="color: var(--text-muted); text-transform: uppercase; font-size: 0.85rem; letter-spacing: 1px; margin-bottom: 10px;">Lagerliste</div>
             <div id="inventory-list-container">
                 <p class="text-muted" style="text-align: center;">Lade Lagerbestand...</p>
             </div>
@@ -51,29 +95,28 @@
                 <div class="header-title" id="editor-title" style="color: white;">Neuer Artikel</div>
             </div>
 
-            <div class="stat-card" style="border-top: 3px solid var(--accent-amber); margin-bottom: 30px;">
+            <div style="background: #1a1a1a; padding: 20px; border-radius: 12px; margin-bottom: 30px;">
                 <input type="hidden" id="edit-id">
                 
-                <label class="editor-label">Name des Artikels</label>
-                <input type="text" id="edit-name" class="lager-input" placeholder="z.B. Schweinenacken">
+                <label style="display:block; color:var(--text-muted); font-size:0.85rem; margin-bottom:5px; text-transform:uppercase;">Name des Artikels</label>
+                <input type="text" id="edit-name" class="lager-input" placeholder="z.B. Bakterien">
                 
-                <label class="editor-label">Kategorie</label>
+                <label style="display:block; color:var(--text-muted); font-size:0.85rem; margin-bottom:5px; text-transform:uppercase;">Kategorie</label>
                 <select id="edit-category" class="lager-select">
                     <option value="Fleisch">Fleisch</option>
                     <option value="Gewürze">Gewürze</option>
                     <option value="Darm">Darm / Hülle</option>
-                    <option value="Pfandglas">Pfandglas</option>
                     <option value="Verpackung">Verpackung</option>
-                    <option value="Maschine">Maschine</option>
+                    <option value="Sonstiges">Sonstiges</option>
                 </select>
 
                 <div style="display: flex; gap: 15px;">
                     <div style="flex: 1;">
-                        <label class="editor-label">Menge</label>
+                        <label style="display:block; color:var(--text-muted); font-size:0.85rem; margin-bottom:5px; text-transform:uppercase;">Menge</label>
                         <input type="number" id="edit-amount" step="0.1" class="lager-input" placeholder="0">
                     </div>
                     <div style="flex: 1;">
-                        <label class="editor-label">Einheit</label>
+                        <label style="display:block; color:var(--text-muted); font-size:0.85rem; margin-bottom:5px; text-transform:uppercase;">Einheit</label>
                         <select id="edit-unit" class="lager-select">
                             <option value="g">g</option>
                             <option value="kg">kg</option>
@@ -84,11 +127,11 @@
                     </div>
                 </div>
 
-                <label class="editor-label">Gesamtpreis (€)</label>
+                <label style="display:block; color:var(--text-muted); font-size:0.85rem; margin-bottom:5px; text-transform:uppercase;">Gesamtpreis (€)</label>
                 <input type="number" id="edit-price" step="0.01" class="lager-input" placeholder="0.00" style="margin-bottom: 0;">
             </div>
 
-            <button class="action-btn" style="background-color: #2e7d32; color: white; height: 55px;" onclick="window.lagerManager.saveItem()">
+            <button class="action-btn" style="background-color: #4caf50; color: white; height: 60px; font-size: 1.1rem;" onclick="window.lagerManager.saveItem()">
                 <span class="material-symbols-outlined">save</span> Artikel speichern
             </button>
         </div>
@@ -102,8 +145,8 @@
         <div class="nav-item" onclick="window.location.href='kunden.html'"><span class="material-symbols-outlined">group</span><span>Kunden</span></div>
     </nav>
 
-    <script src="db.js?v=9"></script>
-    <script src="app.js?v=9"></script>
-    <script src="lager.js?v=9"></script>
+    <script src="db.js?v=10"></script>
+    <script src="app.js?v=10"></script>
+    <script src="lager.js?v=10"></script>
 </body>
 </html>
