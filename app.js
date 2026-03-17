@@ -1,73 +1,70 @@
 const app = {
     init: async function() {
-        console.log("Wurstwerk initialisiert...");
+        console.log("Wurstwerk startet...");
+        // Alles laden
         await this.refreshData();
     },
 
     refreshData: async function() {
         try {
             const data = await db.getInventory();
-            console.log("Daten empfangen:", data); // Zum Debuggen in der Konsole
-
-            if (!data || data.error) throw new Error("Keine Daten erhalten");
-
-            // 1. Dashboard Statistik
+            
+            // 1. Dashboard Stats
             const glaeser = data.find(i => i.name.toLowerCase().includes('glas'));
             document.getElementById('stat-gläser').innerText = glaeser ? glaeser.amount : "0";
 
             const gesamtWert = data.reduce((sum, item) => sum + (Number(item.price) || 0), 0);
             document.getElementById('stat-wert').innerText = gesamtWert.toFixed(2);
 
-            // 2. Lager-Liste (mit Lösch-Funktion)
+            // 2. Lager-Liste
             const lagerListe = document.getElementById('inventory-list');
-            lagerListe.innerHTML = '';
-            
-            data.forEach(item => {
-                const preis = Number(item.price) || 0;
-                const menge = Number(item.amount) || 0;
-
-                lagerListe.innerHTML += `
-                    <div class="list-card">
-                        <div class="icon-box"><span class="material-symbols-outlined">inventory</span></div>
-                        <div class="info">
-                            <h3>${item.name}</h3>
-                            <p>${menge} ${item.unit} | Wert: ${preis.toFixed(2)}€</p>
+            if(lagerListe) {
+                lagerListe.innerHTML = '';
+                data.forEach(item => {
+                    lagerListe.innerHTML += `
+                        <div class="list-card">
+                            <div class="icon-box"><span class="material-symbols-outlined">inventory</span></div>
+                            <div class="info">
+                                <h3>${item.name}</h3>
+                                <p>${item.amount} ${item.unit} | Wert: ${Number(item.price).toFixed(2)}€</p>
+                            </div>
+                            <button onclick="app.deleteItem('${item.id}')" style="background:none; border:none; color:var(--accent-danger);">
+                                <span class="material-symbols-outlined">delete</span>
+                            </button>
                         </div>
-                        <button onclick="app.deleteItem('${item.id}')" style="background:none; border:none; color:var(--accent-danger); cursor:pointer;">
-                            <span class="material-symbols-outlined">delete</span>
-                        </button>
-                    </div>
-                `;
-            });
+                    `;
+                });
+            }
 
-            // 3. Kunden laden
+            // 3. Andere Sektionen laden
             await this.loadCustomers();
+            if(typeof production !== 'undefined') {
+                await production.loadActiveProcesses();
+            }
 
         } catch (error) {
-            console.error("Fehler beim Laden:", error);
+            console.error("Fehler beim Refresh:", error);
         }
     },
 
     loadCustomers: async function() {
+        const list = document.getElementById('customer-list');
+        if(!list) return;
         try {
             const response = await fetch(`${supabaseUrl}/rest/v1/customers?select=*`, {
                 headers: { 'apikey': supabaseKey, 'Authorization': `Bearer ${supabaseKey}` }
             });
             const customers = await response.json();
-            const list = document.getElementById('customer-list');
             list.innerHTML = '';
             customers.forEach(c => {
                 list.innerHTML += `
                     <div class="list-card">
                         <div class="icon-box"><span class="material-symbols-outlined">person</span></div>
-                        <div class="info">
-                            <h3>${c.name}</h3>
-                            <p>Pfandschulden: ${c.pfand_schulden} Gläser</p>
-                        </div>
+                        <div class="info"><h3>${c.name}</h3><p>Pfand: ${c.pfand_schulden}</p></div>
                     </div>
                 `;
             });
-        } catch (e) { console.error("Kundenfehler:", e); }
+        } catch (e) { console.log("Keine Kunden gefunden"); }
     },
 
     deleteItem: async function(id) {
@@ -83,9 +80,12 @@ const app = {
     switchView: function(viewName, clickedElement) {
         document.querySelectorAll('.view').forEach(view => view.classList.remove('active'));
         document.querySelectorAll('.nav-item').forEach(item => item.classList.remove('active'));
+        
         const targetView = document.getElementById('view-' + viewName);
         if(targetView) targetView.classList.add('active');
         if(clickedElement) clickedElement.classList.add('active');
+        
+        // Jedes Mal beim Wechseln alles frisch laden!
         this.refreshData();
     }
 };
