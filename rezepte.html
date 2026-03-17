@@ -29,7 +29,7 @@
     <main>
         <div id="recipe-list-view" style="display: block;">
             
-            <button class="action-btn" style="background-color: var(--accent-amber); color: #000; margin-bottom: 25px; height: 55px; font-size: 1.1rem;" onclick="rezeptManager.openEditor()">
+            <button class="action-btn" style="background-color: var(--accent-amber); color: #000; margin-bottom: 25px; height: 55px; font-size: 1.1rem;" onclick="window.rezeptManager.openEditor()">
                 <span class="material-symbols-outlined">add_circle</span> Neues Rezept erstellen
             </button>
             
@@ -41,9 +41,9 @@
 
         <div id="recipe-detail-view" style="display: none;">
             <div class="sub-header" style="padding: 0 0 15px 0; margin-bottom: 15px; border-bottom: 1px solid #333;">
-                <div class="back-btn" onclick="rezeptManager.showView('list')"><span class="material-symbols-outlined">arrow_back_ios</span> Zurück</div>
+                <div class="back-btn" onclick="window.rezeptManager.showView('list')"><span class="material-symbols-outlined">arrow_back_ios</span> Zurück</div>
                 <div class="header-title" id="detail-title" style="color: white; font-size: 1.1rem;">Rezept</div>
-                <span class="material-symbols-outlined" style="color: var(--accent-amber); cursor: pointer;" onclick="rezeptManager.editCurrentRecipe()">edit</span>
+                <span class="material-symbols-outlined" style="color: var(--accent-amber); cursor: pointer;" onclick="window.rezeptManager.editCurrentRecipe()">edit</span>
             </div>
 
             <div class="recipe-detail-card" style="border-top: 3px solid var(--accent-amber);">
@@ -56,14 +56,14 @@
                 <div id="detail-steps"></div>
             </div>
 
-            <button class="action-btn" style="background-color: #2e7d32; color: white; height: 60px; font-size: 1.1rem; margin-bottom: 40px;" onclick="rezeptManager.startProduction()">
+            <button class="action-btn" style="background-color: #2e7d32; color: white; height: 60px; font-size: 1.1rem; margin-bottom: 40px;" onclick="window.rezeptManager.startProduction()">
                 <span class="material-symbols-outlined">rocket_launch</span> Produktion jetzt starten
             </button>
         </div>
 
         <div id="recipe-editor-view" style="display: none;">
             <div class="sub-header" style="padding: 0 0 15px 0; margin-bottom: 15px; border-bottom: 1px solid #333;">
-                <div class="back-btn" onclick="rezeptManager.showView('list')"><span class="material-symbols-outlined">arrow_back_ios</span> Abbrechen</div>
+                <div class="back-btn" onclick="window.rezeptManager.showView('list')"><span class="material-symbols-outlined">arrow_back_ios</span> Abbrechen</div>
                 <div class="header-title" id="editor-title" style="color: white;">Rezept Editor</div>
             </div>
 
@@ -74,17 +74,17 @@
 
             <label class="editor-label">Zutaten (Genormt auf 1 kg Fleisch)</label>
             <div id="editor-ingredients-list"></div>
-            <button onclick="rezeptManager.addIngredientRow()" style="background: none; border: 1px dashed var(--accent-amber); color: var(--accent-amber); padding: 10px; width: 100%; border-radius: 8px; cursor: pointer; margin-bottom: 25px;">
+            <button onclick="window.rezeptManager.addIngredientRow()" style="background: none; border: 1px dashed var(--accent-amber); color: var(--accent-amber); padding: 10px; width: 100%; border-radius: 8px; cursor: pointer; margin-bottom: 25px;">
                 + Zutat hinzufügen
             </button>
 
             <label class="editor-label">Ablauf-Schritte (Aufgaben & Timer)</label>
             <div id="editor-steps-list"></div>
-            <button onclick="rezeptManager.addStepRow()" style="background: none; border: 1px dashed #4d4dff; color: #4d4dff; padding: 10px; width: 100%; border-radius: 8px; cursor: pointer; margin-bottom: 25px;">
+            <button onclick="window.rezeptManager.addStepRow()" style="background: none; border: 1px dashed #4d4dff; color: #4d4dff; padding: 10px; width: 100%; border-radius: 8px; cursor: pointer; margin-bottom: 25px;">
                 + Arbeitsschritt / Zeit hinzufügen
             </button>
 
-            <button class="action-btn" style="background-color: #2e7d32; color: white; height: 55px; margin-bottom: 30px;" onclick="rezeptManager.saveRecipe()">
+            <button class="action-btn" style="background-color: #2e7d32; color: white; height: 55px; margin-bottom: 30px;" onclick="window.rezeptManager.saveRecipe()">
                 <span class="material-symbols-outlined">save</span> Rezept abspeichern
             </button>
         </div>
@@ -97,8 +97,8 @@
         <div class="nav-item" onclick="window.location.href='kunden.html'"><span class="material-symbols-outlined">group</span><span>Kunden</span></div>
     </nav>
 
-    <script src="db.js"></script>
-    <script src="app.js"></script>
-    <script src="rezepte.js"></script>
+    <script src="db.js?v=2"></script>
+    <script src="app.js?v=2"></script>
+    <script src="rezepte.js?v=2"></script>
 </body>
 </html>
