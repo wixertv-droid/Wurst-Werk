@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Lager - Wurstwerk</title>
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined" rel="stylesheet" />
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+    <header>Lagerbestand</header>
+
+    <main>
+        <div class="dashboard-grid" style="margin-bottom: 20px;">
+            <div class="stat-card" style="border-top: 3px solid #4caf50;">
+                <span class="material-symbols-outlined" style="color: #4caf50;">restaurant</span>
+                <span id="stat-warenwert" class="stat-value">0.00</span>
+                <span class="stat-label">Warenwert (€)</span>
+            </div>
+            <div class="stat-card" style="border-top: 3px solid #888;">
+                <span class="material-symbols-outlined" style="color: #888;">build</span>
+                <span id="stat-maschinenwert" class="stat-value">0.00</span>
+                <span class="stat-label">Maschinen (€)</span>
+            </div>
+        </div>
+
+        <div class="section-title">Dein Inventar</div>
+        <div id="inventory-list">
+            <p class="text-muted" style="text-align: center; margin-top: 30px;">Lade Lagerdaten...</p>
+        </div>
+    </main>
+
+    <nav>
+        <div class="nav-item" onclick="window.location.href='index.html'">
+            <span class="material-symbols-outlined">dashboard</span><span>Home</span>
+        </div>
+        <div class="nav-item" onclick="window.location.href='rezepte.html'">
+            <span class="material-symbols-outlined">menu_book</span><span>Rezepte</span>
+        </div>
+        <div class="nav-item active">
+            <span class="material-symbols-outlined">inventory</span><span>Lager</span>
+        </div>
+        <div class="nav-item" onclick="window.location.href='kunden.html'">
+            <span class="material-symbols-outlined">group</span><span>Kunden</span>
+        </div>
+    </nav>
+
+    <script src="db.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>
