@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <title>Wurstwerk</title>
+    <title>Wurstwerk - Dashboard</title>
     
     <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined" rel="stylesheet" />
     <link rel="stylesheet" href="style.css">
@@ -15,57 +15,55 @@
     <header>Wurstwerk</header>
 
     <main>
-        <div id="view-home" class="view active">
-            <div class="smoker-card">
-                <span class="material-symbols-outlined" style="font-size: 2.5rem; color: var(--accent-amber);">local_fire_department</span>
-                <div id="process-timer" class="timer-display">00:00:00</div>
-                <p class="text-muted">Willkommen im Wurstwerk</p>
-            </div>
-
-            <button class="action-btn" style="margin-top: 25px; height: 60px; font-size: 1.1rem; background-color: #2e7d32; color: white;" onclick="window.location.href='einkauf.html'">
-                <span class="material-symbols-outlined">add_shopping_cart</span> Neuen Einkauf erfassen
-            </button>
-
-            <div class="section-title">Laufende Reifeprozesse</div>
-            <div id="active-processes-list"></div>
-            
-            <div class="dashboard-grid">
-                <div class="stat-card">
-                    <span class="material-symbols-outlined">inventory_2</span>
-                    <span id="stat-gläser" class="stat-value">0</span>
-                    <span class="stat-label">Gläser</span>
-                </div>
-                <div class="stat-card">
-                    <span class="material-symbols-outlined">payments</span>
-                    <span id="stat-wert" class="stat-value">0.00</span>
-                    <span class="stat-label">Lagerwert (€)</span>
-                </div>
-            </div>
+        <div class="smoker-card">
+            <span class="material-symbols-outlined" style="font-size: 2.5rem; color: var(--accent-amber);">local_fire_department</span>
+            <div id="process-timer" class="timer-display">00:00:00</div>
+            <p class="text-muted">Willkommen im Wurstwerk</p>
         </div>
 
-        <div id="view-rezepte" class="view">
-            <div class="section-title">Rezeptbuch</div>
-            <div id="recipe-list">
-                <p class="text-muted" style="text-align: center; margin-top: 30px;">Hier bauen wir bald den Rezept-Editor ein!</p>
+        <button class="action-btn" style="margin-top: 25px; height: 60px; font-size: 1.1rem; background-color: #2e7d32; color: white;" onclick="window.location.href='einkauf.html'">
+            <span class="material-symbols-outlined">add_shopping_cart</span> Neuen Einkauf erfassen
+        </button>
+
+        <div class="section-title">Laufende Reifeprozesse</div>
+        <div id="active-processes-list">
+            <p class="text-muted" style="text-align: center; margin-top: 10px;">Keine aktiven Prozesse.</p>
+        </div>
+        
+        <div class="dashboard-grid">
+            <div class="stat-card" style="border-top: 3px solid #4d4dff;">
+                <span class="material-symbols-outlined" style="color: #4d4dff;">recycling</span>
+                <span id="stat-gläser" class="stat-value">0</span>
+                <span class="stat-label">Leere Pfandgläser</span>
             </div>
-        </div>
-
-        <div id="view-lager" class="view">
-            <div class="section-title">Lagerbestand</div>
-            <div id="inventory-list"></div>
-        </div>
-
-        <div id="view-kunden" class="view">
-            <div class="section-title">Kunden</div>
-            <div id="customer-list"></div>
+            <div class="stat-card" style="border-top: 3px solid #4caf50;">
+                <span class="material-symbols-outlined" style="color: #4caf50;">restaurant</span>
+                <span id="stat-wert" class="stat-value">0.00</span>
+                <span class="stat-label">Warenwert (€)</span>
+            </div>
         </div>
     </main>
 
     <nav>
-        <div class="nav-item active" onclick="app.switchView('home', this)"><span class="material-symbols-outlined">dashboard</span><span>Home</span></div>
-        <div class="nav-item" onclick="app.switchView('rezepte', this)"><span class="material-symbols-outlined">menu_book</span><span>Rezepte</span></div>
-        <div class="nav-item" onclick="app.switchView('lager', this)"><span class="material-symbols-outlined">inventory</span><span>Lager</span></div>
-        <div class="nav-item" onclick="app.switchView('kunden', this)"><span class="material-symbols-outlined">group</span><span>Kunden</span></div>
+        <div class="nav-item active">
+            <span class="material-symbols-outlined">dashboard</span>
+            <span>Home</span>
+        </div>
+        
+        <div class="nav-item" onclick="window.location.href='rezepte.html'">
+            <span class="material-symbols-outlined">menu_book</span>
+            <span>Rezepte</span>
+        </div>
+        
+        <div class="nav-item" onclick="window.location.href='lager.html'">
+            <span class="material-symbols-outlined">inventory</span>
+            <span>Lager</span>
+        </div>
+        
+        <div class="nav-item" onclick="window.location.href='kunden.html'">
+            <span class="material-symbols-outlined">group</span>
+            <span>Kunden</span>
+        </div>
     </nav>
 
     <script src="db.js"></script>
