@@ -3,149 +3,73 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <title>Wurstwerk</title>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;900&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0" />
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined" rel="stylesheet" />
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
 
-    <header class="main-header">
-        <div class="header-content">
-            <span class="brand">WURSTWERK</span>
-            <div class="header-stats">
-                <span class="material-symbols-outlined">local_fire_department</span>
-                <small id="db-status">Verbinde...</small>
-            </div>
-        </div>
-    </header>
+    <header>Wurstwerk</header>
 
-    <main id="app-content">
-        
-        <div id="view-dashboard" class="view active">
-            <div class="section-title">
-                <span class="material-symbols-outlined">dashboard</span> Chef-Übersicht
+    <main>
+        <div id="view-home" class="view active">
+            <div class="smoker-card">
+                <span class="material-symbols-outlined" style="font-size: 2.5rem; color: var(--accent-amber);">local_fire_department</span>
+                <div id="process-timer" class="timer-display">00:00:00</div>
+                <p class="text-muted">Willkommen im Wurstwerk</p>
             </div>
+
+            <button class="action-btn" style="margin-top: 25px; height: 60px; font-size: 1.1rem; background-color: #2e7d32; color: white;" onclick="window.location.href='einkauf.html'">
+                <span class="material-symbols-outlined">add_shopping_cart</span> Neuen Einkauf erfassen
+            </button>
+
+            <div class="section-title">Laufende Reifeprozesse</div>
+            <div id="active-processes-list"></div>
             
             <div class="dashboard-grid">
-                <div class="dash-card">
-                    <span class="material-symbols-outlined card-icon">inventory_2</span>
-                    <div class="card-info">
-                        <small>Bestand</small>
-                        <strong id="dash-items">0 Positionen</strong>
-                    </div>
+                <div class="stat-card">
+                    <span class="material-symbols-outlined">inventory_2</span>
+                    <span id="stat-gläser" class="stat-value">0</span>
+                    <span class="stat-label">Gläser</span>
                 </div>
-                <div class="dash-card">
-                    <span class="material-symbols-outlined card-icon">payments</span>
-                    <div class="card-info">
-                        <small>Warenwert</small>
-                        <strong id="dash-value">0,00 €</strong>
-                    </div>
+                <div class="stat-card">
+                    <span class="material-symbols-outlined">payments</span>
+                    <span id="stat-wert" class="stat-value">0.00</span>
+                    <span class="stat-label">Lagerwert (€)</span>
                 </div>
             </div>
-
-            <button class="save-btn" style="margin-bottom: 25px; padding: 12px; font-size: 1rem;" onclick="app.switchView('view-einkauf')">
-                <span class="material-symbols-outlined">add_shopping_cart</span> Neuen Einkauf eintragen
-            </button>
-            
-            <div class="section-title">
-                <span class="material-symbols-outlined">microwave</span> Aktuelle Produktion
-            </div>
-            <div id="dash-production-list" class="recent-list">
-                </div>
         </div>
 
-        <div id="view-lager" class="view" style="display:none;">
-            <div class="section-title">
-                <span class="material-symbols-outlined">inventory_2</span> Lagerbestand
+        <div id="view-rezepte" class="view">
+            <div class="section-title">Rezeptbuch</div>
+            <div id="recipe-list">
+                <p class="text-muted" style="text-align: center; margin-top: 30px;">Hier bauen wir bald den Rezept-Editor ein!</p>
             </div>
-            <div class="search-bar">
-                <span class="material-symbols-outlined search-icon">search</span>
-                <input type="text" id="search-lager" placeholder="Suchen..." onkeyup="app.filterLager()">
-            </div>
-            <div id="lager-list" class="lager-list-container"></div>
         </div>
 
-        <div id="view-einkauf" class="view" style="display:none;">
-            <div class="section-title">
-                <span class="material-symbols-outlined">add_shopping_cart</span> Wareneingang
-            </div>
-            <div class="purchase-container">
-                <div class="input-row">
-                    <div class="input-group">
-                        <label>Produktname</label>
-                        <input type="text" id="buy-name" placeholder="z.B. Bauch, Gläser..." onkeyup="assistant.checkExisting()">
-                        <div id="duplicate-hint" class="hint-badge" style="display:none;">Bereits im Lager (+ wird addiert)</div>
-                    </div>
-                </div>
-                <div class="input-row" style="display: flex; gap: 10px;">
-                    <div class="input-group" style="flex: 2;">
-                        <label>Menge</label>
-                        <input type="number" id="buy-amount" placeholder="0">
-                    </div>
-                    <div class="input-group" style="flex: 1;">
-                        <label>Einheit</label>
-                        <select id="buy-unit" class="select-input">
-                            <option value="kg">kg</option>
-                            <option value="g">g</option>
-                            <option value="Stk">Stk</option>
-                            <option value="L">L</option>
-                        </select>
-                    </div>
-                </div>
-                <div class="input-row">
-                    <div class="input-group">
-                        <label>Gesamtpreis (€)</label>
-                        <input type="number" step="0.01" id="buy-price" placeholder="0.00">
-                    </div>
-                </div>
-                <button class="save-btn" onclick="assistant.processPurchase()">
-                    <span class="material-symbols-outlined">add_task</span> Ins Lager buchen
-                </button>
-            </div>
-            <div class="section-title" style="margin-top: 25px;">
-                <span class="material-symbols-outlined">history</span> Kürzlich gebucht
-            </div>
-            <div id="recent-purchases" class="recent-list"></div>
+        <div id="view-lager" class="view">
+            <div class="section-title">Lagerbestand</div>
+            <div id="inventory-list"></div>
         </div>
 
-        <div id="view-produktion" class="view" style="display:none;">
-            <div class="section-title">
-                <span class="material-symbols-outlined">blender</span> Wurstküche
-            </div>
-            <p style="color: #888;">Hier entsteht bald die Produktions-Steuerung.</p>
+        <div id="view-kunden" class="view">
+            <div class="section-title">Kunden</div>
+            <div id="customer-list"></div>
         </div>
-
-        <div id="view-kunden" class="view" style="display:none;">
-            <div class="section-title">
-                <span class="material-symbols-outlined">groups</span> Kunden & Bestellungen
-            </div>
-            <p style="color: #888;">Hier verwalten wir bald die Kundenbestellungen.</p>
-        </div>
-
     </main>
 
-    <nav class="bottom-nav">
-        <button onclick="app.switchView('view-dashboard')" id="nav-dashboard" class="active">
-            <span class="material-symbols-outlined">dashboard</span>Home
-        </button>
-        <button onclick="app.switchView('view-lager')" id="nav-lager">
-            <span class="material-symbols-outlined">inventory_2</span>Lager
-        </button>
-        <button onclick="app.switchView('view-einkauf')" id="nav-einkauf">
-            <span class="material-symbols-outlined">shopping_cart</span>Einkauf
-        </button>
-        <button onclick="app.switchView('view-produktion')" id="nav-produktion">
-            <span class="material-symbols-outlined">blender</span>Küche
-        </button>
-        <button onclick="app.switchView('view-kunden')" id="nav-kunden">
-            <span class="material-symbols-outlined">groups</span>Kunden
-        </button>
+    <nav>
+        <div class="nav-item active" onclick="app.switchView('home', this)"><span class="material-symbols-outlined">dashboard</span><span>Home</span></div>
+        <div class="nav-item" onclick="app.switchView('rezepte', this)"><span class="material-symbols-outlined">menu_book</span><span>Rezepte</span></div>
+        <div class="nav-item" onclick="app.switchView('lager', this)"><span class="material-symbols-outlined">inventory</span><span>Lager</span></div>
+        <div class="nav-item" onclick="app.switchView('kunden', this)"><span class="material-symbols-outlined">group</span><span>Kunden</span></div>
     </nav>
 
     <script src="db.js"></script>
-    <script src="assistant.js"></script>
     <script src="app.js"></script>
+    <script src="production.js"></script>
 </body>
 </html>
