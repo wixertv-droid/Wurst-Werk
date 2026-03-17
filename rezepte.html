@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Rezepte - Wurstwerk</title>
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined" rel="stylesheet" />
+    <link rel="stylesheet" href="style.css">
+    <style>
+        .recipe-input {
+            width: 100%; padding: 15px; background: #222; border: 1px solid #444;
+            color: white; border-radius: 12px; font-size: 1.1rem; box-sizing: border-box;
+            margin-bottom: 15px;
+        }
+        .recipe-input:focus { border-color: var(--accent-amber); outline: none; background: #2a2a2a; }
+    </style>
+</head>
+<body>
+
+    <header>Rezeptbuch & Kalkulation</header>
+
+    <main>
+        <div class="stat-card" style="border-top: 3px solid var(--accent-amber); margin-bottom: 25px;">
+            <label style="display: block; color: var(--text-muted); font-size: 0.85rem; margin-bottom: 8px; text-transform: uppercase;">Neues Rezept erstellen</label>
+            <input type="text" id="new-recipe-name" class="recipe-input" placeholder="z.B. Hausmacher Leberwurst">
+            
+            <button class="action-btn" onclick="rezeptManager.addRecipe()">
+                <span class="material-symbols-outlined">menu_book</span> Rezept anlegen
+            </button>
+        </div>
+
+        <div class="section-title">Deine Wurstsorten</div>
+        <div id="recipe-page-list">
+            <p class="text-muted" style="text-align: center; margin-top: 20px;">Lade Rezepte...</p>
+        </div>
+    </main>
+
+    <nav>
+        <div class="nav-item" onclick="window.location.href='index.html'"><span class="material-symbols-outlined">dashboard</span><span>Home</span></div>
+        <div class="nav-item active"><span class="material-symbols-outlined">menu_book</span><span>Rezepte</span></div>
+        <div class="nav-item" onclick="window.location.href='lager.html'"><span class="material-symbols-outlined">inventory</span><span>Lager</span></div>
+        <div class="nav-item" onclick="window.location.href='kunden.html'"><span class="material-symbols-outlined">group</span><span>Kunden</span></div>
+    </nav>
+
+    <script src="db.js"></script>
+    <script src="app.js"></script>
+    <script src="rezepte.js"></script>
+</body>
+</html>
