@@ -117,3 +117,4 @@ const rezeptManager = {
 };
 
 document.addEventListener('DOMContentLoaded', () => rezeptManager.init());
+ 
