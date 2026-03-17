@@ -1,27 +1,54 @@
-  // Wir packen alles in ein "app" Objekt, das hält den Code aufgeräumt
 const app = {
     
-    // Initialisierung beim Start der App
-    init: function() {
+    init: async function() {
         console.log("Wurstwerk App gestartet!");
-        // Hier laden wir später die Daten aus der Datenbank (Supabase)
+        await this.refreshData();
     },
 
-    // Steuert die Navigation unten
+    // Holt frische Daten aus Supabase und schreibt sie in die App
+    refreshData: async function() {
+        try {
+            const data = await db.getInventory();
+            
+            // 1. Dashboard Zahlen füllen
+            const glaeser = data.find(i => i.name === 'Leere Gläser');
+            if(glaeser) document.getElementById('stat-gläser').innerText = glaeser.amount;
+
+            const fleisch = data.filter(i => i.category === 'Fleisch');
+            const gesamtFleisch = fleisch.reduce((sum, item) => sum + Number(item.amount), 0);
+            document.getElementById('stat-fleisch').innerText = (gesamtFleisch / 1000) + 'kg';
+
+            // 2. Lager-Liste im Lager-Tab bauen
+            const lagerListe = document.getElementById('inventory-list');
+            lagerListe.innerHTML = '';
+            data.forEach(item => {
+                lagerListe.innerHTML += `
+                    <div class="list-card">
+                        <div class="icon-box"><span class="material-symbols-outlined">reorder</span></div>
+                        <div class="info">
+                            <h3>${item.name}</h3>
+                            <p>Bestand: ${item.amount} ${item.unit}</p>
+                        </div>
+                    </div>
+                `;
+            });
+
+        } catch (error) {
+            console.error("Fehler beim Laden:", error);
+        }
+    },
+
     switchView: function(viewName, clickedElement) {
-        // Alle Views verstecken
         document.querySelectorAll('.view').forEach(view => view.classList.remove('active'));
-        
-        // Alle Nav-Items deaktivieren
         document.querySelectorAll('.nav-item').forEach(item => item.classList.remove('active'));
-        
-        // Gewählte View und Icon aktivieren
         document.getElementById('view-' + viewName).classList.add('active');
         clickedElement.classList.add('active');
+        
+        // Jedes Mal wenn wir den View wechseln, laden wir die Daten neu
+        this.refreshData();
     }
 };
 
-// Startet die App, sobald die Seite geladen ist
 document.addEventListener('DOMContentLoaded', () => {
     app.init();
 });
