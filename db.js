@@ -1,10 +1,10 @@
 // --- Supabase Zugangsdaten ---
-// BITTE HIER DEINE EIGENEN DATEN EINTRAGEN!
+// ⚠️ WICHTIG: HIER DEINE ECHTEN SUPABASE-DATEN EINTRAGEN!
 const supabaseUrl = 'DEINE_SUPABASE_URL_HIER';
 const supabaseKey = 'DEIN_SUPABASE_ANON_KEY_HIER';
 
 const db = {
-    // Holt den gesamten Lagerbestand aus Supabase
+    // Holt den gesamten Lagerbestand
     getInventory: async function() {
         try {
             const response = await fetch(`${supabaseUrl}/rest/v1/inventory?select=*`, {
@@ -21,10 +21,10 @@ const db = {
             return await response.json();
         } catch (error) {
             console.error("Datenbank-Fehler (getInventory):", error);
-            return []; // Gibt ein leeres Array zurück, damit die App bei einem Fehler nicht abstürzt
+            // Status im Header auf "Fehler" setzen
+            const statusEl = document.getElementById('db-status');
+            if(statusEl) statusEl.innerText = "Offline / Fehler";
+            return []; 
         }
     }
-    
-    // Anmerkung: Das Speichern und Updaten machen wir im nächsten Schritt in der assistant.js, 
-    // da dort die Logik für "Produkt vorhanden = addieren" passiert.
 };
