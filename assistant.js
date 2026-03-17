@@ -6,7 +6,7 @@ const assistant = {
         const priceVal = document.getElementById('buy-price').value;
 
         if (!nameVal || !amountVal) {
-            alert("⚠️ Bitte Name und Menge eingeben!");
+            alert("⚠️ Bitte fülle Name und Menge aus!");
             return;
         }
 
@@ -18,22 +18,27 @@ const assistant = {
             unit: catVal === 'Fleisch' ? 'g' : (catVal === 'Material' ? 'Stk' : 'g')
         };
 
-        const result = await db.insertInventory(newEntry);
+        try {
+            const response = await fetch(`${supabaseUrl}/rest/v1/inventory`, {
+                method: 'POST',
+                headers: {
+                    'apikey': supabaseKey,
+                    'Authorization': `Bearer ${supabaseKey}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(newEntry)
+            });
 
-        if (result.ok) {
-            alert("✅ Einkauf erfolgreich im Lager gespeichert!");
-            
-            // Felder leeren
-            document.getElementById('buy-name').value = '';
-            document.getElementById('buy-amount').value = '';
-            document.getElementById('buy-price').value = '';
-            
-            // Dashboard aktualisieren
-            if (typeof app !== 'undefined') {
-                await app.refreshData();
+            if (response.ok) {
+                // Erfolgreich! Wir leiten den Nutzer zurück zur Startseite (index.html)
+                // Die Startseite lädt beim Öffnen automatisch die neuesten Daten aus Supabase
+                window.location.href = 'index.html';
+            } else {
+                const err = await response.json();
+                alert("Fehler von der Datenbank: " + err.message);
             }
-        } else {
-            alert("❌ Fehler beim Speichern! Bitte prüfe die Spaltennamen in Supabase.");
+        } catch (e) {
+            alert("Verbindungsfehler. Bitte prüfe dein Internet.");
         }
     }
 };
