@@ -1,10 +1,9 @@
 window.produktionManager = {
     recipe: null,
     inventory: [],
-    mappedIngredients: [], // Speichert, welche Zutat zu welchem Lagerartikel gehört
+    mappedIngredients: [], 
 
     init: async function() {
-        // 1. Hole die ID aus der URL
         const params = new URLSearchParams(window.location.search);
         const id = params.get('id');
         
@@ -15,7 +14,6 @@ window.produktionManager = {
         }
 
         try {
-            // 2. Rezept und Lager parallel aus der Datenbank laden
             const [recipeRes, invData] = await Promise.all([
                 fetch(`${supabaseUrl}/rest/v1/recipes?id=eq.${id}&select=*`, { headers: { 'apikey': supabaseKey, 'Authorization': `Bearer ${supabaseKey}` } }),
                 db.getInventory()
@@ -28,8 +26,6 @@ window.produktionManager = {
             this.inventory = invData;
 
             document.getElementById('prod-title').innerText = `Produktion: ${this.recipe.name}`;
-            
-            // 3. UI aufbauen
             this.buildMatchingUI();
 
         } catch (e) {
@@ -38,7 +34,6 @@ window.produktionManager = {
         }
     },
 
-    // Baut die Liste auf, in der das Rezept mit dem Lager verknüpft wird
     buildMatchingUI: function() {
         const container = document.getElementById('matching-container');
         const details = this.recipe.details || {};
@@ -53,29 +48,22 @@ window.produktionManager = {
         this.mappedIngredients = [];
 
         ingredients.forEach((ing, index) => {
-            // "Schlaues" Suchen: Versucht den Namen im Lager zu finden (Groß/Kleinschreibung egal)
             let bestMatch = this.inventory.find(item => 
                 item.name.toLowerCase().includes(ing.name.toLowerCase()) || 
                 ing.name.toLowerCase().includes(item.name.toLowerCase())
             );
 
-            // HTML für das Dropdown bauen
             let optionsHtml = `<option value="">-- Bitte Lager-Artikel zuordnen --</option>`;
-            
-            // Wir sortieren das Dropdown, damit Fleisch und Gewürze schön geordnet sind
             const sortedInv = [...this.inventory].sort((a,b) => a.category.localeCompare(b.category));
             
             sortedInv.forEach(item => {
-                // Pfandgläser schließen wir hier aus, die kommen ja erst am Ende ins Spiel
                 if(item.category === 'Pfandglas' || item.category === 'Maschine') return; 
-                
                 const isSelected = bestMatch && bestMatch.id === item.id ? 'selected' : '';
                 optionsHtml += `<option value="${item.id}" ${isSelected}>[${item.category}] ${item.name} (${item.amount} ${item.unit} auf Lager)</option>`;
             });
 
             const selectClass = bestMatch ? 'matched' : 'unmatched';
 
-            // Jede Zutat bekommt eine Zeile
             container.innerHTML += `
                 <div class="match-row">
                     <div class="match-header">
@@ -89,7 +77,6 @@ window.produktionManager = {
                 </div>
             `;
 
-            // Speichern für die Live-Berechnung
             this.mappedIngredients.push({
                 originalName: ing.name,
                 baseAmount: ing.amount,
@@ -99,7 +86,6 @@ window.produktionManager = {
         });
     },
 
-    // Macht das Feld grün, wenn was ausgewählt wurde, rot wenn es leer ist
     updateSelectColor: function(selectEl) {
         if(selectEl.value && selectEl.value !== "") {
             selectEl.classList.remove('unmatched');
@@ -110,22 +96,22 @@ window.produktionManager = {
         }
     },
 
-    // Wird bei JEDEM Tastendruck im Feld "kg Fleischmasse" aufgerufen!
     recalculate: function() {
         const multiInput = document.getElementById('multiplier-input').value;
-        const multiplier = parseFloat(multiInput) || 0; // Wenn leer, dann 0
+        const multiplier = parseFloat(multiInput) || 0; 
 
         this.mappedIngredients.forEach(ing => {
             const calculatedAmount = (ing.baseAmount * multiplier);
-            
-            // Wenn es Gramm sind, machen wir keine ewig langen Kommastellen
             const displayAmount = calculatedAmount % 1 === 0 ? calculatedAmount : calculatedAmount.toFixed(1);
-            
             document.getElementById(`calc-val-${ing.index}`).innerText = `${displayAmount} ${ing.unit}`;
         });
     },
 
-    // Bucht die Mengen in Supabase ab und startet die Checkliste
+    goBackToSetup: function() {
+        document.getElementById('step-2-checklist').style.display = 'none';
+        document.getElementById('step-1-setup').style.display = 'block';
+    },
+
     deductAndStart: async function() {
         const multiInput = document.getElementById('multiplier-input').value;
         const multiplier = parseFloat(multiInput) || 0;
@@ -135,7 +121,6 @@ window.produktionManager = {
             return;
         }
 
-        // 1. Sammle alle Abbuchungen
         let updates = [];
         let hasErrors = false;
 
@@ -147,13 +132,10 @@ window.produktionManager = {
                 hasErrors = true;
                 selectEl.style.border = "2px solid red";
             } else if (invId !== "skip") {
-                // Reale Abbuchung vorbereiten
                 const neededAmount = (ing.baseAmount * multiplier);
                 const invItem = this.inventory.find(i => i.id == invId);
                 
                 if(invItem) {
-                    // ACHTUNG: Hier muss in der echten Praxis noch eine Umrechnung rein, falls das Lager in kg und das Rezept in g ist.
-                    // Fürs erste ziehen wir die blanken Zahlen ab.
                     let newAmount = Number(invItem.amount) - neededAmount;
                     updates.push({ id: invItem.id, amount: newAmount });
                 }
@@ -165,11 +147,9 @@ window.produktionManager = {
             return;
         }
 
-        // 2. An die Datenbank senden (Warenabgang)
         if (updates.length > 0) {
             if(!confirm(`Möchtest du die berechneten Mengen jetzt wirklich fest aus deinem Lager abbuchen?`)) return;
 
-            // Wir schicken für jeden Artikel ein Update (in einer professionellen App macht man das als Bulk, aber so ist es sicherer)
             for (let update of updates) {
                 await fetch(`${supabaseUrl}/rest/v1/inventory?id=eq.${update.id}`, {
                     method: 'PATCH',
@@ -179,7 +159,6 @@ window.produktionManager = {
             }
         }
 
-        // 3. UI Umschalten auf Checkliste
         document.getElementById('step-1-setup').style.display = 'none';
         document.getElementById('step-2-checklist').style.display = 'block';
         this.buildChecklist();
@@ -199,29 +178,76 @@ window.produktionManager = {
 
         steps.forEach((step, index) => {
             let extra = '';
-            if (step.type === 'timer') extra = `<br><b style="color:#4d4dff;">⏳ ${step.duration} ${step.unit}</b>`;
-            if (step.type === 'interval') extra = `<br><b style="color:var(--accent-amber);">🔁 ${step.cycles}x ${step.duration} ${step.unit} (Pause: ${step.pauses}h)</b>`;
+            let timerButtons = '';
+
+            // Wenn es ein Timer ist, bauen wir die neuen Buttons ein!
+            if (step.type === 'timer' || step.type === 'interval') {
+                if (step.type === 'timer') extra = `<br><b style="color:#4d4dff;">⏳ ${step.duration} ${step.unit}</b>`;
+                if (step.type === 'interval') extra = `<br><b style="color:var(--accent-amber);">🔁 ${step.cycles}x ${step.duration} ${step.unit} (Pause: ${step.pauses}h)</b>`;
+                
+                timerButtons = `
+                    <div class="timer-controls" id="timer-controls-${index}">
+                        <button class="btn-start" onclick="event.stopPropagation(); window.produktionManager.startTimer(${index})">▶️ Starten</button>
+                        <button class="btn-skip" onclick="event.stopPropagation(); window.produktionManager.skipStep(${index})">⏭️ Überspringen</button>
+                    </div>
+                    <div id="timer-status-${index}" style="display: none; padding-left: 50px; margin-top: 10px; color: #4caf50; font-weight: bold;"></div>
+                `;
+            }
 
             container.innerHTML += `
-                <div class="check-step" id="step-row-${index}" onclick="window.produktionManager.toggleStep(${index})">
-                    <div class="check-btn"><span class="material-symbols-outlined">check</span></div>
-                    <div style="flex: 1;">
-                        <b style="font-size: 0.8rem; color: #888; text-transform: uppercase;">Schritt ${index + 1}</b>
-                        <p style="margin: 3px 0 0 0; font-size: 0.95rem; line-height: 1.4;">${step.text} ${extra}</p>
+                <div class="check-step" id="step-row-${index}">
+                    <div class="step-header" onclick="window.produktionManager.toggleStep(${index})">
+                        <div class="check-btn"><span class="material-symbols-outlined">check</span></div>
+                        <div style="flex: 1;">
+                            <b style="font-size: 0.8rem; color: #888; text-transform: uppercase;">Schritt ${index + 1}</b>
+                            <p style="margin: 3px 0 0 0; font-size: 0.95rem; line-height: 1.4;">${step.text} ${extra}</p>
+                        </div>
                     </div>
+                    ${timerButtons}
                 </div>
             `;
         });
     },
 
     toggleStep: function(index) {
+        // Ein normaler Klick zum manuellen Abhaken
         const row = document.getElementById(`step-row-${index}`);
         row.classList.toggle('done');
     },
 
+    startTimer: function(index) {
+        const row = document.getElementById(`step-row-${index}`);
+        const controls = document.getElementById(`timer-controls-${index}`);
+        const status = document.getElementById(`timer-status-${index}`);
+
+        // Visuelles Update
+        row.classList.add('running');
+        controls.style.display = 'none';
+        status.style.display = 'block';
+        status.innerHTML = `⏳ Timer läuft im Hintergrund... (Wird ans Dashboard gesendet)`;
+
+        // HINWEIS: Das Speichern in die aktive Datenbank bauen wir als Nächstes fürs Dashboard!
+    },
+
+    skipStep: function(index) {
+        const row = document.getElementById(`step-row-${index}`);
+        const controls = document.getElementById(`timer-controls-${index}`);
+        const status = document.getElementById(`timer-status-${index}`);
+
+        // Sofort Abhaken
+        row.classList.add('done');
+        row.classList.remove('running');
+        if (controls) controls.style.display = 'none';
+        if (status) {
+            status.style.display = 'block';
+            status.innerHTML = `⏭️ Schritt manuell übersprungen!`;
+            status.style.color = "var(--accent-amber)";
+        }
+    },
+
     finishProduction: function() {
-        alert("✅ Produktion erfolgreich abgeschlossen!\n(Die Timer und das fertige Wurst-Lager bauen wir im nächsten Schritt ein!)");
-        window.location.href = 'index.html'; // Zurück zum Dashboard
+        alert("✅ Rezept abgearbeitet!\nAls nächstes bauen wir das Einlagern in den 'Fertigen Bestand' und die Dashboard-Timer.");
+        window.location.href = 'index.html'; 
     }
 };
 
