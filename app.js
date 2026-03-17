@@ -1,172 +1,186 @@
 const app = {
-    currentFilter: 'Alle', // Speichert, welcher Filter gerade aktiv ist
-    inventoryData: [],     // Speichert das gesamte Lager
+    currentFilter: 'Alle', // Speichert, welche Kategorie im Lager gerade aktiv ist
+    inventoryData: [],     // Speicher für alle Lagerartikel
+    kundenData: [],        // Speicher für Kunden (wegen der Pfandgläser)
 
+    // Startet die App
     init: async function() {
         console.log("Wurstwerk App synchronisiert...");
         await this.refreshData();
     },
 
-    // Wenn man auf einen Filter-Button tippt
+    // Setzt den Filter im Lager (Fleisch, Gewürze, etc.)
     setFilter: function(category, clickedElement) {
         this.currentFilter = category;
         
-        // Optik der Buttons anpassen
-        document.querySelectorAll('.filter-btn').forEach(btn => btn.classList.remove('active'));
-        clickedElement.classList.add('active');
+        // Optik der Filter-Buttons anpassen
+        if (clickedElement) {
+            document.querySelectorAll('.filter-btn').forEach(btn => btn.classList.remove('active'));
+            clickedElement.classList.add('active');
+        }
 
-        // Die Listen neu aufbauen
         this.renderInventory();
     },
 
+    // Holt alle Daten frisch aus Supabase
     refreshData: async function() {
         try {
-            // 1. Lagerdaten UND Kundendaten holen (für die Pfandgläser im Umlauf)
+            // 1. Lagerdaten holen
             this.inventoryData = await db.getInventory();
             
-            // Wir versuchen die Kunden zu holen, wenn es fehlschlägt, ist es 0
-            let kundenData = [];
-            try {
-                const kundenRes = await fetch(`${supabaseUrl}/rest/v1/customers?select=pfand_schulden`, {
-                    headers: { 'apikey': supabaseKey, 'Authorization': `Bearer ${supabaseKey}` }
-                });
-                if(kundenRes.ok) kundenData = await kundenRes.json();
-            } catch (e) { console.log("Kunden konnten noch nicht geladen werden."); }
-
-            // --- BERECHNUNGEN ---
-            let warenWert = 0;
-            let leereGlaeser = 0;
-            let umlaufGlaeser = 0;
-
-            // Warenwert und leere Gläser berechnen
-            this.inventoryData.forEach(item => {
-                const price = Number(item.price) || 0;
-                if (item.category === 'Pfandglas') {
-                    leereGlaeser += Number(item.amount) || 0;
-                } else if (item.category !== 'Maschine') {
-                    warenWert += price; // Maschinen fliegen aus dem Warenwert raus
-                }
+            // 2. Kundendaten holen (für die Pfand-Berechnung)
+            const kundenRes = await fetch(`${supabaseUrl}/rest/v1/customers?select=pfand_schulden,name`, {
+                headers: { 'apikey': supabaseKey, 'Authorization': `Bearer ${supabaseKey}` }
             });
+            this.kundenData = await kundenRes.json();
 
-            // Gläser im Umlauf (Pfandschulden der Kunden zusammenrechnen)
-            kundenData.forEach(kunde => {
-                umlaufGlaeser += Number(kunde.pfand_schulden) || 0;
-            });
-
-            // --- ZAHLEN INS HTML SCHREIBEN ---
-            if (document.getElementById('stat-warenwert')) document.getElementById('stat-warenwert').innerText = warenWert.toFixed(2);
-            if (document.getElementById('stat-leere-glaeser')) document.getElementById('stat-leere-glaeser').innerText = leereGlaeser;
-            if (document.getElementById('stat-umlauf-glaeser')) document.getElementById('stat-umlauf-glaeser').innerText = umlaufGlaeser;
-            
-            // Für die Startseite (index.html)
-            if (document.getElementById('stat-wert')) document.getElementById('stat-wert').innerText = warenWert.toFixed(2);
-            if (document.getElementById('stat-gläser')) document.getElementById('stat-gläser').innerText = leereGlaeser;
-
-            // Listen zeichnen
-            this.renderInventory();
-
-            // Produktionen laden (falls auf der Home-Seite)
-            if (typeof production !== 'undefined' && production.loadActiveProcesses) {
-                await production.loadActiveProcesses();
-            }
+            // 3. Berechnungen durchführen
+            this.updateUI();
 
         } catch (error) {
-            console.error("Fehler beim Aktualisieren:", error);
+            console.error("Fehler beim Laden der Daten:", error);
         }
     },
 
-    // Diese Funktion baut das HTML für die Listen auf
-    renderInventory: function() {
-        const lagerListe = document.getElementById('inventory-list');
-        const recentListe = document.getElementById('recent-list');
-        const recentSection = document.getElementById('recent-section');
-        const titleElement = document.getElementById('inventory-title');
+    // Berechnet die Statistiken und füllt die Felder
+    updateUI: function() {
+        let warenWert = 0;
+        let totalGlaeserEingekauft = 0;
+        let umlaufGlaeser = 0;
 
-        if (!lagerListe) return; // Wenn wir nicht auf der Lager-Seite sind, abbrechen
-
-        lagerListe.innerHTML = '';
-        if (recentListe) recentListe.innerHTML = '';
-
-        // 1. ZULETZT HINZUGEFÜGT (Die 3 neuesten Einträge finden)
-        if (this.currentFilter === 'Alle' && recentSection) {
-            recentSection.style.display = 'block';
-            titleElement.innerText = 'Komplettes Lager';
-            
-            // Sortieren nach Erstelldatum (oder ID als Ersatz) und die neuesten 3 nehmen
-            const sortedRecent = [...this.inventoryData].sort((a, b) => {
-                return new Date(b.created_at || 0) - new Date(a.created_at || 0);
-            }).slice(0, 3);
-
-            if (sortedRecent.length > 0) {
-                sortedRecent.forEach(item => recentListe.innerHTML += this.createCardHTML(item, true));
-            } else {
-                recentListe.innerHTML = '<p class="text-muted">Noch keine Einträge.</p>';
+        // Warenwert berechnen (Maschinen und Gläser zählen NICHT zum Fleischwert)
+        this.inventoryData.forEach(item => {
+            const price = Number(item.price) || 0;
+            if (item.category === 'Pfandglas') {
+                totalGlaeserEingekauft += Number(item.amount) || 0;
+            } else if (item.category !== 'Maschine') {
+                warenWert += price;
             }
-        } else {
-            if (recentSection) recentSection.style.display = 'none';
-            if (titleElement) titleElement.innerText = `Lagerbestand: ${this.currentFilter}`;
-        }
-
-        // 2. DAS GEFILTERTE LAGER AUFBAUEN
-        const filteredData = this.inventoryData.filter(item => {
-            if (this.currentFilter === 'Alle') return true;
-            return item.category === this.currentFilter;
         });
 
-        if (filteredData.length === 0) {
-            lagerListe.innerHTML = '<p class="text-muted" style="text-align:center; margin-top:30px;">Keine Artikel in dieser Kategorie.</p>';
-        } else {
-            // Alphabetisch sortieren für die Hauptliste
-            const sortedAlphabetisch = [...filteredData].sort((a, b) => a.name.localeCompare(b.name));
-            sortedAlphabetisch.forEach(item => lagerListe.innerHTML += this.createCardHTML(item, false));
+        // Pfandgläser im Umlauf (bei Kunden) zusammenrechnen
+        this.kundenData.forEach(k => {
+            umlaufGlaeser += Number(k.pfand_schulden) || 0;
+        });
+
+        // Die "Wahrheit" im Regal
+        const regalGlaeser = totalGlaeserEingekauft - umlaufGlaeser;
+
+        // --- DASHBOARD & LAGER STATS BEFÜLLEN ---
+        // Dashboard (index.html)
+        if (document.getElementById('stat-wert')) document.getElementById('stat-wert').innerText = warenWert.toFixed(2);
+        if (document.getElementById('stat-gläser')) document.getElementById('stat-gläser').innerText = regalGlaeser;
+
+        // Lager-Übersicht (lager.html)
+        if (document.getElementById('stat-warenwert')) document.getElementById('stat-warenwert').innerText = warenWert.toFixed(2);
+        if (document.getElementById('stat-regal-glaeser')) document.getElementById('stat-regal-glaeser').innerText = regalGlaeser;
+
+        // Gläser-Detail-Box (lager.html)
+        if (document.getElementById('glass-total')) document.getElementById('glass-total').innerText = totalGlaeserEingekauft;
+        if (document.getElementById('glass-umlauf')) document.getElementById('glass-umlauf').innerText = umlaufGlaeser;
+        if (document.getElementById('glass-regal-final')) document.getElementById('glass-regal-final').innerText = regalGlaeser;
+
+        // Listen im Lager zeichnen
+        this.renderInventory();
+        
+        // Timer/Produktionen laden (falls vorhanden)
+        if (typeof production !== 'undefined' && production.loadActiveProcesses) {
+            production.loadActiveProcesses();
         }
     },
 
-    // Hilfsfunktion: Baut den HTML-Code für eine Karte (Listeneintrag)
-    createCardHTML: function(item, isRecent) {
-        let unitPriceInfo = "";
-        if (item.amount > 0 && item.price > 0 && item.category !== 'Maschine') {
-            if (item.unit === 'g') {
-                const kgPreis = (item.price / item.amount) * 1000;
-                unitPriceInfo = `<span style="font-size: 0.8rem; color: #aaa;">(${kgPreis.toFixed(2)}€/kg)</span>`;
-            } else {
-                const stueckPreis = item.price / item.amount;
-                unitPriceInfo = `<span style="font-size: 0.8rem; color: #aaa;">(${stueckPreis.toFixed(2)}€/${item.unit})</span>`;
-            }
+    // Baut die HTML-Listen im Lager zusammen
+    renderInventory: function() {
+        const lagerListe = document.getElementById('inventory-list');
+        const recentSection = document.getElementById('recent-section');
+        const recentListe = document.getElementById('recent-list');
+        const umlaufSection = document.getElementById('umlauf-section');
+        const umlaufListe = document.getElementById('umlauf-list');
+
+        if (!lagerListe) return; // Wir sind nicht auf der Lager-Seite
+
+        // 1. ZULETZT HINZUGEFÜGT (Nur wenn Filter auf 'Alle')
+        if (this.currentFilter === 'Alle' && recentSection) {
+            recentSection.style.display = 'block';
+            const sortedRecent = [...this.inventoryData].sort((a, b) => new Date(b.created_at) - new Date(a.created_at)).slice(0, 3);
+            recentListe.innerHTML = '';
+            sortedRecent.forEach(item => recentListe.innerHTML += this.createCardHTML(item, true));
+        } else if (recentSection) {
+            recentSection.style.display = 'none';
         }
 
+        // 2. HAUPTLISTE FILTERN
+        const filtered = this.inventoryData.filter(i => this.currentFilter === 'Alle' || i.category === this.currentFilter);
+        lagerListe.innerHTML = '';
+        
+        // Alphabetisch sortieren
+        filtered.sort((a, b) => a.name.localeCompare(b.name)).forEach(item => {
+            lagerListe.innerHTML += this.createCardHTML(item, false);
+        });
+
+        // 3. UMLAUF-LISTE (Nur wenn Filter auf 'Pfandglas')
+        if (this.currentFilter === 'Pfandglas' && umlaufSection) {
+            umlaufSection.style.display = 'block';
+            umlaufListe.innerHTML = '';
+            this.kundenData.filter(k => k.pfand_schulden > 0).forEach(k => {
+                umlaufListe.innerHTML += `
+                    <div class="list-card" style="border-left: 3px solid var(--accent-danger);">
+                        <div class="info">
+                            <h3>${k.name}</h3>
+                            <p>Besitzt aktuell ${k.pfand_schulden} Pfandgläser</p>
+                        </div>
+                    </div>`;
+            });
+            // Spezial-Box für Gläser anzeigen (lager.html)
+            if(document.getElementById('glass-details')) document.getElementById('glass-details').style.display = 'block';
+        } else {
+            if (umlaufSection) umlaufSection.style.display = 'none';
+            if(document.getElementById('glass-details')) document.getElementById('glass-details').style.display = 'none';
+        }
+    },
+
+    // Hilfsfunktion für die Lager-Karten
+    createCardHTML: function(item, isRecent) {
+        let displayAmount = item.amount;
         let icon = 'inventory_2';
+        
+        // Spezial-Logik für Icons und Glas-Bestand
         if (item.category === 'Fleisch') icon = 'set_meal';
         if (item.category === 'Gewürz') icon = 'grain';
         if (item.category === 'Maschine') icon = 'build';
-        if (item.category === 'Pfandglas') icon = 'recycling';
+        if (item.category === 'Pfandglas') {
+            icon = 'recycling';
+            // Im Lager zeigen wir bei Gläsern NUR das, was wirklich im Regal steht
+            let gesamtUmlauf = 0;
+            this.kundenData.forEach(k => gesamtUmlauf += Number(k.pfand_schulden));
+            displayAmount = Number(item.amount) - gesamtUmlauf;
+        }
 
-        // Wenn es bei "Zuletzt hinzugefügt" ist, geben wir ihm einen leichten farbigen Rand
-        const borderStyle = isRecent ? 'border-left: 3px solid var(--accent-amber);' : '';
+        const border = isRecent ? 'border-left: 3px solid var(--accent-amber);' : '';
 
         return `
-            <div class="list-card" style="${borderStyle}">
+            <div class="list-card" style="${border}">
                 <div class="icon-box"><span class="material-symbols-outlined">${icon}</span></div>
                 <div class="info">
                     <h3>${item.name}</h3>
-                    <p>${item.amount} ${item.unit} | Gesamt: ${Number(item.price).toFixed(2)}€ ${unitPriceInfo}</p>
+                    <p>${displayAmount} ${item.unit} | Wert: ${Number(item.price).toFixed(2)}€</p>
                 </div>
-                <button onclick="app.deleteItem('${item.id}')" style="background:none; border:none; color:var(--accent-danger); cursor:pointer; padding:10px;">
+                <button onclick="app.deleteItem('${item.id}')" style="background:none; border:none; color:var(--accent-danger); cursor:pointer;">
                     <span class="material-symbols-outlined">delete</span>
                 </button>
-            </div>
-        `;
+            </div>`;
     },
 
+    // Löscht einen Artikel
     deleteItem: async function(id) {
-        if (!confirm("Restlos aus dem Lager entfernen?")) return;
+        if (!confirm("Artikel restlos aus dem Lager entfernen?")) return;
         try {
             const res = await fetch(`${supabaseUrl}/rest/v1/inventory?id=eq.${id}`, {
                 method: 'DELETE',
                 headers: { 'apikey': supabaseKey, 'Authorization': `Bearer ${supabaseKey}` }
             });
             if (res.ok) await this.refreshData();
-        } catch (e) { alert("Löschen fehlgeschlagen."); }
+        } catch (e) { alert("Fehler beim Löschen."); }
     }
 };
 
