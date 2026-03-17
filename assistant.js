@@ -1,83 +1,57 @@
 const assistant = {
-    checkExisting: async function() {
-        const nameInput = document.getElementById('buy-name').value.toLowerCase().trim();
-        const hint = document.getElementById('duplicate-hint');
-        
-        if (nameInput.length < 2) {
-            hint.style.display = 'none';
-            return;
-        }
-
-        const inventory = await db.getInventory();
-        const exists = inventory.some(item => item.name.toLowerCase() === nameInput);
-        hint.style.display = exists ? 'inline-block' : 'none';
-    },
-
     processPurchase: async function() {
-        const name = document.getElementById('buy-name').value.trim();
-        const amount = Number(document.getElementById('buy-amount').value);
-        const unit = document.getElementById('buy-unit').value;
-        const price = Number(document.getElementById('buy-price').value) || 0;
+        // Werte aus dem Formular auslesen
+        const nameVal = document.getElementById('buy-name').value;
+        const catVal = document.getElementById('buy-category').value;
+        const amountVal = parseFloat(document.getElementById('buy-amount').value);
+        const unitInput = document.getElementById('buy-unit').value;
+        const priceVal = parseFloat(document.getElementById('buy-price').value);
 
-        if(!name || amount <= 0) {
-            alert("Bitte Produktnamen und Menge angeben!");
+        // Prüfen, ob die wichtigsten Felder ausgefüllt sind
+        if (!nameVal || isNaN(amountVal) || amountVal <= 0) {
+            alert("⚠️ Bitte fülle den Namen und eine gültige Menge aus!");
             return;
         }
 
-        const btn = document.querySelector('.save-btn');
-        const originalText = btn.innerHTML;
-        btn.innerHTML = '<span class="material-symbols-outlined">hourglass_empty</span> Speichere...';
-        btn.disabled = true;
+        // Smarte Umrechnung in die Grundeinheit (für saubere Rezepte)
+        let finalAmount = amountVal;
+        let finalUnit = unitInput;
 
-        const inventory = await db.getInventory();
-        const existingItem = inventory.find(item => item.name.toLowerCase() === name.toLowerCase());
-
-        let success = false;
-        
-        // Neues, sicheres Datumsformat für Supabase
-        const timestamp = new Date().toISOString();
-
-        if(existingItem) {
-            // Addieren
-            const updateData = {
-                amount: Number(existingItem.amount) + amount,
-                price: Number(existingItem.price || 0) + price,
-                unit: unit,
-                last_updated: timestamp
-            };
-            success = await db.saveItem(updateData, existingItem.id);
-        } else {
-            // Neu anlegen
-            const insertData = {
-                name: name,
-                amount: amount,
-                unit: unit,
-                price: price,
-                category: 'Einkauf',
-                last_updated: timestamp
-            };
-            success = await db.saveItem(insertData, null);
+        // Wenn jemand kg auswählt, rechnen wir es intern in Gramm um
+        if (unitInput === 'kg') {
+            finalAmount = amountVal * 1000;
+            finalUnit = 'g';
         }
 
-        if (success) {
-            this.clearInputs();
-            // Bestätigungs-Pop-Up für dich
-            alert("✅ Erfolgreich im Lager gespeichert!"); 
+        // Datenbank-Eintrag vorbereiten
+        const newEntry = {
+            name: nameVal,
+            category: catVal,
+            amount: finalAmount,
+            price: isNaN(priceVal) ? 0 : priceVal,
+            unit: finalUnit
+        };
+
+        console.log("Versuche zu speichern:", newEntry);
+
+        // Sende Daten an db.js
+        const result = await db.insertInventory(newEntry);
+
+        if (result && result.ok) {
+            alert(`✅ ${amountVal} ${unitInput} ${nameVal} erfolgreich im Lager gespeichert!`);
             
-            // Alles sofort aktualisieren
-            if(typeof app.loadLager === 'function') app.loadLager();
-            if(typeof app.loadDashboard === 'function') app.loadDashboard();
+            // Zurück zur Hauptseite springen!
+            window.location.href = 'index.html';
+        } else {
+            // Falls Supabase meckert, lesen wir den genauen Fehler aus
+            let errorMsg = "Unbekannter Fehler";
+            try {
+                const errObj = await result.json();
+                errorMsg = errObj.message || JSON.stringify(errObj);
+            } catch (e) {
+                errorMsg = "Konnte die genaue Fehlermeldung nicht lesen.";
+            }
+            alert("❌ Fehler beim Speichern! Details: " + errorMsg);
         }
-
-        btn.innerHTML = originalText;
-        btn.disabled = false;
-    },
-
-    clearInputs: function() {
-        document.getElementById('buy-name').value = '';
-        document.getElementById('buy-amount').value = '';
-        document.getElementById('buy-price').value = '';
-        document.getElementById('duplicate-hint').style.display = 'none';
-        document.getElementById('buy-name').focus();
     }
 };
