@@ -1,6 +1,5 @@
-// --- Supabase Zugangsdaten ---
 const supabaseUrl = 'https://lphunsmxoruyovvhjrxy.supabase.co';
-const supabaseKey = 'sb_publishable_QjQFTlnJWcMQ-9vWe3f_8A_ayddFKF8';
+const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxwaHVuc214b3J1eW92dmhqcnh5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM3NDYxNDAsImV4cCI6MjA4OTMyMjE0MH0.LhW4nqr98xAU-0eun-qTByJBxBjRk767CTzVCtB0eEI';
 
 const db = {
     // Holt den gesamten Lagerbestand
@@ -20,7 +19,6 @@ const db = {
             return await response.json();
         } catch (error) {
             console.error("Datenbank-Fehler (getInventory):", error);
-            // Status im Header auf "Fehler" setzen
             const statusEl = document.getElementById('db-status');
             if(statusEl) statusEl.innerText = "Offline / Fehler";
             return []; 
