@@ -8,91 +8,73 @@
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
-
     <header>Lagerbestand</header>
-
     <main>
-        <div class="stat-card" style="border-top: 3px solid #4caf50; margin-bottom: 25px;">
-            <div style="display: flex; justify-content: space-between; align-items: center;">
-                <div>
-                    <span class="stat-label">Gesamter Warenwert</span>
-                    <br>
-                    <span id="stat-warenwert" class="stat-value">0.00</span> <span style="font-size: 1.2rem;">€</span>
-                </div>
-                <span class="material-symbols-outlined" style="color: #4caf50; font-size: 2.5rem;">payments</span>
+        <div class="dashboard-grid">
+            <div class="stat-card" style="border-top: 3px solid var(--accent-amber);">
+                <h3 style="margin: 0 0 5px 0;">Warenwert</h3>
+                <p style="font-size: 1.5rem; margin: 0; font-weight: bold;"><span id="stat-warenwert">0.00</span> €</p>
+            </div>
+            <div class="stat-card" style="border-top: 3px solid var(--accent-amber);">
+                <h3 style="margin: 0 0 5px 0;">Gläser (Frei)</h3>
+                <p style="font-size: 0.9rem; margin: 0; color: #ccc;">
+                    250ml: <b id="glass-250-available" style="color: white; font-size: 1.1rem;">0</b><br>
+                    400ml: <b id="glass-400-available" style="color: white; font-size: 1.1rem;">0</b>
+                </p>
             </div>
         </div>
 
-        <div class="section-title" style="color: #4d4dff;">🫙 Gläser-Zentrale</div>
-        <div class="stat-card" style="border-top: 3px solid #4d4dff; margin-bottom: 25px; padding-bottom: 5px;">
-            
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
-                <div>
-                    <div style="font-size: 1.1rem; font-weight: bold;">250ml Gläser</div>
-                    <div style="font-size: 0.8rem; color: var(--accent-danger);">Beim Kunden: <span id="glass-250-out">0</span></div>
-                </div>
-                <div style="text-align: right;">
-                    <div style="font-size: 1.4rem; color: #4caf50; font-weight: bold;" id="glass-250-available">0</div>
-                    <div style="font-size: 0.8rem; color: var(--text-muted);">im Regal</div>
-                </div>
-            </div>
-            <div style="display: flex; gap: 10px; margin-bottom: 20px;">
-                <button class="action-btn" style="background: #111; border: 1px solid #4caf50; color: #4caf50;" onclick="app.adjustGlass('250', 'add')">
-                    <span class="material-symbols-outlined">add</span> Eingang
-                </button>
-                <button class="action-btn" style="background: #111; border: 1px solid var(--accent-danger); color: var(--accent-danger);" onclick="app.adjustGlass('250', 'remove')">
-                    <span class="material-symbols-outlined">remove</span> Abziehen
-                </button>
-            </div>
-
-            <hr style="border: 0; border-top: 1px dashed #333; margin: 0 0 15px 0;">
-
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
-                <div>
-                    <div style="font-size: 1.1rem; font-weight: bold;">400ml Gläser</div>
-                    <div style="font-size: 0.8rem; color: var(--accent-danger);">Beim Kunden: <span id="glass-400-out">0</span></div>
-                </div>
-                <div style="text-align: right;">
-                    <div style="font-size: 1.4rem; color: #4caf50; font-weight: bold;" id="glass-400-available">0</div>
-                    <div style="font-size: 0.8rem; color: var(--text-muted);">im Regal</div>
-                </div>
-            </div>
-            <div style="display: flex; gap: 10px; margin-bottom: 15px;">
-                <button class="action-btn" style="background: #111; border: 1px solid #4caf50; color: #4caf50;" onclick="app.adjustGlass('400', 'add')">
-                    <span class="material-symbols-outlined">add</span> Eingang
-                </button>
-                <button class="action-btn" style="background: #111; border: 1px solid var(--accent-danger); color: var(--accent-danger);" onclick="app.adjustGlass('400', 'remove')">
-                    <span class="material-symbols-outlined">remove</span> Abziehen
-                </button>
-            </div>
-
-            <div style="text-align: center; border-top: 1px solid #333; padding: 12px 0; cursor: pointer; color: #4d4dff; font-size: 0.9rem;" onclick="app.toggleGlassList()">
-                <span class="material-symbols-outlined" style="vertical-align: middle; font-size: 1.1rem;">group</span> 
-                Zeige Kunden mit Pfandschulden
-            </div>
-            <div id="glass-customer-overlay" style="display: none; padding-top: 10px;">
-                <div id="glass-customer-list"></div>
-            </div>
-        </div>
-
-        <div class="filter-container" style="display: flex; gap: 10px; overflow-x: auto; padding-bottom: 15px;">
-            <button class="filter-btn active" onclick="app.setFilter('Alle', this)">Alles</button>
-            <button class="filter-btn" onclick="app.setFilter('Fleisch', this)">🥩 Fleisch</button>
-            <button class="filter-btn" onclick="app.setFilter('Gewürz', this)">🧂 Gewürze</button>
-            <button class="filter-btn" onclick="app.setFilter('Material', this)">📦 Material</button>
-        </div>
-
-        <button class="action-btn" style="background-color: #2e7d32; color: white; margin-bottom: 25px; height: 50px;" onclick="window.location.href='einkauf.html'">
-            <span class="material-symbols-outlined">add_circle</span> Fleisch / Gewürz / Material eintragen
+        <button class="action-btn" style="background-color: var(--accent-amber); color: #000; margin-top: 20px; margin-bottom: 25px; height: 50px;" onclick="window.lagerManager.openEditor()">
+            <span class="material-symbols-outlined">add</span> Neuer Artikel
         </button>
 
-        <div class="section-title" id="list-title">Lagerliste</div>
-        <div id="inventory-list"></div>
-
-        <div id="recent-section" style="margin-top: 30px; border-top: 1px solid #333; padding-top: 20px;">
-            <div class="section-title" style="color: var(--accent-amber);">🆕 Zuletzt hinzugefügt</div>
-            <div id="recent-list"></div>
+        <div id="inventory-list-container">
+            <p class="text-muted" style="text-align: center;">Lade Lagerbestand...</p>
         </div>
+
+        <div id="inventory-editor" style="display: none; background: #1a1a1a; padding: 20px; border-radius: 12px; border: 1px solid #333; margin-bottom: 30px;">
+            <h3 id="editor-title" style="margin-top: 0; color: var(--accent-amber);">Neuer Artikel</h3>
+            <input type="hidden" id="edit-id">
+            
+            <label style="display:block; color:var(--text-muted); font-size:0.8rem; margin-bottom:5px;">Name</label>
+            <input type="text" id="edit-name" style="width:100%; padding:10px; background:#222; border:1px solid #444; color:white; border-radius:6px; margin-bottom:15px;">
+            
+            <label style="display:block; color:var(--text-muted); font-size:0.8rem; margin-bottom:5px;">Kategorie</label>
+            <select id="edit-category" style="width:100%; padding:10px; background:#222; border:1px solid #444; color:white; border-radius:6px; margin-bottom:15px;">
+                <option value="Fleisch">Fleisch</option>
+                <option value="Gewürze">Gewürze</option>
+                <option value="Darm">Darm / Hülle</option>
+                <option value="Pfandglas">Pfandglas</option>
+                <option value="Verpackung">Verpackung</option>
+                <option value="Maschine">Maschine</option>
+            </select>
+
+            <div style="display: flex; gap: 10px; margin-bottom: 15px;">
+                <div style="flex: 1;">
+                    <label style="display:block; color:var(--text-muted); font-size:0.8rem; margin-bottom:5px;">Menge</label>
+                    <input type="number" id="edit-amount" step="0.1" style="width:100%; padding:10px; background:#222; border:1px solid #444; color:white; border-radius:6px;">
+                </div>
+                <div style="flex: 1;">
+                    <label style="display:block; color:var(--text-muted); font-size:0.8rem; margin-bottom:5px;">Einheit</label>
+                    <select id="edit-unit" style="width:100%; padding:10px; background:#222; border:1px solid #444; color:white; border-radius:6px;">
+                        <option value="g">g</option>
+                        <option value="kg">kg</option>
+                        <option value="ml">ml</option>
+                        <option value="Stk">Stück</option>
+                        <option value="m">Meter</option>
+                    </select>
+                </div>
+            </div>
+
+            <label style="display:block; color:var(--text-muted); font-size:0.8rem; margin-bottom:5px;">Gesamtpreis (€)</label>
+            <input type="number" id="edit-price" step="0.01" style="width:100%; padding:10px; background:#222; border:1px solid #444; color:white; border-radius:6px; margin-bottom:20px;">
+
+            <div style="display: flex; gap: 10px;">
+                <button style="flex: 1; background: #333; color: white; border: none; padding: 12px; border-radius: 6px;" onclick="window.lagerManager.closeEditor()">Abbrechen</button>
+                <button style="flex: 1; background: #4caf50; color: white; border: none; padding: 12px; border-radius: 6px;" onclick="window.lagerManager.saveItem()">Speichern</button>
+            </div>
+        </div>
+
     </main>
 
     <nav>
@@ -102,7 +84,8 @@
         <div class="nav-item" onclick="window.location.href='kunden.html'"><span class="material-symbols-outlined">group</span><span>Kunden</span></div>
     </nav>
 
-    <script src="db.js"></script>
-    <script src="app.js"></script>
+    <script src="db.js?v=8"></script>
+    <script src="app.js?v=8"></script>
+    <script src="lager.js?v=8"></script>
 </body>
 </html>
