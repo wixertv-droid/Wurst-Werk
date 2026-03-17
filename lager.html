@@ -6,6 +6,21 @@
     <title>Lager - Wurstwerk</title>
     <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined" rel="stylesheet" />
     <link rel="stylesheet" href="style.css">
+    <style>
+        /* Spezielles Design für die Filter-Leiste */
+        .filter-container {
+            display: flex; gap: 10px; overflow-x: auto; padding: 5px 0 15px 0;
+            scrollbar-width: none; /* Versteckt Scrollbar Firefox */
+        }
+        .filter-container::-webkit-scrollbar { display: none; } /* Versteckt Scrollbar Chrome/Safari */
+        
+        .filter-btn {
+            background-color: var(--surface-color); border: 1px solid #333;
+            color: var(--text-main); padding: 8px 16px; border-radius: 20px;
+            font-size: 0.9rem; white-space: nowrap; cursor: pointer; transition: 0.2s;
+        }
+        .filter-btn.active { background-color: var(--accent-amber); color: #000; border-color: var(--accent-amber); font-weight: bold; }
+    </style>
 </head>
 <body>
 
@@ -14,18 +29,37 @@
     <main>
         <div class="dashboard-grid" style="margin-bottom: 20px;">
             <div class="stat-card" style="border-top: 3px solid #4caf50;">
-                <span class="material-symbols-outlined" style="color: #4caf50;">restaurant</span>
+                <span class="material-symbols-outlined" style="color: #4caf50;">payments</span>
                 <span id="stat-warenwert" class="stat-value">0.00</span>
                 <span class="stat-label">Warenwert (€)</span>
             </div>
-            <div class="stat-card" style="border-top: 3px solid #888;">
-                <span class="material-symbols-outlined" style="color: #888;">build</span>
-                <span id="stat-maschinenwert" class="stat-value">0.00</span>
-                <span class="stat-label">Maschinen (€)</span>
+            <div class="stat-card" style="border-top: 3px solid #4d4dff;">
+                <span class="material-symbols-outlined" style="color: #4d4dff;">recycling</span>
+                <div style="display: flex; gap: 10px; align-items: baseline; margin-top: 5px;">
+                    <span id="stat-leere-glaeser" class="stat-value" style="color: #fff;">0</span>
+                    <span class="stat-label">Leer</span>
+                    <span style="color: #555;">|</span>
+                    <span id="stat-umlauf-glaeser" class="stat-value" style="color: var(--accent-danger); font-size: 1.2rem;">0</span>
+                    <span class="stat-label">Umlauf</span>
+                </div>
             </div>
         </div>
 
-        <div class="section-title">Dein Inventar</div>
+        <div class="filter-container">
+            <button class="filter-btn active" onclick="app.setFilter('Alle', this)">Alles</button>
+            <button class="filter-btn" onclick="app.setFilter('Fleisch', this)">🥩 Fleisch</button>
+            <button class="filter-btn" onclick="app.setFilter('Gewürz', this)">🧂 Gewürze</button>
+            <button class="filter-btn" onclick="app.setFilter('Pfandglas', this)">🫙 Gläser</button>
+            <button class="filter-btn" onclick="app.setFilter('Material', this)">📦 Material</button>
+        </div>
+
+        <div id="recent-section">
+            <div class="section-title" style="color: var(--accent-amber);">🆕 Zuletzt hinzugefügt</div>
+            <div id="recent-list"></div>
+            <hr style="border: 0; border-top: 1px solid #333; margin: 25px 0;">
+        </div>
+
+        <div class="section-title" id="inventory-title">Komplettes Lager</div>
         <div id="inventory-list">
             <p class="text-muted" style="text-align: center; margin-top: 30px;">Lade Lagerdaten...</p>
         </div>
