@@ -7,6 +7,59 @@ const app = {
         await this.refreshData();
     },
 
+    // --- DIE NEUE SCHNELLE GLÄSER LOGIK (+ / -) ---
+    adjustGlass: async function(size, type) {
+        const actionStr = type === 'add' ? 'hinzufügen (Eingang)' : 'abziehen (Verbrauch/Bruch)';
+        const amountStr = prompt(`Wie viele ${size}ml Gläser möchtest du ${actionStr}?`, "1");
+        
+        if (!amountStr) return;
+        const amount = parseInt(amountStr);
+        if (isNaN(amount) || amount <= 0) return;
+
+        // Sucht das Glas im Lager
+        let item = this.inventoryData.find(i => i.category === 'Pfandglas' && i.name.includes(size));
+
+        // Falls es das Glas noch gar nicht gibt, legen wir es bei "+ Eingang" lautlos im Hintergrund an
+        if (!item) {
+            if (type === 'add') {
+                const newEntry = { name: `Sturzglas ${size}ml`, category: 'Pfandglas', amount: amount, price: 0, unit: 'Stk' };
+                await db.insertInventory(newEntry);
+                await this.refreshData();
+                return;
+            } else {
+                alert(`Es gibt noch keine ${size}ml Gläser im Lager!`);
+                return;
+            }
+        }
+
+        // Sicherheitsprüfung beim Abziehen (Ist genug im Regal?)
+        if (type === 'remove') {
+            let umlauf = 0;
+            this.kundenData.forEach(k => umlauf += Number(k[`pfand_${size}`]) || 0);
+            const regal = Number(item.amount) - umlauf;
+            
+            if (amount > regal) {
+                alert(`Du hast nur ${regal} Gläser im Regal. Du kannst nicht ${amount} abziehen!`);
+                return;
+            }
+        }
+
+        // Neue Menge berechnen und an Supabase senden
+        const newAmount = type === 'add' ? Number(item.amount) + amount : Number(item.amount) - amount;
+
+        try {
+            const response = await fetch(`${supabaseUrl}/rest/v1/inventory?id=eq.${item.id}`, {
+                method: 'PATCH',
+                headers: { 'apikey': supabaseKey, 'Authorization': `Bearer ${supabaseKey}`, 'Content-Type': 'application/json' },
+                body: JSON.stringify({ amount: newAmount })
+            });
+            if (response.ok) await this.refreshData();
+            else alert("Fehler beim Speichern in der Datenbank!");
+        } catch (e) {
+            alert("Verbindungsfehler!");
+        }
+    },
+
     toggleGlassList: function() {
         const overlay = document.getElementById('glass-customer-overlay');
         if (!overlay) return;
@@ -20,11 +73,10 @@ const app = {
         if (!list) return;
         list.innerHTML = '';
         
-        // Finde alle Kunden, die ENTWEDER 250ml ODER 400ml Gläser haben
         const schuldner = this.kundenData.filter(k => (Number(k.pfand_250) > 0 || Number(k.pfand_400) > 0));
         
         if (schuldner.length === 0) {
-            list.innerHTML = '<p class="text-muted">Keine Gläser im Umlauf.</p>';
+            list.innerHTML = '<p class="text-muted" style="margin:0;">Keine Gläser im Umlauf.</p>';
             return;
         }
 
@@ -34,7 +86,7 @@ const app = {
             if (Number(k.pfand_400) > 0) details.push(`${k.pfand_400}x 400ml`);
             
             list.innerHTML += `
-                <div style="display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid #333;">
+                <div style="display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #333;">
                     <span>${k.name}</span>
                     <b style="color: var(--accent-danger); font-size: 0.9rem;">${details.join(' | ')}</b>
                 </div>`;
@@ -63,7 +115,7 @@ const app = {
         let gesamt250 = 0, gesamt400 = 0;
         let umlauf250 = 0, umlauf400 = 0;
 
-        // 1. Gekaufte Gläser & Warenwert zählen
+        // 1. Zählen
         this.inventoryData.forEach(item => {
             if (item.category === 'Pfandglas') {
                 if (item.name.includes('250')) gesamt250 += Number(item.amount) || 0;
@@ -73,70 +125,55 @@ const app = {
             }
         });
 
-        // 2. Kunden-Schulden aus den NEUEN Spalten zählen
         this.kundenData.forEach(k => {
             umlauf250 += Number(k.pfand_250) || 0;
             umlauf400 += Number(k.pfand_400) || 0;
         });
 
-        // 3. Wahrheit berechnen
         const regal250 = gesamt250 - umlauf250;
         const regal400 = gesamt400 - umlauf400;
-        const totalUmlauf = umlauf250 + umlauf400;
-        const totalRegal = regal250 + regal400; // Für das Dashboard
 
-        // --- Werte in die HTML-Felder schreiben ---
-        
-        // Home
+        // 2. Werte ins HTML schreiben
         if(document.getElementById('stat-wert')) document.getElementById('stat-wert').innerText = warenWert.toFixed(2);
-        if(document.getElementById('stat-gläser')) document.getElementById('stat-gläser').innerText = totalRegal;
-        
-        // Lager
+        if(document.getElementById('stat-gläser')) document.getElementById('stat-gläser').innerText = (regal250 + regal400);
         if(document.getElementById('stat-warenwert')) document.getElementById('stat-warenwert').innerText = warenWert.toFixed(2);
         
-        // Das neue, geteilte Gläser-Kästchen
+        // Gläser-Zentrale aktualisieren
         if(document.getElementById('glass-250-available')) document.getElementById('glass-250-available').innerText = regal250;
+        if(document.getElementById('glass-250-out')) document.getElementById('glass-250-out').innerText = umlauf250;
         if(document.getElementById('glass-400-available')) document.getElementById('glass-400-available').innerText = regal400;
-        if(document.getElementById('glass-with-customer')) document.getElementById('glass-with-customer').innerText = totalUmlauf;
+        if(document.getElementById('glass-400-out')) document.getElementById('glass-400-out').innerText = umlauf400;
 
-        // --- LISTEN RENDERN ---
+        // --- LISTEN RENDERN (Ohne Gläser!) ---
         const lagerListe = document.getElementById('inventory-list');
         if (!lagerListe) return;
 
         lagerListe.innerHTML = '';
-        const filtered = this.inventoryData.filter(i => this.currentFilter === 'Alle' || i.category === this.currentFilter);
+        // WICHTIG: Die Gläser werden komplett aus der normalen Liste ausgeblendet
+        const filtered = this.inventoryData.filter(i => i.category !== 'Pfandglas' && (this.currentFilter === 'Alle' || i.category === this.currentFilter));
         
         filtered.forEach(item => {
-            lagerListe.innerHTML += this.createCard(item, umlauf250, umlauf400);
+            lagerListe.innerHTML += this.createCard(item);
         });
 
-        // Zuletzt hinzugefügt
+        // Zuletzt hinzugefügt (Ebenfalls ohne Gläser)
         const recentList = document.getElementById('recent-list');
         if (recentList && this.currentFilter === 'Alle') {
-            const recentItems = [...this.inventoryData].sort((a,b) => b.id - a.id).slice(0, 3);
+            const recentItems = [...this.inventoryData].filter(i => i.category !== 'Pfandglas').sort((a,b) => b.id - a.id).slice(0, 3);
             recentList.innerHTML = '';
-            recentItems.forEach(item => recentList.innerHTML += this.createCard(item, umlauf250, umlauf400));
+            recentItems.forEach(item => recentList.innerHTML += this.createCard(item));
         }
     },
 
-    createCard: function(item, umlauf250, umlauf400) {
-        let displayAmount = item.amount;
-        let icon = 'inventory_2';
+    createCard: function(item) {
+        let icon = item.category === 'Fleisch' ? 'set_meal' : 'grain';
         
-        if (item.category === 'Pfandglas') {
-            icon = 'recycling';
-            // Zieht genau den richtigen Umlauf ab
-            if (item.name.includes('250')) displayAmount = Number(item.amount) - umlauf250;
-            else if (item.name.includes('400')) displayAmount = Number(item.amount) - umlauf400;
-        } else if (item.category === 'Fleisch') icon = 'set_meal';
-          else if (item.category === 'Gewürz') icon = 'grain';
-
         return `
             <div class="list-card">
                 <div class="icon-box"><span class="material-symbols-outlined">${icon}</span></div>
                 <div class="info">
                     <h3>${item.name}</h3>
-                    <p>${displayAmount} ${item.unit} im Regal | Wert: ${Number(item.price).toFixed(2)}€</p>
+                    <p>${item.amount} ${item.unit} | Wert: ${Number(item.price).toFixed(2)}€</p>
                 </div>
                 <button onclick="app.deleteItem('${item.id}')" style="background:none; border:none; color:var(--accent-danger); cursor:pointer;">
                     <span class="material-symbols-outlined">delete</span>
