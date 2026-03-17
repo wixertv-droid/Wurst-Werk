@@ -6,18 +6,6 @@
     <title>Lager - Wurstwerk</title>
     <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined" rel="stylesheet" />
     <link rel="stylesheet" href="style.css">
-    <style>
-        .filter-container { display: flex; gap: 10px; overflow-x: auto; padding: 5px 0 15px 0; scrollbar-width: none; }
-        .filter-container::-webkit-scrollbar { display: none; }
-        .filter-btn { background-color: var(--surface-color); border: 1px solid #333; color: var(--text-main); padding: 8px 16px; border-radius: 20px; font-size: 0.9rem; white-space: nowrap; cursor: pointer; }
-        .filter-btn.active { background-color: var(--accent-amber); color: #000; border-color: var(--accent-amber); font-weight: bold; }
-        
-        /* Spezial-Karte für Gläser-Details */
-        .glass-detail-card {
-            background: #111; border-radius: 12px; padding: 15px; margin-bottom: 20px;
-            border-left: 4px solid #4d4dff; display: none;
-        }
-    </style>
 </head>
 <body>
 
@@ -31,31 +19,23 @@
                 <span class="stat-label">Warenwert (€)</span>
             </div>
             <div class="stat-card" style="border-top: 3px solid #4d4dff;">
-                <span class="material-symbols-outlined" style="color: #4d4dff;">recycling</span>
+                <span class="material-symbols-outlined" style="color: #4d4dff;">inventory</span>
                 <span id="stat-regal-glaeser" class="stat-value">0</span>
                 <span class="stat-label">Gläser im Regal</span>
             </div>
         </div>
 
-        <div class="filter-container">
+        <div class="filter-container" style="display: flex; gap: 10px; overflow-x: auto; padding-bottom: 15px;">
             <button class="filter-btn active" onclick="app.setFilter('Alle', this)">Alles</button>
             <button class="filter-btn" onclick="app.setFilter('Fleisch', this)">🥩 Fleisch</button>
             <button class="filter-btn" onclick="app.setFilter('Gewürz', this)">🧂 Gewürze</button>
             <button class="filter-btn" onclick="app.setFilter('Pfandglas', this)">🫙 Gläser</button>
         </div>
 
-        <div id="glass-details" class="glass-detail-card">
-            <h3 style="margin:0 0 10px 0; font-size: 1rem; color: #4d4dff;">Pfand-Status</h3>
-            <div style="display: flex; justify-content: space-between; font-size: 0.9rem;">
-                <span>Eingekauft gesamt:</span> <span id="glass-total" style="font-weight: bold;">0</span>
-            </div>
-            <div style="display: flex; justify-content: space-between; font-size: 0.9rem; margin-top: 5px; color: var(--accent-danger);">
-                <span>Beim Kunden (Umlauf):</span> <span id="glass-umlauf" style="font-weight: bold;">0</span>
-            </div>
-            <hr style="border:0; border-top:1px solid #333; margin: 10px 0;">
-            <div style="display: flex; justify-content: space-between; font-size: 1rem; color: #4caf50;">
-                <span><b>Physisch im Regal:</b></span> <span id="glass-regal-final" style="font-weight: bold;">0</span>
-            </div>
+        <div id="glass-summary" style="display:none; background:#111; padding:15px; border-radius:12px; margin-bottom:20px; border-left:4px solid #4d4dff;">
+            <p style="margin:0; font-size:0.9rem;">Gesamt gekauft: <b id="glass-total">0</b></p>
+            <p style="margin:5px 0; font-size:0.9rem; color:var(--accent-danger);">Beim Kunden: <b id="glass-out">0</b></p>
+            <p style="margin:0; font-size:1rem; color:#4caf50;"><b>Im Regal verfügbar: <span id="glass-final">0</span></b></p>
         </div>
 
         <div id="recent-section">
@@ -63,12 +43,12 @@
             <div id="recent-list"></div>
         </div>
 
-        <div class="section-title" id="inventory-title">Komplettes Lager</div>
+        <div class="section-title" id="list-title">Komplettes Lager</div>
         <div id="inventory-list"></div>
-        
-        <div id="umlauf-section" style="display: none;">
-            <div class="section-title" style="color: var(--accent-danger);">🚩 Gläser beim Kunden (Umlauf)</div>
-            <div id="umlauf-list"></div>
+
+        <div id="customer-debt-section" style="display:none;">
+            <div class="section-title" style="color:var(--accent-danger);">Kunden mit Pfand-Schulden</div>
+            <div id="customer-debt-list"></div>
         </div>
     </main>
 
