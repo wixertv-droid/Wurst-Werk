@@ -1,19 +1,10 @@
 const app = {
-    // Wird ausgeführt, sobald die App geladen ist
     init: async function() {
         console.log("Wurstwerk App gestartet!");
-        
-        // Lade die Daten für die Startseite (Dashboard) und das Lager
         await this.loadDashboard();
         await this.loadLager();
-        
-        // Falls der Einkauf-Tab geladen werden soll
-        if (typeof assistant !== 'undefined' && assistant.renderRecentPurchases) {
-            assistant.renderRecentPurchases();
-        }
     },
 
-    // Wechselt die Ansichten (Home, Lager, Einkauf etc.)
     switchView: function(viewId) {
         document.querySelectorAll('.view').forEach(view => {
             view.classList.remove('active');
@@ -36,37 +27,40 @@ const app = {
             activeNav.classList.add('active');
         }
         
-        // Aktualisiere die Daten, wenn ein Tab geöffnet wird
         if (viewId === 'view-dashboard') this.loadDashboard();
         if (viewId === 'view-lager') this.loadLager();
         if (viewId === 'view-einkauf' && typeof assistant !== 'undefined') assistant.renderRecentPurchases();
     },
 
-    // ================= NEU: DASHBOARD LADEN =================
     loadDashboard: async function() {
-        document.getElementById('db-status').innerText = "Verbinde...";
-        
+        // 1. Lagerwerte laden
         const inventory = await db.getInventory();
-        
         let totalValue = 0;
         let totalItems = inventory.length;
 
-        // Gesamtwert berechnen
         inventory.forEach(item => {
-            if(item.price) {
-                totalValue += Number(item.price);
-            }
+            if(item.price) totalValue += Number(item.price);
         });
 
-        // Werte ins Dashboard schreiben
         document.getElementById('dash-value').innerText = totalValue.toFixed(2).replace('.', ',') + ' €';
         document.getElementById('dash-items').innerText = totalItems + ' Positionen';
         
-        // Status oben rechts auf "Verbunden" setzen
-        document.getElementById('db-status').innerText = "Verbunden";
+        // 2. Produktion laden (Bereitet den Code schon mal vor)
+        const prodList = document.getElementById('dash-production-list');
+        if (typeof db.getProductions === 'function') {
+            const productions = await db.getProductions();
+            if (!productions || productions.length === 0) {
+                prodList.innerHTML = '<div class="recent-item"><div class="lager-item-info"><span>Smoker ist kalt. Keine aktiven Chargen.</span></div></div>';
+            } else {
+                // Hier werden später die echten Chargen geladen
+                prodList.innerHTML = '';
+            }
+        } else {
+            // Zeigt an, dass wir das in der Datenbank noch bauen müssen
+            prodList.innerHTML = '<div class="recent-item" style="border-left-color: #555;"><div class="lager-item-info"><span>Produktions-Datenbank noch nicht verknüpft.</span></div></div>';
+        }
     },
 
-    // ================= NEU: LAGER LADEN =================
     loadLager: async function() {
         const inventory = await db.getInventory();
         const lagerList = document.getElementById('lager-list');
@@ -76,20 +70,16 @@ const app = {
             return;
         }
 
-        lagerList.innerHTML = ''; // Liste leeren
-        
-        // Alphabetisch sortieren
+        lagerList.innerHTML = ''; 
         inventory.sort((a, b) => a.name.localeCompare(b.name));
 
         inventory.forEach(item => {
-            // Preis formatieren, falls vorhanden
             let priceString = item.price ? ` | ${Number(item.price).toFixed(2).replace('.', ',')} €` : '';
-            
             lagerList.innerHTML += `
                 <div class="lager-item">
                     <div class="lager-item-info">
                         <strong>${item.name}</strong>
-                        <span>Zuletzt gebucht: ${item.last_updated ? new Date(item.last_updated).toLocaleDateString('de-DE') : 'Unbekannt'} ${priceString}</span>
+                        <span>Zuletzt gebucht: ${item.last_updated ? new Date(item.last_updated).toLocaleDateString('de-DE') : 'Neu'} ${priceString}</span>
                     </div>
                     <div class="lager-item-amount">
                         ${item.amount} <small>${item.unit || 'Stk'}</small>
@@ -99,23 +89,15 @@ const app = {
         });
     },
 
-    // Suchfunktion für das Lager
     filterLager: function() {
         const searchTerm = document.getElementById('search-lager').value.toLowerCase();
         const items = document.querySelectorAll('.lager-item');
         
         items.forEach(item => {
             const text = item.innerText.toLowerCase();
-            if (text.includes(searchTerm)) {
-                item.style.display = 'flex';
-            } else {
-                item.style.display = 'none';
-            }
+            item.style.display = text.includes(searchTerm) ? 'flex' : 'none';
         });
     }
 };
 
-// Startet die App automatisch
-window.onload = function() {
-    app.init();
-};
+window.onload = () => app.init();
