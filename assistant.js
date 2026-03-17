@@ -5,51 +5,43 @@ const assistant = {
         const amount = Number(document.getElementById('buy-amount').value);
         const price = Number(document.getElementById('buy-price').value);
 
-        if(!name || !amount || !price) {
-            alert("Bitte Name, Menge und Preis angeben!");
+        if(!name || amount <= 0) {
+            alert("Bitte Name und Menge eingeben!");
             return;
         }
 
-        const inventory = await db.getInventory();
-        const existingItem = inventory.find(i => i.name.toLowerCase() === name.toLowerCase());
-
-        if(existingItem) {
-            const newTotal = Number(existingItem.amount) + amount;
-            const newPrice = Number(existingItem.price || 0) + price;
-            
-            await fetch(`${supabaseUrl}/rest/v1/inventory?id=eq.${existingItem.id}`, {
-                method: 'PATCH',
-                headers: {
-                    'apikey': supabaseKey,
-                    'Authorization': `Bearer ${supabaseKey}`,
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({ amount: newTotal, price: newPrice })
-            });
-        } else {
-            await fetch(`${supabaseUrl}/rest/v1/inventory`, {
+        try {
+            // Wir nutzen POST, um ein neues Item anzulegen
+            const response = await fetch(`${supabaseUrl}/rest/v1/inventory`, {
                 method: 'POST',
                 headers: {
                     'apikey': supabaseKey,
                     'Authorization': `Bearer ${supabaseKey}`,
-                    'Content-Type': 'application/json'
+                    'Content-Type': 'application/json',
+                    'Prefer': 'return=minimal'
                 },
                 body: JSON.stringify({
                     name: name,
                     category: category,
                     amount: amount,
-                    price: price,
-                    unit: category === 'Fleisch' ? 'g' : (category === 'Material' ? 'Stk/m' : 'g')
+                    price: price || 0,
+                    unit: category === 'Fleisch' ? 'g' : (category === 'Material' ? 'Stk' : 'g')
                 })
             });
+
+            if(response.ok) {
+                alert("Erfolgreich gespeichert!");
+                // Felder leeren
+                document.getElementById('buy-name').value = '';
+                document.getElementById('buy-amount').value = '';
+                document.getElementById('buy-price').value = '';
+                // Dashboard aktualisieren
+                await app.refreshData();
+            } else {
+                throw new Error("Fehler beim Speichern");
+            }
+        } catch (error) {
+            alert("Fehler: " + error.message);
         }
-
-        alert(`Einkauf gespeichert: ${amount}g/Stk ${name} für ${price.toFixed(2)}€`);
-        
-        document.getElementById('buy-name').value = '';
-        document.getElementById('buy-amount').value = '';
-        document.getElementById('buy-price').value = '';
-
-        await app.refreshData();
     }
 };
