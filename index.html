@@ -15,15 +15,58 @@
         <div class="header-content">
             <span class="brand">WURSTWERK</span>
             <div class="header-stats">
-                <span class="material-symbols-outlined">wifi</span>
-                <small>Online</small>
+                <span class="material-symbols-outlined">local_fire_department</span>
+                <small>Smoker an</small>
             </div>
         </div>
     </header>
 
     <main id="app-content">
         
-        <div id="view-einkauf" class="view active">
+        <div id="view-dashboard" class="view active">
+            <div class="section-title">
+                <span class="material-symbols-outlined">dashboard</span> Übersicht
+            </div>
+            
+            <div class="dashboard-grid">
+                <div class="dash-card">
+                    <span class="material-symbols-outlined card-icon">payments</span>
+                    <div class="card-info">
+                        <small>Lagerwert ca.</small>
+                        <strong id="dash-value">0,00 €</strong>
+                    </div>
+                </div>
+                <div class="dash-card">
+                    <span class="material-symbols-outlined card-icon">microwave</span>
+                    <div class="card-info">
+                        <small>In Produktion</small>
+                        <strong id="dash-active-prod">0 Chargen</strong>
+                    </div>
+                </div>
+                <div class="dash-card">
+                    <span class="material-symbols-outlined card-icon">inventory_2</span>
+                    <div class="card-info">
+                        <small>Artikel im Lager</small>
+                        <strong id="dash-items">0 Stück</strong>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="view-lager" class="view" style="display:none;">
+            <div class="section-title">
+                <span class="material-symbols-outlined">inventory_2</span> Aktueller Bestand
+            </div>
+            <div class="search-bar">
+                <span class="material-symbols-outlined search-icon">search</span>
+                <input type="text" id="search-lager" placeholder="Lager durchsuchen..." onkeyup="app.filterLager()">
+            </div>
+            <div id="lager-list" class="lager-list-container">
+                <p style="text-align:center; color:#666; margin-top: 20px;">Lade Lagerbestand...</p>
+            </div>
+        </div>
+
+        <div id="view-einkauf" class="view" style="display:none;">
             <div class="section-title">
                 <span class="material-symbols-outlined">add_shopping_cart</span> Wareneingang
             </div>
@@ -33,7 +76,7 @@
                     <div class="input-group">
                         <label>Produktname</label>
                         <input type="text" id="buy-name" placeholder="z.B. Bauch, Nacken..." onkeyup="assistant.checkExisting()">
-                        <div id="duplicate-hint" class="hint-badge" style="display:none;">Bereits im Lager (wird addiert)</div>
+                        <div id="duplicate-hint" class="hint-badge" style="display:none;">Bereits im Lager (+ wird addiert)</div>
                     </div>
                 </div>
                 
@@ -72,17 +115,6 @@
             </div>
         </div>
 
-        <div id="view-lager" class="view" style="display:none;">
-            <div class="section-title">
-                <span class="material-symbols-outlined">inventory_2</span> Aktueller Bestand
-            </div>
-            <div class="search-bar">
-                <input type="text" id="search-lager" placeholder="Lager durchsuchen..." onkeyup="app.filterLager()">
-            </div>
-            <div id="lager-list" class="lager-grid">
-                </div>
-        </div>
-
         <div id="view-produktion" class="view" style="display:none;">
             <div class="section-title">
                 <span class="material-symbols-outlined">blender</span> Produktion
@@ -93,10 +125,13 @@
     </main>
 
     <nav class="bottom-nav">
+        <button onclick="app.switchView('view-dashboard')" id="nav-dashboard" class="active">
+            <span class="material-symbols-outlined">dashboard</span>Home
+        </button>
         <button onclick="app.switchView('view-lager')" id="nav-lager">
             <span class="material-symbols-outlined">inventory_2</span>Lager
         </button>
-        <button onclick="app.switchView('view-einkauf')" id="nav-einkauf" class="active">
+        <button onclick="app.switchView('view-einkauf')" id="nav-einkauf">
             <span class="material-symbols-outlined">shopping_cart</span>Einkauf
         </button>
         <button onclick="app.switchView('view-produktion')" id="nav-produktion">
