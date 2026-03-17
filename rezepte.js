@@ -279,7 +279,9 @@ window.rezeptManager = {
     },
 
     startProduction: function() {
-        alert("🚀 Perfekt! Das Rezept ist bereit.\nIm nächsten Schritt bauen wir die Produktions-Ansicht.");
+        if (!this.currentRecipeData) return;
+        // HIER IST DIE WICHTIGE ÄNDERUNG: Wir leiten zur Produktion weiter!
+        window.location.href = `produktion.html?id=${this.currentRecipeData.id}`;
     }
 };
 
