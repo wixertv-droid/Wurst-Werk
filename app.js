@@ -1,103 +1,109 @@
 const app = {
     init: async function() {
-        console.log("Wurstwerk App gestartet!");
-        await this.loadDashboard();
-        await this.loadLager();
+        console.log("Wurstwerk App gestartet...");
+        await this.refreshData();
     },
 
-    switchView: function(viewId) {
-        document.querySelectorAll('.view').forEach(view => {
-            view.classList.remove('active');
-            view.style.display = 'none';
-        });
-        
-        const activeView = document.getElementById(viewId);
-        if (activeView) {
-            activeView.classList.add('active');
-            activeView.style.display = 'block';
-        }
-
-        document.querySelectorAll('.bottom-nav button').forEach(btn => {
-            btn.classList.remove('active');
-        });
-        
-        const navId = 'nav-' + viewId.split('-')[1];
-        const activeNav = document.getElementById(navId);
-        if (activeNav) {
-            activeNav.classList.add('active');
-        }
-        
-        if (viewId === 'view-dashboard') this.loadDashboard();
-        if (viewId === 'view-lager') this.loadLager();
-        if (viewId === 'view-einkauf' && typeof assistant !== 'undefined') assistant.renderRecentPurchases();
-    },
-
-    loadDashboard: async function() {
-        // 1. Lagerwerte laden
-        const inventory = await db.getInventory();
-        let totalValue = 0;
-        let totalItems = inventory.length;
-
-        inventory.forEach(item => {
-            if(item.price) totalValue += Number(item.price);
-        });
-
-        document.getElementById('dash-value').innerText = totalValue.toFixed(2).replace('.', ',') + ' €';
-        document.getElementById('dash-items').innerText = totalItems + ' Positionen';
-        
-        // 2. Produktion laden (Bereitet den Code schon mal vor)
-        const prodList = document.getElementById('dash-production-list');
-        if (typeof db.getProductions === 'function') {
-            const productions = await db.getProductions();
-            if (!productions || productions.length === 0) {
-                prodList.innerHTML = '<div class="recent-item"><div class="lager-item-info"><span>Smoker ist kalt. Keine aktiven Chargen.</span></div></div>';
-            } else {
-                // Hier werden später die echten Chargen geladen
-                prodList.innerHTML = '';
+    refreshData: async function() {
+        try {
+            const data = await db.getInventory();
+            
+            // 1. Dashboard Zahlen aktualisieren
+            const glaeser = data.find(i => i.name.toLowerCase().includes('glas'));
+            const glaeserCount = glaeser ? glaeser.amount : 0;
+            if(document.getElementById('stat-gläser')) {
+                document.getElementById('stat-gläser').innerText = glaeserCount;
             }
-        } else {
-            // Zeigt an, dass wir das in der Datenbank noch bauen müssen
-            prodList.innerHTML = '<div class="recent-item" style="border-left-color: #555;"><div class="lager-item-info"><span>Produktions-Datenbank noch nicht verknüpft.</span></div></div>';
+
+            // Lagerwert berechnen
+            const gesamtWert = data.reduce((sum, item) => sum + (Number(item.price) || 0), 0);
+            if(document.getElementById('stat-wert')) {
+                document.getElementById('stat-wert').innerText = gesamtWert.toFixed(2);
+            }
+
+            // 2. Lager-Liste aufbauen
+            const lagerListe = document.getElementById('inventory-list');
+            if(lagerListe) {
+                lagerListe.innerHTML = '';
+                
+                if (data.length === 0) {
+                    lagerListe.innerHTML = '<p class="text-muted" style="text-align:center; margin-top:30px;">Das Lager ist aktuell leer.</p>';
+                } else {
+                    data.forEach(item => {
+                        // Preis pro Einheit berechnen für die Anzeige
+                        let unitPriceInfo = "";
+                        if (item.amount > 0 && item.price > 0) {
+                            if (item.unit === 'g') {
+                                // Bei Gramm zeigen wir den Kilo-Preis zur Orientierung
+                                const kgPreis = (item.price / item.amount) * 1000;
+                                unitPriceInfo = `<span style="font-size: 0.8rem; color: #aaa;">(${kgPreis.toFixed(2)}€ / kg)</span>`;
+                            } else {
+                                const stueckPreis = item.price / item.amount;
+                                unitPriceInfo = `<span style="font-size: 0.8rem; color: #aaa;">(${stueckPreis.toFixed(2)}€ / ${item.unit})</span>`;
+                            }
+                        }
+
+                        lagerListe.innerHTML += `
+                            <div class="list-card">
+                                <div class="icon-box"><span class="material-symbols-outlined">inventory</span></div>
+                                <div class="info">
+                                    <h3>${item.name}</h3>
+                                    <p>${item.amount} ${item.unit} | Wert: ${Number(item.price).toFixed(2)}€ ${unitPriceInfo}</p>
+                                </div>
+                                <button onclick="app.deleteItem('${item.id}')" style="background:none; border:none; color:var(--accent-danger); cursor:pointer; padding:10px;">
+                                    <span class="material-symbols-outlined">delete</span>
+                                </button>
+                            </div>
+                        `;
+                    });
+                }
+            }
+
+            // 3. Laufende Produktionen laden (falls die Datei da ist)
+            if(typeof production !== 'undefined' && production.loadActiveProcesses) {
+                await production.loadActiveProcesses();
+            }
+
+        } catch (error) {
+            console.error("Fehler beim Aktualisieren der Daten:", error);
         }
     },
 
-    loadLager: async function() {
-        const inventory = await db.getInventory();
-        const lagerList = document.getElementById('lager-list');
+    deleteItem: async function(id) {
+        if(!confirm("Möchtest du diesen Artikel wirklich aus dem Lager löschen?")) return;
         
-        if (!inventory || inventory.length === 0) {
-            lagerList.innerHTML = '<p style="text-align:center; color:#666; margin-top: 20px;">Dein Lager ist leer.</p>';
-            return;
+        try {
+            const res = await fetch(`${supabaseUrl}/rest/v1/inventory?id=eq.${id}`, {
+                method: 'DELETE',
+                headers: { 'apikey': supabaseKey, 'Authorization': `Bearer ${supabaseKey}` }
+            });
+            
+            if(res.ok) {
+                await this.refreshData();
+            } else {
+                alert("Fehler beim Löschen des Artikels.");
+            }
+        } catch (e) { 
+            alert("Keine Verbindung zur Datenbank. Löschen fehlgeschlagen."); 
         }
-
-        lagerList.innerHTML = ''; 
-        inventory.sort((a, b) => a.name.localeCompare(b.name));
-
-        inventory.forEach(item => {
-            let priceString = item.price ? ` | ${Number(item.price).toFixed(2).replace('.', ',')} €` : '';
-            lagerList.innerHTML += `
-                <div class="lager-item">
-                    <div class="lager-item-info">
-                        <strong>${item.name}</strong>
-                        <span>Zuletzt gebucht: ${item.last_updated ? new Date(item.last_updated).toLocaleDateString('de-DE') : 'Neu'} ${priceString}</span>
-                    </div>
-                    <div class="lager-item-amount">
-                        ${item.amount} <small>${item.unit || 'Stk'}</small>
-                    </div>
-                </div>
-            `;
-        });
     },
 
-    filterLager: function() {
-        const searchTerm = document.getElementById('search-lager').value.toLowerCase();
-        const items = document.querySelectorAll('.lager-item');
+    switchView: function(viewName, clickedElement) {
+        // Alle Bildschirme verstecken
+        document.querySelectorAll('.view').forEach(view => view.classList.remove('active'));
         
-        items.forEach(item => {
-            const text = item.innerText.toLowerCase();
-            item.style.display = text.includes(searchTerm) ? 'flex' : 'none';
-        });
+        // Den gewünschten Bildschirm einblenden
+        const targetView = document.getElementById('view-' + viewName);
+        if(targetView) targetView.classList.add('active');
+
+        // Die Farbe der Buttons in der Navigation anpassen
+        if(clickedElement) {
+            document.querySelectorAll('.nav-item').forEach(item => item.classList.remove('active'));
+            clickedElement.classList.add('active');
+        }
+
+        this.refreshData();
     }
 };
 
-window.onload = () => app.init();
+document.addEventListener('DOMContentLoaded', () => app.init());
