@@ -1,4 +1,4 @@
-const rezeptManager = {
+window.rezeptManager = {
     currentRecipeData: null, 
 
     init: async function() {
@@ -20,7 +20,6 @@ const rezeptManager = {
                 headers: { 'apikey': supabaseKey, 'Authorization': `Bearer ${supabaseKey}` }
             });
             
-            // Fehler abfangen, falls Tabelle fehlt
             if (!response.ok) {
                 listEl.innerHTML = '<p class="text-muted" style="color: var(--accent-danger); text-align: center;">Datenbank-Fehler! Wurde die Tabelle "recipes" angelegt?</p>';
                 return;
@@ -37,7 +36,7 @@ const rezeptManager = {
             recipes.forEach(r => {
                 const safeData = encodeURIComponent(JSON.stringify(r));
                 listEl.innerHTML += `
-                    <div class="list-card" style="border-left: 3px solid var(--accent-amber); cursor: pointer;" onclick="rezeptManager.openDetail('${safeData}')">
+                    <div class="list-card" style="border-left: 3px solid var(--accent-amber); cursor: pointer;" onclick="window.rezeptManager.openDetail('${safeData}')">
                         <div class="icon-box" style="background: #222;">
                             <span class="material-symbols-outlined" style="color: var(--accent-amber);">restaurant_menu</span>
                         </div>
@@ -45,7 +44,7 @@ const rezeptManager = {
                             <h3 style="font-size: 1.1rem; margin-bottom: 4px;">${r.name}</h3>
                             <p style="color: #aaa; font-size: 0.85rem; margin: 0;">Auf 1kg genormt</p>
                         </div>
-                        <button onclick="event.stopPropagation(); rezeptManager.deleteRecipe('${r.id}', '${r.name}')" style="background:none; border:none; color:var(--accent-danger); cursor:pointer; padding: 10px;">
+                        <button onclick="event.stopPropagation(); window.rezeptManager.deleteRecipe('${r.id}', '${r.name}')" style="background:none; border:none; color:var(--accent-danger); cursor:pointer; padding: 10px;">
                             <span class="material-symbols-outlined">delete</span>
                         </button>
                     </div>
@@ -177,7 +176,7 @@ const rezeptManager = {
         
         row.innerHTML = `
             <div style="display: flex; gap: 8px;">
-                <select class="recipe-select step-type" style="flex: 1;" onchange="rezeptManager.toggleStepFields(this)">
+                <select class="recipe-select step-type" style="flex: 1;" onchange="window.rezeptManager.toggleStepFields(this)">
                     <option value="task" ${type==='task'?'selected':''}>✅ Einfacher Schritt</option>
                     <option value="timer" ${type==='timer'?'selected':''}>⏳ Wartezeit / Timer</option>
                     <option value="interval" ${type==='interval'?'selected':''}>🔁 Intervall (z.B. Räuchern)</option>
@@ -280,8 +279,8 @@ const rezeptManager = {
     },
 
     startProduction: function() {
-        alert("🚀 Perfekt! Das Rezept ist bereit.\nIm nächsten Schritt bauen wir die Produktions-Ansicht, die dein Lager abzieht und Timer startet.");
+        alert("🚀 Perfekt! Das Rezept ist bereit.\nIm nächsten Schritt bauen wir die Produktions-Ansicht.");
     }
 };
 
-document.addEventListener('DOMContentLoaded', () => rezeptManager.init());
+document.addEventListener('DOMContentLoaded', () => window.rezeptManager.init());
