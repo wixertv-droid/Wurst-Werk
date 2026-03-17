@@ -5,8 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <title>Wurstwerk - Dashboard</title>
-    
+    <title>Wurstwerk</title>
     <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined" rel="stylesheet" />
     <link rel="stylesheet" href="style.css">
 </head>
@@ -18,23 +17,21 @@
         <div class="smoker-card">
             <span class="material-symbols-outlined" style="font-size: 2.5rem; color: var(--accent-amber);">local_fire_department</span>
             <div id="process-timer" class="timer-display">00:00:00</div>
-            <p class="text-muted">Willkommen im Wurstwerk</p>
+            <p class="text-muted">Dashboard Übersicht</p>
         </div>
 
-        <button class="action-btn" style="margin-top: 25px; height: 60px; font-size: 1.1rem; background-color: #2e7d32; color: white;" onclick="window.location.href='einkauf.html'">
+        <button class="action-btn" style="margin-top: 25px; height: 60px; background-color: #2e7d32; color: white;" onclick="window.location.href='einkauf.html'">
             <span class="material-symbols-outlined">add_shopping_cart</span> Neuen Einkauf erfassen
         </button>
 
         <div class="section-title">Laufende Reifeprozesse</div>
-        <div id="active-processes-list">
-            <p class="text-muted" style="text-align: center; margin-top: 10px;">Keine aktiven Prozesse.</p>
-        </div>
+        <div id="active-processes-list"><p class="text-muted">Keine aktiven Prozesse.</p></div>
         
         <div class="dashboard-grid">
             <div class="stat-card" style="border-top: 3px solid #4d4dff;">
                 <span class="material-symbols-outlined" style="color: #4d4dff;">recycling</span>
                 <span id="stat-gläser" class="stat-value">0</span>
-                <span class="stat-label">Leere Pfandgläser</span>
+                <span class="stat-label">Gläser im Regal</span>
             </div>
             <div class="stat-card" style="border-top: 3px solid #4caf50;">
                 <span class="material-symbols-outlined" style="color: #4caf50;">restaurant</span>
@@ -45,29 +42,13 @@
     </main>
 
     <nav>
-        <div class="nav-item active">
-            <span class="material-symbols-outlined">dashboard</span>
-            <span>Home</span>
-        </div>
-        
-        <div class="nav-item" onclick="window.location.href='rezepte.html'">
-            <span class="material-symbols-outlined">menu_book</span>
-            <span>Rezepte</span>
-        </div>
-        
-        <div class="nav-item" onclick="window.location.href='lager.html'">
-            <span class="material-symbols-outlined">inventory</span>
-            <span>Lager</span>
-        </div>
-        
-        <div class="nav-item" onclick="window.location.href='kunden.html'">
-            <span class="material-symbols-outlined">group</span>
-            <span>Kunden</span>
-        </div>
+        <div class="nav-item active"><span class="material-symbols-outlined">dashboard</span><span>Home</span></div>
+        <div class="nav-item" onclick="window.location.href='rezepte.html'"><span class="material-symbols-outlined">menu_book</span><span>Rezepte</span></div>
+        <div class="nav-item" onclick="window.location.href='lager.html'"><span class="material-symbols-outlined">inventory</span><span>Lager</span></div>
+        <div class="nav-item" onclick="window.location.href='kunden.html'"><span class="material-symbols-outlined">group</span><span>Kunden</span></div>
     </nav>
 
     <script src="db.js"></script>
     <script src="app.js"></script>
-    <script src="production.js"></script>
 </body>
 </html>
