@@ -1,33 +1,54 @@
 const assistant = {
-    // Prüft während dem Tippen, ob das Produkt existiert
+    // 1. Prüft während dem Tippen, ob das Produkt schon im Lager ist
     checkExisting: async function() {
-        const name = document.getElementById('buy-name').value.toLowerCase();
+        const nameInput = document.getElementById('buy-name').value.toLowerCase().trim();
         const hint = document.getElementById('duplicate-hint');
-        const inventory = await db.getInventory();
         
-        const exists = inventory.some(i => i.name.toLowerCase() === name);
-        hint.style.display = (exists && name.length > 2) ? 'block' : 'none';
-    },
-
-    processPurchase: async function() {
-        const name = document.getElementById('buy-name').value.trim();
-        const amount = Number(document.getElementById('buy-amount').value);
-        const price = Number(document.getElementById('buy-price').value);
-
-        if(!name || amount <= 0) {
-            alert("Bitte Name und Menge angeben!");
+        // Erst ab 2 Buchstaben suchen, um die Datenbank nicht zu überlasten
+        if (nameInput.length < 2) {
+            hint.style.display = 'none';
             return;
         }
 
         const inventory = await db.getInventory();
-        // Exakter Abgleich (Case Insensitive)
-        const existingItem = inventory.find(i => i.name.toLowerCase() === name.toLowerCase());
+        const exists = inventory.some(item => item.name.toLowerCase() === nameInput);
+        
+        // Wenn es existiert, zeige den grünen Hinweis-Badge
+        if (exists) {
+            hint.style.display = 'inline-block';
+        } else {
+            hint.style.display = 'none';
+        }
+    },
+
+    // 2. Verarbeitet den Klick auf "Einlagern"
+    processPurchase: async function() {
+        const name = document.getElementById('buy-name').value.trim();
+        const amount = Number(document.getElementById('buy-amount').value);
+        const unit = document.getElementById('buy-unit').value;
+        const price = Number(document.getElementById('buy-price').value) || 0; // Optional
+
+        // Sicherheitsprüfung: Sind die Pflichtfelder ausgefüllt?
+        if(!name || amount <= 0) {
+            alert("Bitte gib einen Produktnamen und eine Menge größer als 0 ein!");
+            return;
+        }
+
+        // Button optisch deaktivieren, damit man nicht doppelt klickt
+        const btn = document.querySelector('.save-btn');
+        const originalBtnText = btn.innerHTML;
+        btn.innerHTML = '<span class="material-symbols-outlined">hourglass_empty</span> Speichere...';
+        btn.disabled = true;
+
+        const inventory = await db.getInventory();
+        // Exakter Abgleich (Groß-/Kleinschreibung wird ignoriert)
+        const existingItem = inventory.find(item => item.name.toLowerCase() === name.toLowerCase());
 
         try {
             if(existingItem) {
-                // UPDATE: Vorhandenes Produkt erhöhen
-                const newTotal = Number(existingItem.amount) + amount;
-                const newPrice = Number(existingItem.price || 0) + price;
+                // FALL A: PRODUKT EXISTIERT -> ADDIEREN (PATCH)
+                const newTotalAmount = Number(existingItem.amount) + amount;
+                const newTotalPrice = Number(existingItem.price || 0) + price;
                 
                 await fetch(`${supabaseUrl}/rest/v1/inventory?id=eq.${existingItem.id}`, {
                     method: 'PATCH',
@@ -38,14 +59,16 @@ const assistant = {
                         'Prefer': 'return=minimal'
                     },
                     body: JSON.stringify({ 
-                        amount: newTotal, 
-                        price: newPrice,
+                        amount: newTotalAmount, 
+                        price: newTotalPrice,
+                        unit: unit, // Falls sich die Einheit ändert
                         last_updated: new Date() 
                     })
                 });
-                alert(`${name} wurde aktualisiert (+${amount})`);
+                console.log(`${name} wurde aktualisiert. Neuer Bestand: ${newTotalAmount} ${unit}`);
+                
             } else {
-                // NEUANLAGE: Produkt existiert noch nicht
+                // FALL B: NEUES PRODUKT -> ANLEGEN (POST)
                 await fetch(`${supabaseUrl}/rest/v1/inventory`, {
                     method: 'POST',
                     headers: {
@@ -56,46 +79,68 @@ const assistant = {
                     body: JSON.stringify({
                         name: name,
                         amount: amount,
+                        unit: unit,
                         price: price,
-                        category: 'Fleisch', // Standard oder über Select
-                        unit: 'g'
+                        category: 'Einkauf', // Standard-Kategorie
+                        last_updated: new Date()
                     })
                 });
-                alert(`${name} neu im Lager angelegt!`);
+                console.log(`${name} wurde neu im Lager angelegt.`);
             }
 
-            // Felder leeren & Liste aktualisieren
+            // Alles erfolgreich! Felder leeren und Liste unten aktualisieren
             this.clearInputs();
-            app.refreshData();
-            this.renderRecentPurchases(); // Die neue Übersicht unten füllen
+            this.renderRecentPurchases();
+            
+            // Falls du später die Lager-Liste baust, hier auch aktualisieren
+            if(typeof app.loadLager === 'function') {
+                app.loadLager();
+            }
 
         } catch (error) {
-            console.error("Fehler beim Speichern:", error);
+            console.error("Fehler beim Speichern in Supabase:", error);
+            alert("Es gab einen Fehler beim Speichern. Bitte überprüfe deine Internetverbindung.");
+        } finally {
+            // Button wieder freigeben
+            btn.innerHTML = originalBtnText;
+            btn.disabled = false;
         }
     },
 
+    // 3. Setzt das Formular wieder zurück
     clearInputs: function() {
         document.getElementById('buy-name').value = '';
         document.getElementById('buy-amount').value = '';
         document.getElementById('buy-price').value = '';
         document.getElementById('duplicate-hint').style.display = 'none';
+        document.getElementById('buy-name').focus(); // Setzt den Cursor direkt wieder ins Namensfeld
     },
 
+    // 4. Lädt die letzten Einträge für die Übersichtskarte unten
     renderRecentPurchases: async function() {
-        const data = await db.getInventory();
-        // Wir sortieren nach den neuesten (angenommen wir haben ein 'updated_at' oder nutzen einfach die Liste)
         const recentList = document.getElementById('recent-purchases');
+        recentList.innerHTML = '<p style="color: #666; font-size: 0.9rem; text-align: center;">Lade Daten...</p>';
+        
+        const data = await db.getInventory();
         recentList.innerHTML = '';
 
-        // Zeige die letzten 3 Einträge/Änderungen
-        data.slice(-3).reverse().forEach(item => {
+        if (!data || data.length === 0) {
+            recentList.innerHTML = '<p style="color: #666; font-size: 0.9rem; text-align: center;">Noch keine Artikel im Lager.</p>';
+            return;
+        }
+
+        // Sortieren: Neueste Änderungen zuerst (Wir simulieren das hier durch die Array-Reihenfolge)
+        // Zeigt die letzten 3 aktualisierten/angelegten Artikel an
+        const recentItems = data.slice(-3).reverse(); 
+
+        recentItems.forEach(item => {
             recentList.innerHTML += `
                 <div class="recent-item">
                     <div class="recent-info">
                         <strong>${item.name}</strong>
-                        <span>Aktueller Bestand: ${item.amount}${item.unit}</span>
+                        <span>Aktueller Bestand: ${item.amount} ${item.unit}</span>
                     </div>
-                    <div class="recent-badge">Lager aktiv</div>
+                    <div class="recent-badge">✓ Gespeichert</div>
                 </div>
             `;
         });
