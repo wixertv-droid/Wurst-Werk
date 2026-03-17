@@ -37,8 +37,15 @@ window.lagerManager = {
 
         let filteredItems = this.inventoryData.filter(i => i.category !== 'Pfandglas');
 
+        // SCHLAUER FILTER: Sucht auch nach Teilwörtern (z.B. "Gewürz" statt streng "Gewürze")
         if (this.currentFilter !== 'Alles') {
-            filteredItems = filteredItems.filter(i => i.category === this.currentFilter);
+            filteredItems = filteredItems.filter(i => {
+                const cat = (i.category || '').toLowerCase();
+                if (this.currentFilter === 'Fleisch') return cat.includes('fleisch');
+                if (this.currentFilter === 'Gewürze') return cat.includes('gewürz');
+                if (this.currentFilter === 'Verpackung') return cat.includes('verpackung') || cat.includes('darm');
+                return cat === this.currentFilter.toLowerCase();
+            });
         }
 
         if (filteredItems.length === 0) {
@@ -49,10 +56,13 @@ window.lagerManager = {
         filteredItems.forEach(i => {
             const safeData = encodeURIComponent(JSON.stringify(i));
             
-            // Icon Logik
+            // Icon Logik (passt sich jetzt auch an den schlauen Filter an)
             let icon = 'grain';
-            if (i.category === 'Fleisch') icon = 'set_meal';
-            if (i.category === 'Verpackung') icon = 'inventory_2';
+            const cat = (i.category || '').toLowerCase();
+            if (cat.includes('fleisch')) icon = 'set_meal';
+            else if (cat.includes('gewürz')) icon = 'eco';
+            else if (cat.includes('verpackung') || cat.includes('darm')) icon = 'inventory_2';
+            else if (cat.includes('maschine')) icon = 'blender';
             
             container.innerHTML += `
                 <div class="lager-item-card" onclick="window.lagerManager.openEditor('${safeData}')">
