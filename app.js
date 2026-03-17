@@ -1,97 +1,12 @@
 const app = {
-    currentFilter: 'Alle',
     inventoryData: [],
     kundenData: [],
 
     init: async function() {
         await this.refreshData();
-    },
-
-    // --- DIE SCHNELLE GLÄSER LOGIK (+ / -) ---
-    adjustGlass: async function(size, type) {
-        const actionStr = type === 'add' ? 'hinzufügen (Eingang)' : 'abziehen (Verbrauch/Bruch)';
-        const amountStr = prompt(`Wie viele ${size}ml Gläser möchtest du ${actionStr}?`, "1");
-        
-        if (!amountStr) return;
-        const amount = parseInt(amountStr);
-        if (isNaN(amount) || amount <= 0) return;
-
-        let item = this.inventoryData.find(i => i.category === 'Pfandglas' && i.name.includes(size));
-
-        if (!item) {
-            if (type === 'add') {
-                const newEntry = { name: `Sturzglas ${size}ml`, category: 'Pfandglas', amount: amount, price: 0, unit: 'Stk' };
-                await db.insertInventory(newEntry);
-                await this.refreshData();
-                return;
-            } else {
-                alert(`Es gibt noch keine ${size}ml Gläser im Lager!`);
-                return;
-            }
-        }
-
-        if (type === 'remove') {
-            let umlauf = 0;
-            this.kundenData.forEach(k => umlauf += Number(k[`pfand_${size}`]) || 0);
-            const regal = Number(item.amount) - umlauf;
-            
-            if (amount > regal) {
-                alert(`Du hast nur ${regal} Gläser im Regal. Du kannst nicht ${amount} abziehen!`);
-                return;
-            }
-        }
-
-        const newAmount = type === 'add' ? Number(item.amount) + amount : Number(item.amount) - amount;
-
-        try {
-            const response = await fetch(`${supabaseUrl}/rest/v1/inventory?id=eq.${item.id}`, {
-                method: 'PATCH',
-                headers: { 'apikey': supabaseKey, 'Authorization': `Bearer ${supabaseKey}`, 'Content-Type': 'application/json' },
-                body: JSON.stringify({ amount: newAmount })
-            });
-            if (response.ok) await this.refreshData();
-            else alert("Fehler beim Speichern in der Datenbank!");
-        } catch (e) { alert("Verbindungsfehler!"); }
-    },
-
-    toggleGlassList: function() {
-        const overlay = document.getElementById('glass-customer-overlay');
-        if (!overlay) return;
-        const isVisible = overlay.style.display === 'block';
-        overlay.style.display = isVisible ? 'none' : 'block';
-        if (!isVisible) this.renderCustomerDebtList();
-    },
-
-    renderCustomerDebtList: function() {
-        const list = document.getElementById('glass-customer-list');
-        if (!list) return;
-        list.innerHTML = '';
-        
-        const schuldner = this.kundenData.filter(k => (Number(k.pfand_250) > 0 || Number(k.pfand_400) > 0));
-        
-        if (schuldner.length === 0) {
-            list.innerHTML = '<p class="text-muted" style="margin:0;">Keine Gläser im Umlauf.</p>';
-            return;
-        }
-
-        schuldner.forEach(k => {
-            let details = [];
-            if (Number(k.pfand_250) > 0) details.push(`${k.pfand_250}x 250ml`);
-            if (Number(k.pfand_400) > 0) details.push(`${k.pfand_400}x 400ml`);
-            
-            list.innerHTML += `
-                <div style="display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #333;">
-                    <span>${k.name}</span>
-                    <b style="color: var(--accent-danger); font-size: 0.9rem;">${details.join(' | ')}</b>
-                </div>`;
-        });
-    },
-
-    setFilter: function(category, clickedElement) {
-        this.currentFilter = category;
-        document.querySelectorAll('.filter-btn').forEach(btn => btn.classList.remove('active'));
-        if(clickedElement) clickedElement.classList.add('active');
-        this.render();
+        // Timer alle 10 Sekunden prüfen, falls einer abläuft
+        this.loadActiveProcesses();
+        setInterval(() => this.loadActiveProcesses(), 60000); 
     },
 
     refreshData: async function() {
@@ -105,85 +20,78 @@ const app = {
     },
 
     render: function() {
-        let warenWert = 0;
-        let gesamt250 = 0, gesamt400 = 0;
-        let umlauf250 = 0, umlauf400 = 0;
+        let wert = 0, g250 = 0, g400 = 0, u250 = 0, u400 = 0;
 
-        this.inventoryData.forEach(item => {
-            if (item.category === 'Pfandglas') {
-                if (item.name.includes('250')) gesamt250 += Number(item.amount) || 0;
-                else if (item.name.includes('400')) gesamt400 += Number(item.amount) || 0;
-            } else if (item.category !== 'Maschine') {
-                // Fleisch, Gewürze und auch Material (Därme) werden hier sauber zum Warenwert addiert
-                warenWert += Number(item.price) || 0;
-            }
+        this.inventoryData.forEach(i => {
+            if (i.category === 'Pfandglas') {
+                if (i.name.includes('250')) g250 += Number(i.amount);
+                else if (i.name.includes('400')) g400 += Number(i.amount);
+            } else if (i.category !== 'Maschine') { wert += Number(i.price); }
         });
 
         this.kundenData.forEach(k => {
-            umlauf250 += Number(k.pfand_250) || 0;
-            umlauf400 += Number(k.pfand_400) || 0;
+            u250 += Number(k.pfand_250) || 0;
+            u400 += Number(k.pfand_400) || 0;
         });
 
-        const regal250 = gesamt250 - umlauf250;
-        const regal400 = gesamt400 - umlauf400;
-
-        // --- DASHBOARD (Home) ---
-        if(document.getElementById('stat-wert')) document.getElementById('stat-wert').innerText = warenWert.toFixed(2);
-        if(document.getElementById('stat-glaeser-250')) document.getElementById('stat-glaeser-250').innerText = regal250;
-        if(document.getElementById('stat-glaeser-400')) document.getElementById('stat-glaeser-400').innerText = regal400;
+        if(document.getElementById('stat-wert')) document.getElementById('stat-wert').innerText = wert.toFixed(2);
+        if(document.getElementById('stat-glaeser-250')) document.getElementById('stat-glaeser-250').innerText = g250 - u250;
+        if(document.getElementById('stat-glaeser-400')) document.getElementById('stat-glaeser-400').innerText = g400 - u400;
         
-        // --- LAGER ---
-        if(document.getElementById('stat-warenwert')) document.getElementById('stat-warenwert').innerText = warenWert.toFixed(2);
-        
-        if(document.getElementById('glass-250-available')) document.getElementById('glass-250-available').innerText = regal250;
-        if(document.getElementById('glass-250-out')) document.getElementById('glass-250-out').innerText = umlauf250;
-        if(document.getElementById('glass-400-available')) document.getElementById('glass-400-available').innerText = regal400;
-        if(document.getElementById('glass-400-out')) document.getElementById('glass-400-out').innerText = umlauf400;
-
-        // Listen Rendern (Gläser werden komplett ausgeblendet)
-        const lagerListe = document.getElementById('inventory-list');
-        if (!lagerListe) return;
-
-        lagerListe.innerHTML = '';
-        const filtered = this.inventoryData.filter(i => i.category !== 'Pfandglas' && (this.currentFilter === 'Alle' || i.category === this.currentFilter));
-        filtered.forEach(item => lagerListe.innerHTML += this.createCard(item));
-
-        const recentList = document.getElementById('recent-list');
-        if (recentList && this.currentFilter === 'Alle') {
-            const recentItems = [...this.inventoryData].filter(i => i.category !== 'Pfandglas').sort((a,b) => b.id - a.id).slice(0, 3);
-            recentList.innerHTML = '';
-            recentItems.forEach(item => recentList.innerHTML += this.createCard(item));
-        }
+        // Lager-Seite Stats
+        if(document.getElementById('stat-warenwert')) document.getElementById('stat-warenwert').innerText = wert.toFixed(2);
+        if(document.getElementById('glass-250-available')) document.getElementById('glass-250-available').innerText = g250 - u250;
+        if(document.getElementById('glass-400-available')) document.getElementById('glass-400-available').innerText = g400 - u400;
     },
 
-    createCard: function(item) {
-        // Eigenes Icon für Material (Darm/Netze) hinzugefügt!
-        let icon = 'inventory_2';
-        if (item.category === 'Fleisch') icon = 'set_meal';
-        else if (item.category === 'Gewürz') icon = 'grain';
-        else if (item.category === 'Material') icon = 'shopping_bag';
-        
-        return `
-            <div class="list-card">
-                <div class="icon-box"><span class="material-symbols-outlined">${icon}</span></div>
-                <div class="info">
-                    <h3>${item.name}</h3>
-                    <p>${item.amount} ${item.unit} | Wert: ${Number(item.price).toFixed(2)}€</p>
-                </div>
-                <button onclick="app.deleteItem('${item.id}')" style="background:none; border:none; color:var(--accent-danger); cursor:pointer;">
-                    <span class="material-symbols-outlined">delete</span>
-                </button>
-            </div>`;
+    loadActiveProcesses: async function() {
+        const container = document.getElementById('active-processes-list');
+        if (!container) return;
+
+        const res = await fetch(`${supabaseUrl}/rest/v1/active_processes?status=eq.running&order=end_time.asc`, {
+            headers: { 'apikey': supabaseKey, 'Authorization': `Bearer ${supabaseKey}` }
+        });
+        const processes = await res.json();
+        container.innerHTML = processes.length ? '' : '<p class="text-muted">Keine aktiven Prozesse.</p>';
+
+        processes.forEach(p => {
+            container.innerHTML += `
+                <div class="prod-card" style="border-left:4px solid #4d4dff; margin-bottom:10px; background:#1a1a1a; padding:15px; border-radius:10px;">
+                    <div style="display:flex; justify-content:space-between;">
+                        <div><b style="color:#4d4dff; font-size:0.75rem; text-transform:uppercase;">${p.recipe_name}</b><p style="margin:5px 0; font-size:0.9rem;">${p.step_text}</p></div>
+                        <span class="material-symbols-outlined" style="color:var(--accent-danger); cursor:pointer;" onclick="app.stopProcess('${p.id}')">delete</span>
+                    </div>
+                    <div id="timer-${p.id}" style="color:var(--accent-amber); font-weight:bold; font-size:1.1rem; margin-top:5px;">Lade...</div>
+                </div>`;
+            this.startCountdown(p.id, p.end_time);
+        });
     },
 
-    deleteItem: async function(id) {
-        if (!confirm("Wirklich löschen?")) return;
-        const res = await fetch(`${supabaseUrl}/rest/v1/inventory?id=eq.${id}`, {
+    startCountdown: function(id, endStr) {
+        const el = document.getElementById(`timer-${id}`);
+        const end = new Date(endStr).getTime();
+        const update = () => {
+            const dist = end - Date.now();
+            if (dist < 0) { el.innerText = "FERTIG!"; el.style.color = "#4caf50"; return; }
+            const d = Math.floor(dist / 86400000);
+            const h = Math.floor((dist % 86400000) / 3600000);
+            const m = Math.floor((dist % 3600000) / 60000);
+            const s = Math.floor((dist % 60000) / 1000);
+            if (el) { 
+                el.innerText = (d > 0 ? d + "T " : "") + (h<10?"0":"")+h+":"+(m<10?"0":"")+m+":"+(s<10?"0":"")+s;
+                setTimeout(update, 1000);
+            }
+        };
+        update();
+    },
+
+    stopProcess: async function(id) {
+        if(!confirm("Prozess entfernen?")) return;
+        await fetch(`${supabaseUrl}/rest/v1/active_processes?id=eq.${id}`, {
             method: 'DELETE',
             headers: { 'apikey': supabaseKey, 'Authorization': `Bearer ${supabaseKey}` }
         });
-        if (res.ok) this.refreshData();
+        this.loadActiveProcesses();
     }
 };
-
 document.addEventListener('DOMContentLoaded', () => app.init());
