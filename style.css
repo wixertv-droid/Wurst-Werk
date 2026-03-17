@@ -10,15 +10,25 @@ body {
     background-color: #121212;
     color: #e0e0e0;
     line-height: 1.6;
-    padding-bottom: 90px; /* Platz für die Bottom-Nav */
+    padding-bottom: 90px;
+}
+
+/* --- Farbschema: Smoker / Feuer / Fleisch --- */
+:root {
+    --primary: #dd2c00; /* Tiefes Feuer-Orange-Rot */
+    --primary-light: #ff6e40;
+    --primary-dark: #bf360c;
+    --bg-dark: #121212;
+    --card-bg: #1e1e1e;
+    --border-color: #333;
 }
 
 /* --- Header --- */
 .main-header {
-    background: linear-gradient(135deg, #2e7d32 0%, #1b5e20 100%);
+    background: linear-gradient(135deg, var(--primary-dark) 0%, var(--primary) 100%);
     padding: 25px 20px;
     border-radius: 0 0 20px 20px;
-    box-shadow: 0 4px 15px rgba(0,0,0,0.4);
+    box-shadow: 0 4px 15px rgba(221, 44, 0, 0.3);
     margin-bottom: 20px;
 }
 
@@ -33,17 +43,18 @@ body {
     font-size: 1.5rem;
     color: #ffffff;
     letter-spacing: 1px;
+    text-transform: uppercase;
 }
 
 .header-stats {
     display: flex;
     align-items: center;
     gap: 6px;
-    background: rgba(0, 0, 0, 0.2);
+    background: rgba(0, 0, 0, 0.3);
     padding: 6px 12px;
     border-radius: 20px;
     font-size: 0.8rem;
-    color: #a5d6a7;
+    color: #ffd180;
 }
 
 /* --- Layout & Sections --- */
@@ -66,18 +77,61 @@ main {
     font-size: 1.1rem;
     font-weight: 600;
     margin: 15px 0 15px 5px;
-    color: #81c784;
+    color: var(--primary-light);
     display: flex;
     align-items: center;
     gap: 8px;
 }
 
+/* --- Dashboard Cards --- */
+.dashboard-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    gap: 15px;
+    margin-bottom: 25px;
+}
+
+.dash-card {
+    background: var(--card-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 16px;
+    padding: 15px;
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+}
+
+.dash-card .card-icon {
+    color: var(--primary);
+    font-size: 28px;
+    background: rgba(221, 44, 0, 0.1);
+    padding: 8px;
+    border-radius: 10px;
+}
+
+.card-info {
+    display: flex;
+    flex-direction: column;
+}
+
+.card-info small {
+    font-size: 0.75rem;
+    color: #aaa;
+}
+
+.card-info strong {
+    font-size: 1.1rem;
+    color: #fff;
+    margin-top: 2px;
+}
+
 /* --- Eingabe-Formulare (Einkauf) --- */
 .purchase-container {
-    background: #1e1e1e;
+    background: var(--card-bg);
     border-radius: 16px;
     padding: 20px;
-    border: 1px solid #2c2c2c;
+    border: 1px solid var(--border-color);
     box-shadow: 0 4px 20px rgba(0,0,0,0.2);
 }
 
@@ -106,14 +160,14 @@ main {
 
 .input-group input:focus, .select-input:focus {
     outline: none;
-    border-color: #4caf50;
+    border-color: var(--primary);
     background: #333;
 }
 
 .hint-badge {
-    background: rgba(76, 175, 80, 0.15);
-    color: #81c784;
-    border: 1px solid rgba(76, 175, 80, 0.3);
+    background: rgba(221, 44, 0, 0.15);
+    color: var(--primary-light);
+    border: 1px solid rgba(221, 44, 0, 0.3);
     font-size: 0.75rem;
     padding: 5px 10px;
     border-radius: 6px;
@@ -121,10 +175,36 @@ main {
     display: inline-block;
 }
 
+/* --- Suchleiste Lager --- */
+.search-bar {
+    position: relative;
+    margin-bottom: 20px;
+}
+.search-bar .search-icon {
+    position: absolute;
+    left: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: #888;
+}
+.search-bar input {
+    width: 100%;
+    background: #1e1e1e;
+    border: 1px solid #333;
+    border-radius: 12px;
+    padding: 14px 14px 14px 45px;
+    color: white;
+    font-size: 1rem;
+}
+.search-bar input:focus {
+    border-color: var(--primary);
+    outline: none;
+}
+
 /* --- Buttons --- */
 .save-btn {
     width: 100%;
-    background: #4caf50;
+    background: var(--primary);
     color: white;
     border: none;
     padding: 16px;
@@ -137,46 +217,42 @@ main {
     align-items: center;
     gap: 8px;
     margin-top: 20px;
+    box-shadow: 0 4px 12px rgba(221, 44, 0, 0.25);
 }
 
 .save-btn:active {
-    background: #43a047;
+    background: var(--primary-dark);
     transform: scale(0.98);
 }
 
 /* --- Listen (Recent & Lager) --- */
 .recent-item, .lager-item {
-    background: #1e1e1e;
+    background: var(--card-bg);
     padding: 15px;
     border-radius: 12px;
     margin-bottom: 10px;
     display: flex;
     justify-content: space-between;
     align-items: center;
-    border-left: 4px solid #4caf50;
-    border-right: 1px solid #2c2c2c;
-    border-top: 1px solid #2c2c2c;
-    border-bottom: 1px solid #2c2c2c;
+    border-left: 4px solid var(--primary);
+    border-right: 1px solid var(--border-color);
+    border-top: 1px solid var(--border-color);
+    border-bottom: 1px solid var(--border-color);
 }
 
-.recent-info strong {
+.lager-item-info strong {
     display: block;
     font-size: 1.05rem;
     color: #fff;
 }
-
-.recent-info span {
+.lager-item-info span {
     font-size: 0.85rem;
     color: #aaa;
 }
-
-.recent-badge {
-    background: #2a2a2a;
-    color: #a5d6a7;
-    font-size: 0.75rem;
-    padding: 4px 8px;
-    border-radius: 6px;
-    border: 1px solid #333;
+.lager-item-amount {
+    font-size: 1.2rem;
+    font-weight: bold;
+    color: var(--primary-light);
 }
 
 /* --- Navigation Unten --- */
@@ -185,10 +261,10 @@ main {
     bottom: 0;
     left: 0;
     width: 100%;
-    background: #1e1e1e;
+    background: var(--card-bg);
     display: flex;
     justify-content: space-around;
-    padding: 10px 0 20px 0; /* Extra Padding für iPhone Home-Balken */
+    padding: 10px 0 20px 0;
     border-top: 1px solid #333;
     z-index: 1000;
 }
@@ -207,7 +283,7 @@ main {
 }
 
 .bottom-nav button.active {
-    color: #4caf50;
+    color: var(--primary-light);
 }
 
 /* --- Utilities --- */
