@@ -24,19 +24,35 @@ window.lagerManager = {
 
             container.innerHTML = '';
 
-            // Kategorien durchlaufen und rendern
+            // Kategorien durchlaufen und unsere schönen list-cards rendern
             for (const [category, catItems] of Object.entries(grouped)) {
-                let catHtml = `<div class="section-title" style="margin-top: 20px; font-size: 1.1rem; color: var(--accent-amber);">${category}</div>`;
+                
+                // Passendes Icon zur Kategorie suchen
+                let iconName = 'inventory_2';
+                if (category === 'Fleisch') iconName = 'set_meal';
+                if (category === 'Gewürze') iconName = 'eco';
+                if (category === 'Darm') iconName = 'looks';
+                if (category === 'Pfandglas') iconName = 'kitchen';
+                if (category === 'Maschine') iconName = 'blender';
+
+                let catHtml = `<div class="section-title" style="margin-top: 25px;">${category}</div>`;
                 
                 catItems.forEach(i => {
                     const safeData = encodeURIComponent(JSON.stringify(i));
                     catHtml += `
-                        <div class="list-card" style="border-left: 3px solid #555; background: #1a1a1a; cursor: pointer;" onclick="window.lagerManager.openEditor('${safeData}')">
-                            <div class="info" style="flex: 1;">
-                                <h3 style="font-size: 1rem; margin-bottom: 4px; color: white;">${i.name}</h3>
-                                <p style="color: #aaa; font-size: 0.85rem; margin: 0;">${i.amount} ${i.unit} | ${Number(i.price).toFixed(2)} €</p>
+                        <div class="list-card" style="border-left: 3px solid var(--accent-amber); cursor: pointer;" onclick="window.lagerManager.openEditor('${safeData}')">
+                            <div class="icon-box" style="background: #222;">
+                                <span class="material-symbols-outlined" style="color: var(--accent-amber);">${iconName}</span>
                             </div>
-                            <span class="material-symbols-outlined" style="color: var(--accent-danger); cursor: pointer; padding: 10px;" onclick="event.stopPropagation(); window.lagerManager.deleteItem('${i.id}', '${i.name}')">delete</span>
+                            <div class="info">
+                                <h3 style="font-size: 1.1rem; margin-bottom: 4px;">${i.name}</h3>
+                                <p style="color: var(--text-muted); font-size: 0.85rem; margin: 0;">
+                                    ${i.amount} ${i.unit} | ${Number(i.price).toFixed(2)} €
+                                </p>
+                            </div>
+                            <button onclick="event.stopPropagation(); window.lagerManager.deleteItem('${i.id}', '${i.name}')" style="background:none; border:none; color:var(--accent-danger); cursor:pointer; padding: 10px;">
+                                <span class="material-symbols-outlined">delete</span>
+                            </button>
                         </div>
                     `;
                 });
@@ -49,8 +65,8 @@ window.lagerManager = {
     },
 
     openEditor: function(encodedData = null) {
-        document.getElementById('inventory-list-container').style.display = 'none';
-        document.getElementById('inventory-editor').style.display = 'block';
+        document.getElementById('inventory-list-view').style.display = 'none';
+        document.getElementById('inventory-editor-view').style.display = 'block';
 
         if (encodedData) {
             const item = JSON.parse(decodeURIComponent(encodedData));
@@ -71,8 +87,8 @@ window.lagerManager = {
     },
 
     closeEditor: function() {
-        document.getElementById('inventory-list-container').style.display = 'block';
-        document.getElementById('inventory-editor').style.display = 'none';
+        document.getElementById('inventory-list-view').style.display = 'block';
+        document.getElementById('inventory-editor-view').style.display = 'none';
     },
 
     saveItem: async function() {
