@@ -29,14 +29,32 @@
         
         <div class="dashboard-grid">
             <div class="stat-card" style="border-top: 3px solid #4d4dff;">
-                <span class="material-symbols-outlined" style="color: #4d4dff;">recycling</span>
-                <span id="stat-gläser" class="stat-value">0</span>
-                <span class="stat-label">Gläser im Regal</span>
+                <div style="display: flex; align-items: center; justify-content: space-between;">
+                    <span class="stat-label" style="font-weight: bold; color: #4d4dff;">Gläser im Regal</span>
+                    <span class="material-symbols-outlined" style="color: #4d4dff;">recycling</span>
+                </div>
+                <div style="display: flex; justify-content: space-around; margin-top: 15px;">
+                    <div style="text-align: center;">
+                        <span id="stat-glaeser-250" class="stat-value" style="font-size: 1.4rem;">0</span>
+                        <div class="stat-label">250ml</div>
+                    </div>
+                    <div style="width: 1px; background-color: #333;"></div>
+                    <div style="text-align: center;">
+                        <span id="stat-glaeser-400" class="stat-value" style="font-size: 1.4rem;">0</span>
+                        <div class="stat-label">400ml</div>
+                    </div>
+                </div>
             </div>
+
             <div class="stat-card" style="border-top: 3px solid #4caf50;">
-                <span class="material-symbols-outlined" style="color: #4caf50;">restaurant</span>
-                <span id="stat-wert" class="stat-value">0.00</span>
-                <span class="stat-label">Warenwert (€)</span>
+                <div style="display: flex; align-items: center; justify-content: space-between;">
+                    <span class="stat-label" style="font-weight: bold; color: #4caf50;">Warenwert</span>
+                    <span class="material-symbols-outlined" style="color: #4caf50;">payments</span>
+                </div>
+                <div style="text-align: center; margin-top: 15px;">
+                    <span id="stat-wert" class="stat-value" style="font-size: 1.4rem;">0.00</span>
+                    <span style="color: #4caf50;">€</span>
+                </div>
             </div>
         </div>
     </main>
