@@ -1,16 +1,22 @@
 const kundenManager = {
-    // Startet, sobald die Seite geladen ist
     init: async function() {
         await this.loadList();
     },
 
-    // Lädt alle Kunden aus Supabase
     loadList: async function() {
         const listEl = document.getElementById('customer-page-list');
         if (!listEl) return;
 
         try {
             const customers = await db.getCustomers();
+            
+            // SICHERHEITS-CHECK: Hat die Datenbank einen Fehler gemeldet?
+            if (!Array.isArray(customers)) {
+                console.error("Supabase Fehler:", customers);
+                listEl.innerHTML = `<p class="text-muted" style="color: var(--accent-danger); text-align: center;">Verbindungsfehler oder Datenbank-Problem.</p>`;
+                return;
+            }
+
             listEl.innerHTML = '';
 
             if (customers.length === 0) {
@@ -18,7 +24,7 @@ const kundenManager = {
                 return;
             }
 
-            // Alphabetisch sortieren
+            // Alphabetisch sortieren und anzeigen
             customers.sort((a, b) => a.name.localeCompare(b.name)).forEach(k => {
                 const pfand250 = Number(k.pfand_250) || 0;
                 const pfand400 = Number(k.pfand_400) || 0;
@@ -40,11 +46,10 @@ const kundenManager = {
             });
         } catch (e) {
             console.error("Fehler beim Laden der Kunden", e);
-            listEl.innerHTML = '<p class="text-muted" style="color: red;">Fehler beim Laden der Datenbank.</p>';
+            listEl.innerHTML = '<p class="text-muted" style="color: var(--accent-danger); text-align: center;">Fehler beim Laden der Datenbank.</p>';
         }
     },
 
-    // Fügt einen neuen Kunden hinzu
     addCustomer: async function() {
         const nameEl = document.getElementById('new-customer-name');
         const nameVal = nameEl.value.trim();
@@ -60,28 +65,28 @@ const kundenManager = {
                 headers: { 
                     'apikey': supabaseKey, 
                     'Authorization': `Bearer ${supabaseKey}`, 
-                    'Content-Type': 'application/json' 
+                    'Content-Type': 'application/json',
+                    'Prefer': 'return=representation'
                 },
                 body: JSON.stringify({ name: nameVal, pfand_250: 0, pfand_400: 0 })
             });
 
             if (response.ok) {
-                nameEl.value = ''; // Feld leeren
-                await this.loadList(); // Liste sofort aktualisieren
+                nameEl.value = ''; 
+                await this.loadList(); 
                 
-                // Falls app.js gerade mitläuft, auch die globalen Daten kurz updaten
                 if (typeof app !== 'undefined' && app.refreshData) {
                     app.refreshData();
                 }
             } else {
-                alert("❌ Fehler beim Speichern des Kunden.");
+                const err = await response.json();
+                alert("❌ Fehler beim Speichern: " + JSON.stringify(err));
             }
         } catch (e) { 
-            alert("Netzwerkfehler!"); 
+            alert("Netzwerkfehler beim Speichern!"); 
         }
     },
 
-    // Löscht einen Kunden
     deleteCustomer: async function(id, name) {
         if (!confirm(`Möchtest du den Kunden "${name}" wirklich unwiderruflich löschen?`)) return;
 
@@ -105,5 +110,4 @@ const kundenManager = {
     }
 };
 
-// Startet automatisch beim Öffnen der Kunden-Seite
 document.addEventListener('DOMContentLoaded', () => kundenManager.init());
