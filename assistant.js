@@ -1,49 +1,62 @@
 const assistant = {
     processPurchase: async function() {
-        // Wir holen die Werte direkt aus den Feldern
-        const nameEl = document.getElementById('buy-name');
-        const catEl = document.getElementById('buy-category');
-        const amountEl = document.getElementById('buy-amount');
-        const priceEl = document.getElementById('buy-price');
+        console.log("Starte Speichervorgang...");
 
-        if(!nameEl.value || !amountEl.value) {
-            alert("Bitte Name und Menge eingeben!");
+        // Felder holen
+        const nameVal = document.getElementById('buy-name').value;
+        const catVal = document.getElementById('buy-category').value;
+        const amountVal = document.getElementById('buy-amount').value;
+        const priceVal = document.getElementById('buy-price').value;
+
+        // Validierung
+        if (!nameVal || !amountVal) {
+            alert("Name und Menge sind Pflichtfelder!");
             return;
         }
 
         const newEntry = {
-            name: nameEl.value,
-            category: catEl.value,
-            amount: Number(amountEl.value),
-            price: Number(priceEl.value) || 0,
-            unit: catEl.value === 'Fleisch' ? 'g' : (catEl.value === 'Material' ? 'Stk' : 'g')
+            name: nameVal,
+            category: catVal,
+            amount: parseFloat(amountVal),
+            price: parseFloat(priceVal) || 0,
+            unit: catVal === 'Fleisch' ? 'g' : (catVal === 'Material' ? 'Stk' : 'g')
         };
 
         try {
+            // Wir versuchen es mit einer simplen Fetch-Anfrage
             const response = await fetch(`${supabaseUrl}/rest/v1/inventory`, {
                 method: 'POST',
                 headers: {
                     'apikey': supabaseKey,
                     'Authorization': `Bearer ${supabaseKey}`,
-                    'Content-Type': 'application/json'
+                    'Content-Type': 'application/json',
+                    'Prefer': 'return=minimal' // Wichtig für Supabase POST
                 },
                 body: JSON.stringify(newEntry)
             });
 
-            if(response.ok) {
-                alert("Einkauf gespeichert!");
+            if (response.ok) {
+                console.log("Speichern erfolgreich!");
+                alert("🛒 Einkauf erfolgreich gespeichert!");
+                
                 // Felder leeren
-                nameEl.value = '';
-                amountEl.value = '';
-                priceEl.value = '';
-                // Sofort das Dashboard und die Liste aktualisieren
-                await app.refreshData();
+                document.getElementById('buy-name').value = '';
+                document.getElementById('buy-amount').value = '';
+                document.getElementById('buy-price').value = '';
+                
+                // Dashboard sofort aktualisieren
+                if (typeof app !== 'undefined') {
+                    await app.refreshData();
+                }
             } else {
-                const err = await response.json();
-                alert("Fehler: " + err.message);
+                // Wenn es nicht klappt, lesen wir die Fehlermeldung aus
+                const errorData = await response.json();
+                console.error("Supabase Fehler Details:", errorData);
+                alert("Fehler von der Datenbank: " + (errorData.message || "Unbekannter Fehler"));
             }
-        } catch (error) {
-            alert("Verbindung fehlgeschlagen: " + error);
+        } catch (err) {
+            console.error("Netzwerkfehler:", err);
+            alert("Netzwerkfehler: Konnte keine Verbindung zu Supabase aufbauen.");
         }
     }
 };
