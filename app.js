@@ -7,8 +7,9 @@ const app = {
         await this.refreshData();
     },
 
-    // --- DIE NEUE SCHNELLE GLÄSER LOGIK (+ / -) ---
+    // --- DIE SCHNELLE GLÄSER LOGIK (+ / -) ---
     adjustGlass: async function(size, type) {
+        // ... (Logik bleibt gleich wie im vorherigen Schritt)
         const actionStr = type === 'add' ? 'hinzufügen (Eingang)' : 'abziehen (Verbrauch/Bruch)';
         const amountStr = prompt(`Wie viele ${size}ml Gläser möchtest du ${actionStr}?`, "1");
         
@@ -16,10 +17,8 @@ const app = {
         const amount = parseInt(amountStr);
         if (isNaN(amount) || amount <= 0) return;
 
-        // Sucht das Glas im Lager
         let item = this.inventoryData.find(i => i.category === 'Pfandglas' && i.name.includes(size));
 
-        // Falls es das Glas noch gar nicht gibt, legen wir es bei "+ Eingang" lautlos im Hintergrund an
         if (!item) {
             if (type === 'add') {
                 const newEntry = { name: `Sturzglas ${size}ml`, category: 'Pfandglas', amount: amount, price: 0, unit: 'Stk' };
@@ -32,7 +31,6 @@ const app = {
             }
         }
 
-        // Sicherheitsprüfung beim Abziehen (Ist genug im Regal?)
         if (type === 'remove') {
             let umlauf = 0;
             this.kundenData.forEach(k => umlauf += Number(k[`pfand_${size}`]) || 0);
@@ -44,7 +42,6 @@ const app = {
             }
         }
 
-        // Neue Menge berechnen und an Supabase senden
         const newAmount = type === 'add' ? Number(item.amount) + amount : Number(item.amount) - amount;
 
         try {
@@ -55,9 +52,7 @@ const app = {
             });
             if (response.ok) await this.refreshData();
             else alert("Fehler beim Speichern in der Datenbank!");
-        } catch (e) {
-            alert("Verbindungsfehler!");
-        }
+        } catch (e) { alert("Verbindungsfehler!"); }
     },
 
     toggleGlassList: function() {
@@ -115,7 +110,6 @@ const app = {
         let gesamt250 = 0, gesamt400 = 0;
         let umlauf250 = 0, umlauf400 = 0;
 
-        // 1. Zählen
         this.inventoryData.forEach(item => {
             if (item.category === 'Pfandglas') {
                 if (item.name.includes('250')) gesamt250 += Number(item.amount) || 0;
@@ -133,30 +127,28 @@ const app = {
         const regal250 = gesamt250 - umlauf250;
         const regal400 = gesamt400 - umlauf400;
 
-        // 2. Werte ins HTML schreiben
+        // --- DASHBOARD (Home) ---
         if(document.getElementById('stat-wert')) document.getElementById('stat-wert').innerText = warenWert.toFixed(2);
-        if(document.getElementById('stat-gläser')) document.getElementById('stat-gläser').innerText = (regal250 + regal400);
+        // HIER SIND DIE NEUEN FELDER FÜR DIE STARTSEITE:
+        if(document.getElementById('stat-glaeser-250')) document.getElementById('stat-glaeser-250').innerText = regal250;
+        if(document.getElementById('stat-glaeser-400')) document.getElementById('stat-glaeser-400').innerText = regal400;
+        
+        // --- LAGER ---
         if(document.getElementById('stat-warenwert')) document.getElementById('stat-warenwert').innerText = warenWert.toFixed(2);
         
-        // Gläser-Zentrale aktualisieren
         if(document.getElementById('glass-250-available')) document.getElementById('glass-250-available').innerText = regal250;
         if(document.getElementById('glass-250-out')) document.getElementById('glass-250-out').innerText = umlauf250;
         if(document.getElementById('glass-400-available')) document.getElementById('glass-400-available').innerText = regal400;
         if(document.getElementById('glass-400-out')) document.getElementById('glass-400-out').innerText = umlauf400;
 
-        // --- LISTEN RENDERN (Ohne Gläser!) ---
+        // Listen Rendern (Gläser werden ausgeblendet)
         const lagerListe = document.getElementById('inventory-list');
         if (!lagerListe) return;
 
         lagerListe.innerHTML = '';
-        // WICHTIG: Die Gläser werden komplett aus der normalen Liste ausgeblendet
         const filtered = this.inventoryData.filter(i => i.category !== 'Pfandglas' && (this.currentFilter === 'Alle' || i.category === this.currentFilter));
-        
-        filtered.forEach(item => {
-            lagerListe.innerHTML += this.createCard(item);
-        });
+        filtered.forEach(item => lagerListe.innerHTML += this.createCard(item));
 
-        // Zuletzt hinzugefügt (Ebenfalls ohne Gläser)
         const recentList = document.getElementById('recent-list');
         if (recentList && this.currentFilter === 'Alle') {
             const recentItems = [...this.inventoryData].filter(i => i.category !== 'Pfandglas').sort((a,b) => b.id - a.id).slice(0, 3);
