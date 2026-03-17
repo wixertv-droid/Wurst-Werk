@@ -1,93 +1,102 @@
 const app = {
+    // Startet die App, wenn die Seite geladen wird
     init: async function() {
-        console.log("Wurstwerk startet...");
-        // Alles laden
+        console.log("Wurstwerk App gestartet...");
         await this.refreshData();
     },
 
+    // Holt alle Daten aus Supabase und befüllt das Dashboard und das Lager
     refreshData: async function() {
         try {
             const data = await db.getInventory();
             
-            // 1. Dashboard Stats
+            // 1. Dashboard Zahlen aktualisieren
             const glaeser = data.find(i => i.name.toLowerCase().includes('glas'));
-            document.getElementById('stat-gläser').innerText = glaeser ? glaeser.amount : "0";
+            const glaeserCount = glaeser ? glaeser.amount : 0;
+            if(document.getElementById('stat-gläser')) {
+                document.getElementById('stat-gläser').innerText = glaeserCount;
+            }
 
             const gesamtWert = data.reduce((sum, item) => sum + (Number(item.price) || 0), 0);
-            document.getElementById('stat-wert').innerText = gesamtWert.toFixed(2);
+            if(document.getElementById('stat-wert')) {
+                document.getElementById('stat-wert').innerText = gesamtWert.toFixed(2);
+            }
 
-            // 2. Lager-Liste
+            // 2. Lager-Liste aufbauen
             const lagerListe = document.getElementById('inventory-list');
             if(lagerListe) {
                 lagerListe.innerHTML = '';
-                data.forEach(item => {
-                    lagerListe.innerHTML += `
-                        <div class="list-card">
-                            <div class="icon-box"><span class="material-symbols-outlined">inventory</span></div>
-                            <div class="info">
-                                <h3>${item.name}</h3>
-                                <p>${item.amount} ${item.unit} | Wert: ${Number(item.price).toFixed(2)}€</p>
+                
+                if (data.length === 0) {
+                    lagerListe.innerHTML = '<p class="text-muted" style="text-align:center; margin-top:30px;">Das Lager ist aktuell leer.</p>';
+                } else {
+                    data.forEach(item => {
+                        lagerListe.innerHTML += `
+                            <div class="list-card">
+                                <div class="icon-box"><span class="material-symbols-outlined">inventory</span></div>
+                                <div class="info">
+                                    <h3>${item.name}</h3>
+                                    <p>${item.amount} ${item.unit} | Wert: ${Number(item.price).toFixed(2)}€</p>
+                                </div>
+                                <button onclick="app.deleteItem('${item.id}')" style="background:none; border:none; color:var(--accent-danger); cursor:pointer; padding:10px;">
+                                    <span class="material-symbols-outlined">delete</span>
+                                </button>
                             </div>
-                            <button onclick="app.deleteItem('${item.id}')" style="background:none; border:none; color:var(--accent-danger);">
-                                <span class="material-symbols-outlined">delete</span>
-                            </button>
-                        </div>
-                    `;
-                });
+                        `;
+                    });
+                }
             }
 
-            // 3. Andere Sektionen laden
-            await this.loadCustomers();
-            if(typeof production !== 'undefined') {
+            // 3. Laufende Produktionen laden (falls die Datei da ist)
+            if(typeof production !== 'undefined' && production.loadActiveProcesses) {
                 await production.loadActiveProcesses();
             }
 
         } catch (error) {
-            console.error("Fehler beim Refresh:", error);
+            console.error("Fehler beim Aktualisieren der Daten:", error);
         }
     },
 
-    loadCustomers: async function() {
-        const list = document.getElementById('customer-list');
-        if(!list) return;
-        try {
-            const response = await fetch(`${supabaseUrl}/rest/v1/customers?select=*`, {
-                headers: { 'apikey': supabaseKey, 'Authorization': `Bearer ${supabaseKey}` }
-            });
-            const customers = await response.json();
-            list.innerHTML = '';
-            customers.forEach(c => {
-                list.innerHTML += `
-                    <div class="list-card">
-                        <div class="icon-box"><span class="material-symbols-outlined">person</span></div>
-                        <div class="info"><h3>${c.name}</h3><p>Pfand: ${c.pfand_schulden}</p></div>
-                    </div>
-                `;
-            });
-        } catch (e) { console.log("Keine Kunden gefunden"); }
-    },
-
+    // Löscht einen Eintrag aus der Datenbank
     deleteItem: async function(id) {
-        if(confirm("Wirklich löschen?")) {
-            await fetch(`${supabaseUrl}/rest/v1/inventory?id=eq.${id}`, {
+        if(!confirm("Möchtest du diesen Artikel wirklich aus dem Lager löschen?")) return;
+        
+        try {
+            const res = await fetch(`${supabaseUrl}/rest/v1/inventory?id=eq.${id}`, {
                 method: 'DELETE',
                 headers: { 'apikey': supabaseKey, 'Authorization': `Bearer ${supabaseKey}` }
             });
-            await this.refreshData();
+            
+            if(res.ok) {
+                // Wenn das Löschen erfolgreich war, laden wir die Liste direkt neu
+                await this.refreshData();
+            } else {
+                alert("Fehler beim Löschen des Artikels.");
+            }
+        } catch (e) { 
+            alert("Keine Verbindung zur Datenbank. Löschen fehlgeschlagen."); 
         }
     },
 
+    // Steuert das Menü unten (Home, Rezepte, Lager, Kunden)
     switchView: function(viewName, clickedElement) {
+        // Alle Bildschirme verstecken
         document.querySelectorAll('.view').forEach(view => view.classList.remove('active'));
-        document.querySelectorAll('.nav-item').forEach(item => item.classList.remove('active'));
         
+        // Den gewünschten Bildschirm einblenden
         const targetView = document.getElementById('view-' + viewName);
         if(targetView) targetView.classList.add('active');
-        if(clickedElement) clickedElement.classList.add('active');
-        
-        // Jedes Mal beim Wechseln alles frisch laden!
+
+        // Die Farbe der Buttons in der Navigation anpassen
+        if(clickedElement) {
+            document.querySelectorAll('.nav-item').forEach(item => item.classList.remove('active'));
+            clickedElement.classList.add('active');
+        }
+
+        // Bei jedem Klick auf einen Tab laden wir sicherheitshalber die Daten frisch
         this.refreshData();
     }
 };
 
+// Event-Listener: Wartet, bis das HTML fertig ist, und startet dann
 document.addEventListener('DOMContentLoaded', () => app.init());
