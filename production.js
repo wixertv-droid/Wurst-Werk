@@ -25,7 +25,7 @@ window.produktionManager = {
             if (recipes.length === 0) throw new Error("Rezept nicht gefunden");
             
             this.recipe = recipes[0];
-            this.inventory = invData;
+            this.inventory = Array.isArray(invData) ? invData : [];
 
             document.getElementById('prod-title').innerText = `Produktion: ${this.recipe.name}`;
             this.buildMatchingUI();
@@ -181,8 +181,8 @@ window.produktionManager = {
 
         const end = new Date(Date.now() + ms).toISOString();
         const payload = { 
-            recipe_name: this.recipe.name, 
-            step_text: step.text, 
+            recipe_name: this.recipe.name || "Rezept", 
+            step_text: step.text || "Schritt", 
             end_time: end, 
             status: 'running' 
         };
@@ -190,7 +190,12 @@ window.produktionManager = {
         try {
             const res = await fetch(`${supabaseUrl}/rest/v1/active_processes`, {
                 method: 'POST',
-                headers: { 'apikey': supabaseKey, 'Authorization': `Bearer ${supabaseKey}`, 'Content-Type': 'application/json', 'Prefer': 'return=minimal' },
+                headers: { 
+                    'apikey': supabaseKey, 
+                    'Authorization': `Bearer ${supabaseKey}`, 
+                    'Content-Type': 'application/json',
+                    'Prefer': 'return=minimal' 
+                },
                 body: JSON.stringify(payload)
             });
 
@@ -198,10 +203,10 @@ window.produktionManager = {
                 document.getElementById(`step-row-${index}`).style.borderLeftColor = '#4d4dff';
                 document.getElementById(`timer-ctrl-${index}`).style.display = 'none';
                 statusEl.style.display = 'block';
-                statusEl.innerText = "✅ Timer läuft! (Wechsle aufs Dashboard)";
+                statusEl.innerText = "✅ Timer läuft! Erscheint jetzt auf dem Dashboard.";
             } else {
-                const err = await res.text();
-                alert("Datenbank-Fehler (Tabelle active_processes fehlt?): " + err);
+                const errText = await res.text();
+                alert("DATENBANK-FEHLER: Hast du die Tabelle 'active_processes' in Supabase erstellt?\nDetails: " + errText);
             }
         } catch (e) {
             alert("Netzwerkfehler: " + e.message);
