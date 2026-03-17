@@ -1,81 +1,194 @@
-:root {
-    --bg-dark: #121212;
-    --card-bg: #1e1e1e;
-    --accent-green: #4caf50;
-    --text-main: #e0e0e0;
+/* 1. Globales Setup & Reset */
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+    font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
 }
 
+body {
+    background-color: #121212; /* Tiefes Schwarz-Grau */
+    color: #e0e0e0;
+    line-height: 1.6;
+    padding-bottom: 80px; /* Platz für die Navigation unten falls vorhanden */
+}
+
+/* 2. Der neue, schicke Header */
 .main-header {
     background: linear-gradient(135deg, #2e7d32 0%, #1b5e20 100%);
-    padding: 20px;
-    border-radius: 0 0 20px 20px;
-    margin-bottom: 20px;
+    padding: 25px 20px;
+    border-radius: 0 0 25px 25px;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+    margin-bottom: 25px;
+}
+
+.header-content {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
 }
 
 .brand {
     font-weight: 900;
-    letter-spacing: 2px;
-    font-size: 1.4rem;
-    color: white;
+    font-size: 1.6rem;
+    color: #ffffff;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
 }
 
+.header-stats {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: rgba(255, 255, 255, 0.1);
+    padding: 5px 12px;
+    border-radius: 20px;
+}
+
+.header-stats small {
+    font-size: 0.75rem;
+    color: #c8e6c9;
+}
+
+/* 3. Container & Sektionen */
+main {
+    padding: 0 15px;
+    max-width: 600px;
+    margin: 0 auto;
+}
+
+.section-title {
+    font-size: 1.1rem;
+    font-weight: 600;
+    margin: 20px 0 12px 5px;
+    color: #a5d6a7;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+/* 4. Die Eingabe-Karte (Einkauf) */
 .purchase-container {
-    background: var(--card-bg);
+    background: #1e1e1e;
+    border-radius: 20px;
     padding: 20px;
-    border-radius: 15px;
-    box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+    border: 1px solid #333;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.2);
+}
+
+.input-row {
+    margin-bottom: 15px;
+}
+
+.input-group {
+    display: flex;
+    flex-direction: column;
 }
 
 .input-group label {
-    display: block;
-    font-size: 0.8rem;
-    color: #888;
-    margin-bottom: 5px;
+    font-size: 0.85rem;
+    color: #999;
+    margin-bottom: 6px;
+    margin-left: 4px;
 }
 
 .input-group input {
-    width: 100%;
     background: #2a2a2a;
-    border: 1px solid #333;
-    padding: 12px;
-    border-radius: 8px;
-    color: white;
+    border: 2px solid #333;
+    border-radius: 12px;
+    padding: 14px;
+    color: #fff;
     font-size: 1rem;
+    transition: border-color 0.3s ease;
 }
 
+.input-group input:focus {
+    outline: none;
+    border-color: #4caf50;
+    background: #333;
+}
+
+/* Smart-Hint Badge */
 .hint-badge {
-    background: #2e7d32;
-    color: white;
-    font-size: 0.7rem;
-    padding: 2px 8px;
-    border-radius: 10px;
-    display: inline-block;
-    margin-top: 5px;
+    background: rgba(76, 175, 80, 0.2);
+    color: #81c784;
+    border: 1px solid #4caf50;
+    font-size: 0.75rem;
+    padding: 4px 10px;
+    border-radius: 8px;
+    margin-top: 8px;
+    align-self: flex-start;
+    animation: fadeIn 0.3s ease;
 }
 
+/* 5. Buttons */
 .save-btn {
     width: 100%;
-    margin-top: 20px;
-    padding: 15px;
-    background: var(--accent-green);
-    border: none;
-    border-radius: 10px;
+    background: #4caf50;
     color: white;
+    border: none;
+    padding: 16px;
+    border-radius: 12px;
+    font-size: 1.1rem;
     font-weight: bold;
+    cursor: pointer;
     display: flex;
     justify-content: center;
     align-items: center;
     gap: 10px;
+    margin-top: 10px;
+    box-shadow: 0 4px 12px rgba(76, 175, 80, 0.3);
 }
 
-/* Übersicht unten */
+.save-btn:active {
+    transform: scale(0.98);
+}
+
+/* 6. Die Übersicht unten (Recent Purchases) */
+.recent-list {
+    margin-top: 10px;
+}
+
 .recent-item {
     background: #1e1e1e;
-    margin-bottom: 10px;
     padding: 15px;
-    border-radius: 10px;
+    border-radius: 15px;
+    margin-bottom: 12px;
     display: flex;
     justify-content: space-between;
     align-items: center;
-    border-left: 4px solid var(--accent-green);
+    border-left: 5px solid #4caf50;
+    transition: transform 0.2s;
+}
+
+.recent-info strong {
+    display: block;
+    font-size: 1rem;
+    color: #fff;
+}
+
+.recent-info span {
+    font-size: 0.85rem;
+    color: #bbb;
+}
+
+.recent-badge {
+    background: #333;
+    color: #81c784;
+    font-size: 0.7rem;
+    font-weight: bold;
+    padding: 4px 8px;
+    border-radius: 6px;
+    text-transform: uppercase;
+}
+
+/* 7. Animationen */
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(-5px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+/* Utility: Material Icons Anpassung */
+.material-symbols-outlined {
+    vertical-align: middle;
 }
