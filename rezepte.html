@@ -7,31 +7,47 @@
     <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined" rel="stylesheet" />
     <link rel="stylesheet" href="style.css">
     <style>
-        .recipe-input {
-            width: 100%; padding: 15px; background: #222; border: 1px solid #444;
-            color: white; border-radius: 12px; font-size: 1.1rem; box-sizing: border-box;
-            margin-bottom: 15px;
-        }
-        .recipe-input:focus { border-color: var(--accent-amber); outline: none; background: #2a2a2a; }
+        .recipe-detail-card { background: var(--surface-color); border: 1px solid #333; border-radius: 12px; padding: 20px; margin-bottom: 20px; }
+        .ing-row { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #222; font-size: 0.95rem; }
+        .step-row { display: flex; gap: 12px; margin-bottom: 15px; background: #111; padding: 12px; border-radius: 8px; border-left: 3px solid #555; }
+        .step-row.timer { border-left-color: #4d4dff; background: rgba(77, 77, 255, 0.05); }
+        .step-row.interval { border-left-color: var(--accent-amber); background: rgba(255, 140, 0, 0.05); }
+        .step-icon { color: var(--text-muted); font-size: 1.5rem; }
+        .step-text { flex: 1; font-size: 0.95rem; line-height: 1.4; margin: 0; }
     </style>
 </head>
 <body>
 
-    <header>Rezeptbuch & Kalkulation</header>
+    <header>Rezeptbuch</header>
 
     <main>
-        <div class="stat-card" style="border-top: 3px solid var(--accent-amber); margin-bottom: 25px;">
-            <label style="display: block; color: var(--text-muted); font-size: 0.85rem; margin-bottom: 8px; text-transform: uppercase;">Neues Rezept erstellen</label>
-            <input type="text" id="new-recipe-name" class="recipe-input" placeholder="z.B. Hausmacher Leberwurst">
-            
-            <button class="action-btn" onclick="rezeptManager.addRecipe()">
-                <span class="material-symbols-outlined">menu_book</span> Rezept anlegen
-            </button>
+        <div id="recipe-list-view">
+            <div class="section-title">Dein Standard-Sortiment</div>
+            <div id="recipe-page-list"><p class="text-muted" style="text-align: center;">Lade Rezepte...</p></div>
         </div>
 
-        <div class="section-title">Deine Wurstsorten</div>
-        <div id="recipe-page-list">
-            <p class="text-muted" style="text-align: center; margin-top: 20px;">Lade Rezepte...</p>
+        <div id="recipe-detail-view" style="display: none;">
+            <div class="sub-header" style="padding: 0 0 15px 0; margin-bottom: 15px; border-bottom: 1px solid #333;">
+                <div class="back-btn" onclick="rezeptManager.closeDetail()"><span class="material-symbols-outlined">arrow_back_ios</span> Zurück</div>
+                <div class="header-title" id="detail-title" style="color: white; font-size: 1.1rem;">Rezept</div>
+            </div>
+
+            <div class="recipe-detail-card" style="border-top: 3px solid var(--accent-amber);">
+                <div style="font-size: 0.8rem; color: var(--accent-amber); text-transform: uppercase; margin-bottom: 15px; letter-spacing: 1px;">
+                    <span class="material-symbols-outlined" style="vertical-align: middle; font-size: 1.1rem;">scale</span> 
+                    Normiert auf 1 kg Fleisch
+                </div>
+
+                <h4 style="margin: 0 0 10px 0; color: #aaa;">Zutaten pro Kilo</h4>
+                <div id="detail-ingredients" style="margin-bottom: 25px;"></div>
+
+                <h4 style="margin: 0 0 10px 0; color: #aaa;">Ablauf & Prozesse</h4>
+                <div id="detail-steps"></div>
+            </div>
+
+            <button class="action-btn" style="background-color: #2e7d32; color: white; height: 60px; font-size: 1.1rem; margin-bottom: 40px;" onclick="rezeptManager.startProduction()">
+                <span class="material-symbols-outlined">rocket_launch</span> Produktion jetzt starten
+            </button>
         </div>
     </main>
 
