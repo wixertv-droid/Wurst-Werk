@@ -16,50 +16,39 @@
     <main>
         <div id="view-home" class="view active">
             <div class="smoker-card">
-                <span class="material-symbols-outlined" style="font-size: 2.5rem; color: var(--accent-amber);">hourglass_empty</span>
+                <span class="material-symbols-outlined" style="font-size: 2.5rem; color: var(--accent-amber);">local_fire_department</span>
                 <div id="process-timer" class="timer-display">00:00:00</div>
-                <p id="process-info" class="text-muted">Kein aktiver Prozess</p>
+                <p class="text-muted">Willkommen im Wurstwerk</p>
             </div>
 
+            <button class="action-btn" style="margin-top: 25px; height: 60px; font-size: 1.1rem; background-color: #2e7d32; color: white;" onclick="window.location.href='einkauf.html'">
+                <span class="material-symbols-outlined">add_shopping_cart</span> Neuen Einkauf erfassen
+            </button>
+
             <div class="section-title">Laufende Reifeprozesse</div>
-            <div id="active-processes-list">
-                </div>
+            <div id="active-processes-list"></div>
             
             <div class="dashboard-grid">
                 <div class="stat-card">
                     <span class="material-symbols-outlined">inventory_2</span>
-                    <span id="stat-gläser" class="stat-value">--</span>
+                    <span id="stat-gläser" class="stat-value">0</span>
                     <span class="stat-label">Gläser</span>
                 </div>
                 <div class="stat-card">
                     <span class="material-symbols-outlined">payments</span>
-                    <span id="stat-wert" class="stat-value">--</span>
+                    <span id="stat-wert" class="stat-value">0.00</span>
                     <span class="stat-label">Lagerwert (€)</span>
                 </div>
-            </div>
-
-            <div class="section-title">Einkauf erfassen</div>
-            <div class="stat-card" style="border: 1px solid #2e7d32;">
-                <div class="input-group"><label>Name</label><input type="text" id="buy-name"></div>
-                <div style="display: flex; gap: 10px;">
-                    <div class="input-group" style="flex: 1;"><label>Menge (g)</label><input type="number" id="buy-amount"></div>
-                    <div class="input-group" style="flex: 1;"><label>Preis (€)</label><input type="number" step="0.01" id="buy-price"></div>
-                </div>
-                <button class="action-btn" style="background-color: #2e7d32; color: white;" onclick="assistant.processPurchase()">Speichern</button>
             </div>
         </div>
 
         <div id="view-rezepte" class="view">
-            <div class="section-title">Rezeptbuch & Start</div>
-            <div class="list-card" style="flex-direction: column; align-items: flex-start;">
-                <h3>Hausmacher Mettwurst</h3>
-                <p class="text-muted">Gesamtzeit: 14 Tage | Phasen: Pökeln, Räuchern</p>
-                <button class="action-btn" onclick="production.startRun('Mettwurst', 14)">Produktion starten</button>
-            </div>
+            <div class="section-title">Rezeptbuch</div>
+            <div id="recipe-list"></div>
         </div>
 
         <div id="view-lager" class="view">
-            <div class="section-title">Lager</div>
+            <div class="section-title">Lagerbestand</div>
             <div id="inventory-list"></div>
         </div>
 
@@ -79,6 +68,5 @@
     <script src="db.js"></script>
     <script src="app.js"></script>
     <script src="production.js"></script>
-    <script src="assistant.js"></script>
 </body>
 </html>
