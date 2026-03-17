@@ -6,6 +6,17 @@
     <title>Einkauf - Wurstwerk</title>
     <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined" rel="stylesheet" />
     <link rel="stylesheet" href="style.css">
+    <style>
+        /* Extra-Styling für ein schöneres Einkaufs-Erlebnis */
+        .modern-input {
+            width: 100%; padding: 15px; background: #222; border: 1px solid #444;
+            color: white; border-radius: 12px; font-size: 1.1rem; box-sizing: border-box;
+            transition: all 0.3s ease;
+        }
+        .modern-input:focus { border-color: var(--accent-amber); outline: none; background: #2a2a2a; }
+        .input-label { display: block; color: var(--text-muted); font-size: 0.85rem; margin-bottom: 8px; font-weight: 500; text-transform: uppercase; letter-spacing: 1px; }
+        .form-card { background-color: var(--surface-color); border-radius: 16px; padding: 20px; border: 1px solid #222; margin-top: 15px; }
+    </style>
 </head>
 <body>
 
@@ -15,30 +26,33 @@
     </div>
 
     <main>
-        <div class="stat-card" style="margin-top: 10px; border-top: 4px solid var(--accent-amber);">
+        <div class="form-card">
             
-            <div class="input-group">
-                <label><span class="material-symbols-outlined" style="font-size: 1rem; vertical-align: middle;">label</span> Artikelname</label>
-                <input type="text" id="buy-name" placeholder="z.B. Schweinebauch, Majoran..." style="font-size: 1.1rem;">
+            <div style="margin-bottom: 20px;">
+                <label class="input-label">Artikelname</label>
+                <input type="text" id="buy-name" class="modern-input" placeholder="z.B. Schweinebauch" onkeyup="assistant.checkItemExists()">
+                <div id="item-status" style="display: none; font-size: 0.9rem;"></div>
             </div>
             
-            <div class="input-group">
-                <label><span class="material-symbols-outlined" style="font-size: 1rem; vertical-align: middle;">category</span> Kategorie</label>
-                <select id="buy-category" style="font-size: 1.1rem;">
-                    <option value="Fleisch">🥩 Fleisch</option>
+            <div style="margin-bottom: 20px;">
+                <label class="input-label">Kategorie</label>
+                <select id="buy-category" class="modern-input">
+                    <option value="Fleisch">🥩 Fleisch (Rohware)</option>
                     <option value="Gewürz">🧂 Gewürze / Salz</option>
-                    <option value="Material">📦 Material (Darm, Glas)</option>
+                    <option value="Material">📦 Verbrauchsmaterial (Darm)</option>
+                    <option value="Pfandglas">🫙 Pfandglas</option>
+                    <option value="Maschine">⚙️ Maschine / Zubehör</option>
                 </select>
             </div>
             
-            <div style="display: flex; gap: 15px;">
-                <div class="input-group" style="flex: 2;">
-                    <label><span class="material-symbols-outlined" style="font-size: 1rem; vertical-align: middle;">scale</span> Menge</label>
-                    <input type="number" step="0.01" id="buy-amount" placeholder="0.00" style="font-size: 1.1rem;">
+            <div style="display: flex; gap: 15px; margin-bottom: 20px;">
+                <div style="flex: 2;">
+                    <label class="input-label">Menge</label>
+                    <input type="number" step="0.01" id="buy-amount" class="modern-input" placeholder="0">
                 </div>
-                <div class="input-group" style="flex: 1;">
-                    <label>Einheit</label>
-                    <select id="buy-unit" style="font-size: 1.1rem;">
+                <div style="flex: 1;">
+                    <label class="input-label">Einheit</label>
+                    <select id="buy-unit" class="modern-input">
                         <option value="kg">kg</option>
                         <option value="g">g</option>
                         <option value="Stk">Stück</option>
@@ -47,34 +61,16 @@
                 </div>
             </div>
 
-            <div class="input-group">
-                <label><span class="material-symbols-outlined" style="font-size: 1rem; vertical-align: middle;">euro</span> Preis gesamt (€)</label>
-                <input type="number" step="0.01" id="buy-price" placeholder="0.00" style="font-size: 1.1rem;">
+            <div style="margin-bottom: 20px;">
+                <label class="input-label">Preis gesamt (€)</label>
+                <input type="number" step="0.01" id="buy-price" class="modern-input" placeholder="0.00">
             </div>
             
-            <button class="action-btn" style="background-color: #2e7d32; color: white; margin-top: 25px; height: 55px; font-size: 1.1rem;" onclick="assistant.processPurchase()">
-                <span class="material-symbols-outlined">inventory_2</span> Im Lager speichern
+            <button class="action-btn" style="background-color: #2e7d32; color: white; height: 60px; font-size: 1.1rem; border-radius: 12px; margin-top: 10px;" onclick="assistant.processPurchase()">
+                <span class="material-symbols-outlined">add_task</span> Im Lager speichern
             </button>
         </div>
     </main>
-
-    <div id="duplicate-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); z-index: 1000; justify-content: center; align-items: center; padding: 20px; box-sizing: border-box;">
-        <div class="stat-card" style="width: 100%; max-width: 400px; text-align: center; border: 1px solid var(--accent-amber);">
-            <span class="material-symbols-outlined" style="font-size: 3rem; color: var(--accent-amber); margin-bottom: 10px;">warning</span>
-            <h3 style="margin-top: 0;">Artikel existiert bereits!</h3>
-            <p style="color: var(--text-muted); margin-bottom: 20px;">Du hast bereits <b id="dup-name" style="color: white;"></b> im Lager (Bestand: <span id="dup-amount" style="color: white;"></span>).</p>
-            
-            <button class="action-btn" style="background-color: #2e7d32; color: white; margin-bottom: 12px;" onclick="assistant.addToExisting()">
-                <span class="material-symbols-outlined">add_circle</span> Zum Bestand addieren
-            </button>
-            <button class="action-btn" style="background-color: #4d4dff; color: white; margin-bottom: 12px;" onclick="assistant.saveAsNew()">
-                <span class="material-symbols-outlined">call_split</span> Als extra Posten anlegen
-            </button>
-            <button class="action-btn" style="background-color: transparent; border: 1px solid #555; color: white;" onclick="document.getElementById('duplicate-modal').style.display='none'">
-                Abbrechen
-            </button>
-        </div>
-    </div>
 
     <script src="db.js"></script>
     <script src="assistant.js"></script>
