@@ -10,6 +10,7 @@ const app = {
     // Zeigt/Versteckt die Liste der Kunden mit Gläsern
     toggleGlassList: function() {
         const overlay = document.getElementById('glass-customer-overlay');
+        if (!overlay) return;
         const isVisible = overlay.style.display === 'block';
         overlay.style.display = isVisible ? 'none' : 'block';
         
@@ -20,6 +21,7 @@ const app = {
 
     renderCustomerDebtList: function() {
         const list = document.getElementById('glass-customer-list');
+        if (!list) return;
         list.innerHTML = '';
         const schuldner = this.kundenData.filter(k => Number(k.pfand_schulden) > 0);
         
@@ -70,18 +72,30 @@ const app = {
         this.kundenData.forEach(k => imUmlauf += Number(k.pfand_schulden) || 0);
         const imRegal = gesamtGekauft - imUmlauf;
 
-        // Stats befüllen
-        if(document.getElementById('stat-warenwert')) document.getElementById('stat-warenwert').innerText = warenWert.toFixed(2);
+        // --- STATS BEFÜLLEN ---
         
-        // Das blaue Kästchen befüllen
+        // 1. Dashboard / Home (index.html)
+        if(document.getElementById('stat-wert')) {
+            document.getElementById('stat-wert').innerText = warenWert.toFixed(2);
+        }
+        if(document.getElementById('stat-gläser')) {
+            document.getElementById('stat-gläser').innerText = imRegal;
+        }
+
+        // 2. Lager-Seite (lager.html)
+        if(document.getElementById('stat-warenwert')) {
+            document.getElementById('stat-warenwert').innerText = warenWert.toFixed(2);
+        }
+        if(document.getElementById('stat-regal-glaeser')) {
+            document.getElementById('stat-regal-glaeser').innerText = imRegal;
+        }
+        
+        // 3. Blaues Gläser-Kästchen Details (lager.html)
         if(document.getElementById('glass-bought')) document.getElementById('glass-bought').innerText = gesamtGekauft;
         if(document.getElementById('glass-with-customer')) document.getElementById('glass-with-customer').innerText = imUmlauf;
         if(document.getElementById('glass-available')) document.getElementById('glass-available').innerText = imRegal;
-        
-        // Auch für das Dashboard (Home)
-        if(document.getElementById('stat-gläser')) document.getElementById('stat-gläser').innerText = imRegal;
 
-        // Hauptliste im Lager
+        // --- LISTEN RENDERN ---
         const lagerListe = document.getElementById('inventory-list');
         if (!lagerListe) return;
 
@@ -93,10 +107,10 @@ const app = {
             lagerListe.innerHTML += this.createCard(item, displayAmount);
         });
 
-        // Zuletzt hinzugefügt (indexbasiert als Notlösung für created_at)
+        // Zuletzt hinzugefügt (Zieht die letzten 3 IDs)
         const recentList = document.getElementById('recent-list');
         if (recentList && this.currentFilter === 'Alle') {
-            const recentItems = [...this.inventoryData].slice(-3).reverse();
+            const recentItems = [...this.inventoryData].sort((a,b) => b.id - a.id).slice(0, 3);
             recentList.innerHTML = '';
             recentItems.forEach(item => recentList.innerHTML += this.createCard(item, item.amount));
         }
