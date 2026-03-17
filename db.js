@@ -1,7 +1,6 @@
 // --- Supabase Zugangsdaten ---
-// ⚠️ WICHTIG: HIER DEINE ECHTEN SUPABASE-DATEN EINTRAGEN!
-const supabaseUrl = 'DEINE_SUPABASE_URL_HIER';
-const supabaseKey = 'DEIN_SUPABASE_ANON_KEY_HIER';
+const supabaseUrl = 'https://lphunsmxoruyovvhjrxy.supabase.co';
+const supabaseKey = 'sb_publishable_QjQFTlnJWcMQ-9vWe3f_8A_ayddFKF8';
 
 const db = {
     // Holt den gesamten Lagerbestand
