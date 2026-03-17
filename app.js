@@ -9,7 +9,6 @@ const app = {
 
     // --- DIE SCHNELLE GLÄSER LOGIK (+ / -) ---
     adjustGlass: async function(size, type) {
-        // ... (Logik bleibt gleich wie im vorherigen Schritt)
         const actionStr = type === 'add' ? 'hinzufügen (Eingang)' : 'abziehen (Verbrauch/Bruch)';
         const amountStr = prompt(`Wie viele ${size}ml Gläser möchtest du ${actionStr}?`, "1");
         
@@ -115,6 +114,7 @@ const app = {
                 if (item.name.includes('250')) gesamt250 += Number(item.amount) || 0;
                 else if (item.name.includes('400')) gesamt400 += Number(item.amount) || 0;
             } else if (item.category !== 'Maschine') {
+                // Fleisch, Gewürze und auch Material (Därme) werden hier sauber zum Warenwert addiert
                 warenWert += Number(item.price) || 0;
             }
         });
@@ -129,7 +129,6 @@ const app = {
 
         // --- DASHBOARD (Home) ---
         if(document.getElementById('stat-wert')) document.getElementById('stat-wert').innerText = warenWert.toFixed(2);
-        // HIER SIND DIE NEUEN FELDER FÜR DIE STARTSEITE:
         if(document.getElementById('stat-glaeser-250')) document.getElementById('stat-glaeser-250').innerText = regal250;
         if(document.getElementById('stat-glaeser-400')) document.getElementById('stat-glaeser-400').innerText = regal400;
         
@@ -141,7 +140,7 @@ const app = {
         if(document.getElementById('glass-400-available')) document.getElementById('glass-400-available').innerText = regal400;
         if(document.getElementById('glass-400-out')) document.getElementById('glass-400-out').innerText = umlauf400;
 
-        // Listen Rendern (Gläser werden ausgeblendet)
+        // Listen Rendern (Gläser werden komplett ausgeblendet)
         const lagerListe = document.getElementById('inventory-list');
         if (!lagerListe) return;
 
@@ -158,7 +157,11 @@ const app = {
     },
 
     createCard: function(item) {
-        let icon = item.category === 'Fleisch' ? 'set_meal' : 'grain';
+        // Eigenes Icon für Material (Darm/Netze) hinzugefügt!
+        let icon = 'inventory_2';
+        if (item.category === 'Fleisch') icon = 'set_meal';
+        else if (item.category === 'Gewürz') icon = 'grain';
+        else if (item.category === 'Material') icon = 'shopping_bag';
         
         return `
             <div class="list-card">
