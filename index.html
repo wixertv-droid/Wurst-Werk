@@ -16,7 +16,7 @@
             <span class="brand">WURSTWERK</span>
             <div class="header-stats">
                 <span class="material-symbols-outlined">local_fire_department</span>
-                <small>Smoker an</small>
+                <small id="db-status">Verbinde...</small>
             </div>
         </div>
     </header>
@@ -27,7 +27,6 @@
             <div class="section-title">
                 <span class="material-symbols-outlined">dashboard</span> Übersicht
             </div>
-            
             <div class="dashboard-grid">
                 <div class="dash-card">
                     <span class="material-symbols-outlined card-icon">payments</span>
@@ -37,29 +36,29 @@
                     </div>
                 </div>
                 <div class="dash-card">
-                    <span class="material-symbols-outlined card-icon">microwave</span>
+                    <span class="material-symbols-outlined card-icon">kitchen</span>
                     <div class="card-info">
-                        <small>In Produktion</small>
-                        <strong id="dash-active-prod">0 Chargen</strong>
+                        <small>Fleisch / Material</small>
+                        <strong id="dash-items">0 Positionen</strong>
                     </div>
                 </div>
-                <div class="dash-card">
-                    <span class="material-symbols-outlined card-icon">inventory_2</span>
-                    <div class="card-info">
-                        <small>Artikel im Lager</small>
-                        <strong id="dash-items">0 Stück</strong>
-                    </div>
-                </div>
+            </div>
+            
+            <div class="section-title" style="margin-top: 20px;">
+                <span class="material-symbols-outlined">notifications_active</span> Laufende Produktionen
+            </div>
+            <div id="dash-production-list" class="recent-list">
+                <p style="text-align:center; color:#666;">Keine aktiven Chargen.</p>
             </div>
         </div>
 
         <div id="view-lager" class="view" style="display:none;">
             <div class="section-title">
-                <span class="material-symbols-outlined">inventory_2</span> Aktueller Bestand
+                <span class="material-symbols-outlined">inventory_2</span> Lagerbestand
             </div>
             <div class="search-bar">
                 <span class="material-symbols-outlined search-icon">search</span>
-                <input type="text" id="search-lager" placeholder="Lager durchsuchen..." onkeyup="app.filterLager()">
+                <input type="text" id="search-lager" placeholder="Fleisch, Gewürze, Gläser suchen..." onkeyup="app.filterLager()">
             </div>
             <div id="lager-list" class="lager-list-container">
                 <p style="text-align:center; color:#666; margin-top: 20px;">Lade Lagerbestand...</p>
@@ -74,8 +73,8 @@
             <div class="purchase-container">
                 <div class="input-row">
                     <div class="input-group">
-                        <label>Produktname</label>
-                        <input type="text" id="buy-name" placeholder="z.B. Bauch, Nacken..." onkeyup="assistant.checkExisting()">
+                        <label>Produktname (z.B. Bauch, Gläser 400ml...)</label>
+                        <input type="text" id="buy-name" placeholder="Eintippen zum Suchen..." onkeyup="assistant.checkExisting()">
                         <div id="duplicate-hint" class="hint-badge" style="display:none;">Bereits im Lager (+ wird addiert)</div>
                     </div>
                 </div>
@@ -91,35 +90,41 @@
                             <option value="kg">kg</option>
                             <option value="g">g</option>
                             <option value="Stk">Stk</option>
+                            <option value="L">L</option>
                         </select>
                     </div>
                 </div>
 
                 <div class="input-row">
                     <div class="input-group">
-                        <label>Gesamtpreis (€) - Optional</label>
+                        <label>Gesamtpreis (€)</label>
                         <input type="number" step="0.01" id="buy-price" placeholder="0.00">
                     </div>
                 </div>
 
                 <button class="save-btn" onclick="assistant.processPurchase()">
-                    <span class="material-symbols-outlined">add_task</span> Einlagern
+                    <span class="material-symbols-outlined">add_task</span> Ins Lager buchen
                 </button>
             </div>
 
             <div class="section-title" style="margin-top: 25px;">
-                <span class="material-symbols-outlined">history</span> Kürzlich eingekauft
+                <span class="material-symbols-outlined">history</span> Kürzlich gebucht
             </div>
-            <div id="recent-purchases" class="recent-list">
-                <p style="color: #666; font-size: 0.9rem; text-align: center;">Lade Daten...</p>
-            </div>
+            <div id="recent-purchases" class="recent-list"></div>
         </div>
 
         <div id="view-produktion" class="view" style="display:none;">
             <div class="section-title">
-                <span class="material-symbols-outlined">blender</span> Produktion
+                <span class="material-symbols-outlined">blender</span> Wurstküche
             </div>
-            <p style="color: #888;">Produktions-Modul folgt hier.</p>
+            <p style="color: #888;">Hier entsteht bald die Produktions-Steuerung.</p>
+        </div>
+
+        <div id="view-kunden" class="view" style="display:none;">
+            <div class="section-title">
+                <span class="material-symbols-outlined">groups</span> Kunden & Bestellungen
+            </div>
+            <p style="color: #888;">Hier verwalten wir bald die Kundenbestellungen.</p>
         </div>
 
     </main>
@@ -135,13 +140,15 @@
             <span class="material-symbols-outlined">shopping_cart</span>Einkauf
         </button>
         <button onclick="app.switchView('view-produktion')" id="nav-produktion">
-            <span class="material-symbols-outlined">blender</span>Produktion
+            <span class="material-symbols-outlined">blender</span>Küche
+        </button>
+        <button onclick="app.switchView('view-kunden')" id="nav-kunden">
+            <span class="material-symbols-outlined">groups</span>Kunden
         </button>
     </nav>
 
     <script src="db.js"></script>
     <script src="assistant.js"></script>
-    <script src="production.js"></script>
     <script src="app.js"></script>
 </body>
 </html>
