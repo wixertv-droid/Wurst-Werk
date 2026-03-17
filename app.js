@@ -1,4 +1,4 @@
-// Wir packen alles in ein "app" Objekt, das hält den Code aufgeräumt
+  // Wir packen alles in ein "app" Objekt, das hält den Code aufgeräumt
 const app = {
     
     // Initialisierung beim Start der App
@@ -11,6 +11,7 @@ const app = {
     switchView: function(viewName, clickedElement) {
         // Alle Views verstecken
         document.querySelectorAll('.view').forEach(view => view.classList.remove('active'));
+        
         // Alle Nav-Items deaktivieren
         document.querySelectorAll('.nav-item').forEach(item => item.classList.remove('active'));
         
