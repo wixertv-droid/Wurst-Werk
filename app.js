@@ -3,23 +3,34 @@ window.app = {
     kundenData: [],
 
     init: async function() {
-        await this.refreshData();
-        // Lade die Timer sofort beim Start
-        await this.loadActiveProcesses();
-        // Aktualisiere die Liste alle 30 Sekunden im Hintergrund sicherheitshalber
-        setInterval(() => this.loadActiveProcesses(), 30000); 
+        // 1. Lager & Kunden laden (Kugelsicher)
+        try {
+            await this.refreshData();
+        } catch (e) {
+            console.error("Fehler beim Laden der Basisdaten", e);
+        }
+
+        // 2. Timer laden (nur wenn wir auf dem Dashboard sind!)
+        if (document.getElementById('active-processes-list')) {
+            try {
+                await this.loadActiveProcesses();
+                // Alle 30 Sekunden aktualisieren
+                setInterval(() => this.loadActiveProcesses(), 30000); 
+            } catch (e) {
+                console.error("Fehler bei den Timern", e);
+            }
+        }
     },
 
     refreshData: async function() {
-        try {
-            [this.inventoryData, this.kundenData] = await Promise.all([
-                db.getInventory(),
-                db.getCustomers()
-            ]);
-            this.render();
-        } catch (e) { 
-            console.error("Fehler beim Laden der Basisdaten:", e); 
-        }
+        const inv = await db.getInventory();
+        const kund = await db.getCustomers();
+        
+        // Sicherstellen, dass es Listen sind (verhindert Abstürze)
+        this.inventoryData = Array.isArray(inv) ? inv : [];
+        this.kundenData = Array.isArray(kund) ? kund : [];
+        
+        this.render();
     },
 
     render: function() {
@@ -27,10 +38,10 @@ window.app = {
 
         this.inventoryData.forEach(i => {
             if (i.category === 'Pfandglas') {
-                if (i.name.includes('250')) g250 += Number(i.amount);
-                else if (i.name.includes('400')) g400 += Number(i.amount);
+                if (i.name.includes('250')) g250 += Number(i.amount) || 0;
+                else if (i.name.includes('400')) g400 += Number(i.amount) || 0;
             } else if (i.category !== 'Maschine') { 
-                wert += Number(i.price); 
+                wert += Number(i.price) || 0; 
             }
         });
 
@@ -39,14 +50,20 @@ window.app = {
             u400 += Number(k.pfand_400) || 0;
         });
 
+        // Werte auf Startseite updaten
         if(document.getElementById('stat-wert')) document.getElementById('stat-wert').innerText = wert.toFixed(2);
         if(document.getElementById('stat-glaeser-250')) document.getElementById('stat-glaeser-250').innerText = g250 - u250;
         if(document.getElementById('stat-glaeser-400')) document.getElementById('stat-glaeser-400').innerText = g400 - u400;
+
+        // Werte auf Lager-Seite updaten
+        if(document.getElementById('stat-warenwert')) document.getElementById('stat-warenwert').innerText = wert.toFixed(2);
+        if(document.getElementById('glass-250-available')) document.getElementById('glass-250-available').innerText = g250 - u250;
+        if(document.getElementById('glass-400-available')) document.getElementById('glass-400-available').innerText = g400 - u400;
     },
 
     loadActiveProcesses: async function() {
         const container = document.getElementById('active-processes-list');
-        if (!container) return; // Wenn wir nicht auf der index.html sind, abbrechen
+        if (!container) return; 
 
         try {
             const res = await fetch(`${supabaseUrl}/rest/v1/active_processes?status=eq.running&order=end_time.asc`, {
@@ -54,13 +71,13 @@ window.app = {
             });
             
             if (!res.ok) {
-                container.innerHTML = '<p class="text-muted" style="color: red;">Fehler: Tabelle "active_processes" existiert nicht in Supabase.</p>';
+                container.innerHTML = '<p class="text-muted" style="color: var(--accent-danger);">Fehlt die Tabelle "active_processes" in Supabase?</p>';
                 return;
             }
 
             const processes = await res.json();
             
-            if (processes.length === 0) {
+            if (!Array.isArray(processes) || processes.length === 0) {
                 container.innerHTML = '<p class="text-muted" style="text-align: center;">Aktuell keine Prozesse in Arbeit.</p>';
                 return;
             }
@@ -81,26 +98,25 @@ window.app = {
                         </div>
                     </div>`;
                 
-                // Countdown starten
                 this.startCountdown(p.id, p.end_time);
             });
         } catch (e) {
-            container.innerHTML = '<p class="text-muted" style="color: red;">Netzwerkfehler beim Laden der Timer.</p>';
+            container.innerHTML = '<p class="text-muted" style="color: var(--accent-danger);">Fehler beim Laden der Timer.</p>';
         }
     },
 
     startCountdown: function(id, endStr) {
-        const el = document.getElementById(`timer-${id}`);
         const end = new Date(endStr).getTime();
         
         const update = () => {
+            const el = document.getElementById(`timer-${id}`);
+            if (!el) return; // Wenn Seite gewechselt wurde, stoppen
+            
             const dist = end - Date.now();
             
             if (dist < 0) { 
-                if (el) {
-                    el.innerText = "✅ FERTIG!"; 
-                    el.style.color = "#4caf50"; 
-                }
+                el.innerText = "✅ FERTIG!"; 
+                el.style.color = "#4caf50"; 
                 return; 
             }
             
@@ -109,19 +125,18 @@ window.app = {
             const m = Math.floor((dist % 3600000) / 60000);
             const s = Math.floor((dist % 60000) / 1000);
             
-            if (el) { 
-                let timeStr = "";
-                if (d > 0) timeStr += d + "Tage ";
-                timeStr += (h < 10 ? "0" : "") + h + ":" + (m < 10 ? "0" : "") + m + ":" + (s < 10 ? "0" : "") + s;
-                el.innerText = timeStr;
-                setTimeout(update, 1000);
-            }
+            let timeStr = "";
+            if (d > 0) timeStr += d + " Tage ";
+            timeStr += (h < 10 ? "0" : "") + h + ":" + (m < 10 ? "0" : "") + m + ":" + (s < 10 ? "0" : "") + s;
+            el.innerText = timeStr;
+            
+            setTimeout(update, 1000);
         };
         update();
     },
 
     stopProcess: async function(id) {
-        if(!confirm("Diesen Prozess wirklich entfernen? (Er verschwindet vom Dashboard)")) return;
+        if(!confirm("Diesen Prozess wirklich abbrechen und vom Dashboard löschen?")) return;
         try {
             await fetch(`${supabaseUrl}/rest/v1/active_processes?id=eq.${id}`, {
                 method: 'DELETE',
