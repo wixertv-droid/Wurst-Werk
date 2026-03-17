@@ -7,23 +7,21 @@ const app = {
         await this.refreshData();
     },
 
-    // Zeigt/Versteckt die Liste der Kunden mit Gläsern
     toggleGlassList: function() {
         const overlay = document.getElementById('glass-customer-overlay');
         if (!overlay) return;
         const isVisible = overlay.style.display === 'block';
         overlay.style.display = isVisible ? 'none' : 'block';
-        
-        if (!isVisible) {
-            this.renderCustomerDebtList();
-        }
+        if (!isVisible) this.renderCustomerDebtList();
     },
 
     renderCustomerDebtList: function() {
         const list = document.getElementById('glass-customer-list');
         if (!list) return;
         list.innerHTML = '';
-        const schuldner = this.kundenData.filter(k => Number(k.pfand_schulden) > 0);
+        
+        // Finde alle Kunden, die ENTWEDER 250ml ODER 400ml Gläser haben
+        const schuldner = this.kundenData.filter(k => (Number(k.pfand_250) > 0 || Number(k.pfand_400) > 0));
         
         if (schuldner.length === 0) {
             list.innerHTML = '<p class="text-muted">Keine Gläser im Umlauf.</p>';
@@ -31,10 +29,14 @@ const app = {
         }
 
         schuldner.forEach(k => {
+            let details = [];
+            if (Number(k.pfand_250) > 0) details.push(`${k.pfand_250}x 250ml`);
+            if (Number(k.pfand_400) > 0) details.push(`${k.pfand_400}x 400ml`);
+            
             list.innerHTML += `
                 <div style="display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid #333;">
                     <span>${k.name}</span>
-                    <b style="color: var(--accent-danger);">${k.pfand_schulden} Stk.</b>
+                    <b style="color: var(--accent-danger); font-size: 0.9rem;">${details.join(' | ')}</b>
                 </div>`;
         });
     },
@@ -58,42 +60,44 @@ const app = {
 
     render: function() {
         let warenWert = 0;
-        let gesamtGekauft = 0;
-        let imUmlauf = 0;
+        let gesamt250 = 0, gesamt400 = 0;
+        let umlauf250 = 0, umlauf400 = 0;
 
+        // 1. Gekaufte Gläser & Warenwert zählen
         this.inventoryData.forEach(item => {
             if (item.category === 'Pfandglas') {
-                gesamtGekauft += Number(item.amount) || 0;
+                if (item.name.includes('250')) gesamt250 += Number(item.amount) || 0;
+                else if (item.name.includes('400')) gesamt400 += Number(item.amount) || 0;
             } else if (item.category !== 'Maschine') {
                 warenWert += Number(item.price) || 0;
             }
         });
 
-        this.kundenData.forEach(k => imUmlauf += Number(k.pfand_schulden) || 0);
-        const imRegal = gesamtGekauft - imUmlauf;
+        // 2. Kunden-Schulden aus den NEUEN Spalten zählen
+        this.kundenData.forEach(k => {
+            umlauf250 += Number(k.pfand_250) || 0;
+            umlauf400 += Number(k.pfand_400) || 0;
+        });
 
-        // --- STATS BEFÜLLEN ---
-        
-        // 1. Dashboard / Home (index.html)
-        if(document.getElementById('stat-wert')) {
-            document.getElementById('stat-wert').innerText = warenWert.toFixed(2);
-        }
-        if(document.getElementById('stat-gläser')) {
-            document.getElementById('stat-gläser').innerText = imRegal;
-        }
+        // 3. Wahrheit berechnen
+        const regal250 = gesamt250 - umlauf250;
+        const regal400 = gesamt400 - umlauf400;
+        const totalUmlauf = umlauf250 + umlauf400;
+        const totalRegal = regal250 + regal400; // Für das Dashboard
 
-        // 2. Lager-Seite (lager.html)
-        if(document.getElementById('stat-warenwert')) {
-            document.getElementById('stat-warenwert').innerText = warenWert.toFixed(2);
-        }
-        if(document.getElementById('stat-regal-glaeser')) {
-            document.getElementById('stat-regal-glaeser').innerText = imRegal;
-        }
+        // --- Werte in die HTML-Felder schreiben ---
         
-        // 3. Blaues Gläser-Kästchen Details (lager.html)
-        if(document.getElementById('glass-bought')) document.getElementById('glass-bought').innerText = gesamtGekauft;
-        if(document.getElementById('glass-with-customer')) document.getElementById('glass-with-customer').innerText = imUmlauf;
-        if(document.getElementById('glass-available')) document.getElementById('glass-available').innerText = imRegal;
+        // Home
+        if(document.getElementById('stat-wert')) document.getElementById('stat-wert').innerText = warenWert.toFixed(2);
+        if(document.getElementById('stat-gläser')) document.getElementById('stat-gläser').innerText = totalRegal;
+        
+        // Lager
+        if(document.getElementById('stat-warenwert')) document.getElementById('stat-warenwert').innerText = warenWert.toFixed(2);
+        
+        // Das neue, geteilte Gläser-Kästchen
+        if(document.getElementById('glass-250-available')) document.getElementById('glass-250-available').innerText = regal250;
+        if(document.getElementById('glass-400-available')) document.getElementById('glass-400-available').innerText = regal400;
+        if(document.getElementById('glass-with-customer')) document.getElementById('glass-with-customer').innerText = totalUmlauf;
 
         // --- LISTEN RENDERN ---
         const lagerListe = document.getElementById('inventory-list');
@@ -101,33 +105,38 @@ const app = {
 
         lagerListe.innerHTML = '';
         const filtered = this.inventoryData.filter(i => this.currentFilter === 'Alle' || i.category === this.currentFilter);
+        
         filtered.forEach(item => {
-            let displayAmount = item.amount;
-            if (item.category === 'Pfandglas') displayAmount = Number(item.amount) - imUmlauf;
-            lagerListe.innerHTML += this.createCard(item, displayAmount);
+            lagerListe.innerHTML += this.createCard(item, umlauf250, umlauf400);
         });
 
-        // Zuletzt hinzugefügt (Zieht die letzten 3 IDs)
+        // Zuletzt hinzugefügt
         const recentList = document.getElementById('recent-list');
         if (recentList && this.currentFilter === 'Alle') {
             const recentItems = [...this.inventoryData].sort((a,b) => b.id - a.id).slice(0, 3);
             recentList.innerHTML = '';
-            recentItems.forEach(item => recentList.innerHTML += this.createCard(item, item.amount));
+            recentItems.forEach(item => recentList.innerHTML += this.createCard(item, umlauf250, umlauf400));
         }
     },
 
-    createCard: function(item, amount) {
+    createCard: function(item, umlauf250, umlauf400) {
+        let displayAmount = item.amount;
         let icon = 'inventory_2';
-        if (item.category === 'Fleisch') icon = 'set_meal';
-        if (item.category === 'Gewürz') icon = 'grain';
-        if (item.category === 'Pfandglas') icon = 'recycling';
+        
+        if (item.category === 'Pfandglas') {
+            icon = 'recycling';
+            // Zieht genau den richtigen Umlauf ab
+            if (item.name.includes('250')) displayAmount = Number(item.amount) - umlauf250;
+            else if (item.name.includes('400')) displayAmount = Number(item.amount) - umlauf400;
+        } else if (item.category === 'Fleisch') icon = 'set_meal';
+          else if (item.category === 'Gewürz') icon = 'grain';
 
         return `
             <div class="list-card">
                 <div class="icon-box"><span class="material-symbols-outlined">${icon}</span></div>
                 <div class="info">
                     <h3>${item.name}</h3>
-                    <p>${amount} ${item.unit} im Regal | Wert: ${Number(item.price).toFixed(2)}€</p>
+                    <p>${displayAmount} ${item.unit} im Regal | Wert: ${Number(item.price).toFixed(2)}€</p>
                 </div>
                 <button onclick="app.deleteItem('${item.id}')" style="background:none; border:none; color:var(--accent-danger); cursor:pointer;">
                     <span class="material-symbols-outlined">delete</span>
