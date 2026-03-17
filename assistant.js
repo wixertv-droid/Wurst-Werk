@@ -1,97 +1,59 @@
- const assistant = {
-    // 1. Unser simuliertes Lager (Hier ist jetzt auch DARM dabei!)
-    lager: {
-        "Bauch": 2000, // 2000g Bauch haben wir noch im Froster
-        "Majoran": 50, // 50g Gewürz
-        "Gläser": 15,  // 15 leere Gläser
-        "Darm": 5,     // 5 Meter Darm auf Lager
-        "Nacken": 0    // Nacken ist aktuell auf Null
-    },
+const assistant = {
+    // Diese Funktion liest die Felder aus und speichert in Supabase
+    processPurchase: async function() {
+        const name = document.getElementById('buy-name').value;
+        const category = document.getElementById('buy-category').value;
+        const amount = document.getElementById('buy-amount').value;
 
-    // 2. Unsere Rezept-Formeln (Jetzt mit einer guten Mischung)
-    rezepte: [
-        {
-            name: "Mettwurst im Glas (10 Stück)",
-            zutaten: {
-                "Nacken": 1500, 
-                "Bauch": 1000,  
-                "Majoran": 15,  
-                "Gläser": 10    
-            }
-        },
-        {
-            name: "Knacker im Saitling (20 Stück)",
-            zutaten: {
-                "Nacken": 1000, 
-                "Bauch": 500,  
-                "Majoran": 10,  
-                "Darm": 2       // Braucht 2 Meter Darm statt Gläser!
-            }
+        if(!name || !amount) {
+            alert("Bitte Name und Menge angeben!");
+            return;
         }
-    ],
 
-    // 3. Diese Funktion startet, wenn du den Einkauf in die App tippst
-    logPurchase: function(itemName, amountInGramm) {
-        // Zutat ins Lager legen
-        if(this.lager[itemName] !== undefined) {
-            this.lager[itemName] += amountInGramm;
+        // Wir schauen erst, ob der Artikel schon im Lager existiert
+        const inventory = await db.getInventory();
+        const existingItem = inventory.find(i => i.name.toLowerCase() === name.toLowerCase());
+
+        if(existingItem) {
+            // Artikel existiert -> Menge addieren
+            const newTotal = Number(existingItem.amount) + Number(amount);
+            await db.updateStock(existingItem.id, newTotal);
         } else {
-            this.lager[itemName] = amountInGramm;
+            // Neuer Artikel -> In Supabase anlegen (über fetch)
+            await fetch(`${supabaseUrl}/rest/v1/inventory`, {
+                method: 'POST',
+                headers: {
+                    'apikey': supabaseKey,
+                    'Authorization': `Bearer ${supabaseKey}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    name: name,
+                    category: category,
+                    amount: amount,
+                    unit: category === 'Fleisch' ? 'g' : (category === 'Material' ? 'Stk/m' : 'g')
+                })
+            });
         }
 
-        alert(`🛒 ${amountInGramm / 1000}kg ${itemName} erfolgreich ins Lager gebucht!`);
+        alert(`${amount} zu ${name} hinzugefügt!`);
+        
+        // Felder leeren
+        document.getElementById('buy-name').value = '';
+        document.getElementById('buy-amount').value = '';
 
-        // Sofort das Gehirn anwerfen: Was können wir jetzt machen?
-        this.checkWhatWeCanMake();
+        // App Daten aktualisieren
+        await app.refreshData();
+        this.checkSuggestions(inventory);
     },
 
-    // 4. Der Smart-Checker
-    checkWhatWeCanMake: function() {
-        let possibleRecipes = [];
-
-        // Jedes Rezept durchgehen
-        this.rezepte.forEach(rezept => {
-            let canMake = true;
-            
-            // Jede benötigte Zutat des Rezepts mit unserem Lager abgleichen
-            for (let zutat in rezept.zutaten) {
-                let benoetigt = rezept.zutaten[zutat];
-                let vorhanden = this.lager[zutat] || 0;
-                
-                if (vorhanden < benoetigt) {
-                    canMake = false; // Uns fehlt was, also dieses Rezept überspringen!
-                    break; 
-                }
-            }
-            
-            // Wenn alle Zutaten da sind, speichern wir den Vorschlag
-            if (canMake) {
-                possibleRecipes.push(`<b>${rezept.name}</b>`);
-            }
-        });
-
-        // 5. Vorschlag auf dem Bildschirm anzeigen!
-        if (possibleRecipes.length > 0) {
-            // Wir verbinden die Vorschläge mit einem "oder", um die Auswahl zu zeigen
-            let vorschlagText = possibleRecipes.join(' oder ');
-            
-            this.showSuggestion(`💡 <b>Smart-Tipp:</b> Mit dem neuen Fleisch und deinem restlichen Lagerbestand (Darm/Gläser) kannst du jetzt sofort ${vorschlagText} produzieren!`);
-        }
-    },
-
-    showSuggestion: function(text) {
-        const box = document.getElementById('suggestion-box');
-        const textElement = document.getElementById('suggestion-text');
-        if(box && textElement) {
-            textElement.innerHTML = text;
-            box.style.display = 'flex'; // Box sichtbar machen
-            
-            // Eine kleine Animation abspielen
-            box.style.animation = 'none';
-            setTimeout(() => box.style.animation = 'fadeIn 0.5s ease', 10);
-            
-            // Wenn das iPhone vibrieren kann, gib ein kurzes Feedback
-            if (navigator.vibrate) navigator.vibrate(100);
+    checkSuggestions: function(inventory) {
+        // Hier können wir später die Rezept-Logik einbauen
+        // Für den Moment zeigen wir die Box nur an, wenn Fleisch da ist
+        const fleisch = inventory.filter(i => i.category === 'Fleisch' && i.amount > 0);
+        if(fleisch.length > 0) {
+            document.getElementById('suggestion-box').style.display = 'flex';
+            document.getElementById('suggestion-text').innerHTML = `💡 <b>Tipp:</b> Du hast ${fleisch.length} Sorten Fleisch. Prüfe die Rezepte für die nächste Produktion!`;
         }
     }
 };
