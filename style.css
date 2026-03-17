@@ -1,4 +1,4 @@
-:root {
+ :root {
     --bg-color: #0a0a0a;
     --surface-color: #1a1a1a;
     --text-main: #f5f5f5;
@@ -61,3 +61,47 @@ nav { background-color: var(--nav-bg); display: flex; justify-content: space-aro
 .nav-item span:last-child { font-size: 0.75rem; font-weight: 500; }
 .nav-item.active { color: var(--accent-amber); }
 .nav-item .material-symbols-outlined { font-size: 1.8rem; }
+
+/* Styling für Buttons */
+.action-btn {
+    background-color: var(--accent-amber);
+    color: #000;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 8px;
+    font-weight: bold;
+    font-size: 0.9rem;
+    cursor: pointer;
+    margin-top: 10px;
+    width: 100%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 8px;
+    transition: background-color 0.2s;
+}
+.action-btn:active {
+    background-color: #cc7000;
+}
+
+/* Die Smart-Assistant Tipp-Box */
+.suggestion-card {
+    background: linear-gradient(145deg, #101528 0%, var(--surface-color) 100%);
+    border: 1px solid #2a2a4a; 
+    border-left: 4px solid #4d4dff; /* Blauer KI-Akzent */
+    border-radius: 12px; 
+    padding: 15px; 
+    margin-top: 15px; 
+    display: flex; 
+    align-items: center;
+    box-shadow: 0 4px 15px rgba(77, 77, 255, 0.1);
+}
+.suggestion-card .icon-box {
+    background: rgba(77, 77, 255, 0.15);
+    padding: 10px; 
+    border-radius: 8px; 
+    margin-right: 15px; 
+    display: flex; 
+    align-items: center; 
+    justify-content: center;
+}
