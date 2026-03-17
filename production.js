@@ -31,7 +31,6 @@ window.produktionManager = {
             this.buildMatchingUI();
 
         } catch (e) {
-            console.error(e);
             alert("Fehler beim Laden der Produktionsdaten!");
             window.location.href = 'rezepte.html';
         }
@@ -135,49 +134,83 @@ window.produktionManager = {
         const container = document.getElementById('checklist-container');
         const steps = this.recipe.details.steps || [];
         container.innerHTML = '';
+        
         steps.forEach((step, i) => {
-            let timerBtn = (step.type === 'timer' || step.type === 'interval') ? 
-                `<div class="timer-controls" id="timer-ctrl-${i}"><button class="btn-start" onclick="window.produktionManager.startTimer(${i})">▶️ Starten</button><button class="btn-skip" onclick="window.produktionManager.skipStep(${i})">⏭️ Überspringen</button></div><div id="timer-status-${i}" style="display:none; padding-left:50px; color:#4caf50;"></div>` : '';
-            
+            let timerBtn = '';
+            let extra = '';
+
+            if (step.type === 'timer' || step.type === 'interval') {
+                if (step.type === 'timer') extra = `<br><b style="color:#4d4dff;">⏳ ${step.duration} ${step.unit}</b>`;
+                if (step.type === 'interval') extra = `<br><b style="color:var(--accent-amber);">🔁 ${step.cycles}x ${step.duration} ${step.unit} (Pause: ${step.pauses}h)</b>`;
+                
+                timerBtn = `
+                    <div class="timer-controls" id="timer-ctrl-${i}" style="display: flex; gap: 10px; margin-top: 15px; padding-left: 50px;">
+                        <button style="background: #4d4dff; color: white; border: none; padding: 10px; border-radius: 8px; flex: 1; font-weight: bold; cursor: pointer;" onclick="window.produktionManager.startTimer(${i})">▶️ Starten</button>
+                        <button style="background: #333; color: white; border: 1px solid #555; padding: 10px; border-radius: 8px; flex: 1; cursor: pointer;" onclick="window.produktionManager.skipStep(${i})">⏭️ Überspringen</button>
+                    </div>
+                    <div id="timer-status-${i}" style="display:none; padding-left:50px; margin-top: 10px; color:#4caf50; font-weight: bold;"></div>
+                `;
+            }
+
             container.innerHTML += `
-                <div class="check-step" id="step-row-${i}">
-                    <div class="step-header" onclick="window.produktionManager.toggleStep(${i})">
-                        <div class="check-btn"><span class="material-symbols-outlined">check</span></div>
-                        <div style="flex:1;"><b style="font-size:0.8rem; color:#888;">SCHRITT ${i+1}</b><p>${step.text}</p></div>
-                    </div>${timerBtn}
+                <div class="check-step" id="step-row-${i}" style="padding: 15px; background: #111; border-radius: 8px; margin-bottom: 12px; border-left: 4px solid #444;">
+                    <div class="step-header" style="display: flex; gap: 15px; align-items: center; cursor: pointer;" onclick="window.produktionManager.toggleStep(${i})">
+                        <div class="check-btn" style="background: #222; border: 2px solid #444; border-radius: 50%; min-width: 35px; height: 35px; display: flex; align-items: center; justify-content: center; color: transparent;"><span class="material-symbols-outlined">check</span></div>
+                        <div style="flex:1;"><b style="font-size:0.8rem; color:#888;">SCHRITT ${i+1}</b><p style="margin: 3px 0 0 0; line-height: 1.4;">${step.text} ${extra}</p></div>
+                    </div>
+                    ${timerBtn}
                 </div>`;
         });
     },
 
-    toggleStep: function(i) { document.getElementById(`step-row-${i}`).classList.toggle('done'); },
+    toggleStep: function(i) { 
+        document.getElementById(`step-row-${i}`).classList.toggle('done'); 
+    },
 
     startTimer: async function(index) {
         const step = this.recipe.details.steps[index];
+        const statusEl = document.getElementById(`timer-status-${index}`);
+        
         let ms = 0;
-        const d = Number(step.duration);
-        if (step.unit.includes('Min')) ms = d * 60000;
-        else if (step.unit.includes('Std')) ms = d * 3600000;
-        else if (step.unit.includes('Tag')) ms = d * 86400000;
+        const d = Number(step.duration) || 0;
+        const unit = (step.unit || '').toLowerCase();
+        
+        if (unit.includes('min')) ms = d * 60000;
+        else if (unit.includes('std') || unit.includes('hou')) ms = d * 3600000;
+        else if (unit.includes('tag') || unit.includes('day')) ms = d * 86400000;
 
         const end = new Date(Date.now() + ms).toISOString();
-        const payload = { recipe_name: this.recipe.name, step_text: step.text, end_time: end, status: 'running' };
+        const payload = { 
+            recipe_name: this.recipe.name, 
+            step_text: step.text, 
+            end_time: end, 
+            status: 'running' 
+        };
 
-        const res = await fetch(`${supabaseUrl}/rest/v1/active_processes`, {
-            method: 'POST',
-            headers: { 'apikey': supabaseKey, 'Authorization': `Bearer ${supabaseKey}`, 'Content-Type': 'application/json' },
-            body: JSON.stringify(payload)
-        });
+        try {
+            const res = await fetch(`${supabaseUrl}/rest/v1/active_processes`, {
+                method: 'POST',
+                headers: { 'apikey': supabaseKey, 'Authorization': `Bearer ${supabaseKey}`, 'Content-Type': 'application/json', 'Prefer': 'return=minimal' },
+                body: JSON.stringify(payload)
+            });
 
-        if (res.ok) {
-            document.getElementById(`step-row-${index}`).classList.add('running');
-            document.getElementById(`timer-ctrl-${index}`).style.display = 'none';
-            document.getElementById(`timer-status-${index}`).style.display = 'block';
-            document.getElementById(`timer-status-${index}`).innerText = "⏳ Läuft auf Dashboard!";
+            if (res.ok) {
+                document.getElementById(`step-row-${index}`).style.borderLeftColor = '#4d4dff';
+                document.getElementById(`timer-ctrl-${index}`).style.display = 'none';
+                statusEl.style.display = 'block';
+                statusEl.innerText = "✅ Timer läuft! (Wechsle aufs Dashboard)";
+            } else {
+                const err = await res.text();
+                alert("Datenbank-Fehler (Tabelle active_processes fehlt?): " + err);
+            }
+        } catch (e) {
+            alert("Netzwerkfehler: " + e.message);
         }
     },
 
     skipStep: function(i) {
-        document.getElementById(`step-row-${i}`).classList.add('done');
+        document.getElementById(`step-row-${i}`).style.borderLeftColor = '#4caf50';
+        document.getElementById(`step-row-${i}`).style.opacity = '0.6';
         if(document.getElementById(`timer-ctrl-${i}`)) document.getElementById(`timer-ctrl-${i}`).style.display = 'none';
     },
 
@@ -186,4 +219,5 @@ window.produktionManager = {
         window.location.href = 'index.html';
     }
 };
+
 document.addEventListener('DOMContentLoaded', () => window.produktionManager.init());
