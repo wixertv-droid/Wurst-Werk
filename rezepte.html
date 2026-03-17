@@ -1,288 +1,104 @@
-window.rezeptManager = {
-    currentRecipeData: null, 
-
-    init: async function() {
-        await this.loadList();
-    },
-
-    showView: function(viewName) {
-        document.getElementById('recipe-list-view').style.display = viewName === 'list' ? 'block' : 'none';
-        document.getElementById('recipe-detail-view').style.display = viewName === 'detail' ? 'block' : 'none';
-        document.getElementById('recipe-editor-view').style.display = viewName === 'editor' ? 'block' : 'none';
-    },
-
-    loadList: async function() {
-        const listEl = document.getElementById('recipe-page-list');
-        if (!listEl) return;
-
-        try {
-            const response = await fetch(`${supabaseUrl}/rest/v1/recipes?select=*&order=name.asc`, {
-                headers: { 'apikey': supabaseKey, 'Authorization': `Bearer ${supabaseKey}` }
-            });
-            
-            if (!response.ok) {
-                listEl.innerHTML = '<p class="text-muted" style="color: var(--accent-danger); text-align: center;">Datenbank-Fehler! Wurde die Tabelle "recipes" angelegt?</p>';
-                return;
-            }
-
-            const recipes = await response.json();
-            listEl.innerHTML = '';
-
-            if (recipes.length === 0) {
-                listEl.innerHTML = '<p class="text-muted" style="text-align: center;">Keine Rezepte gefunden.</p>';
-                return;
-            }
-
-            recipes.forEach(r => {
-                const safeData = encodeURIComponent(JSON.stringify(r));
-                listEl.innerHTML += `
-                    <div class="list-card" style="border-left: 3px solid var(--accent-amber); cursor: pointer;" onclick="window.rezeptManager.openDetail('${safeData}')">
-                        <div class="icon-box" style="background: #222;">
-                            <span class="material-symbols-outlined" style="color: var(--accent-amber);">restaurant_menu</span>
-                        </div>
-                        <div class="info">
-                            <h3 style="font-size: 1.1rem; margin-bottom: 4px;">${r.name}</h3>
-                            <p style="color: #aaa; font-size: 0.85rem; margin: 0;">Auf 1kg genormt</p>
-                        </div>
-                        <button onclick="event.stopPropagation(); window.rezeptManager.deleteRecipe('${r.id}', '${r.name}')" style="background:none; border:none; color:var(--accent-danger); cursor:pointer; padding: 10px;">
-                            <span class="material-symbols-outlined">delete</span>
-                        </button>
-                    </div>
-                `;
-            });
-        } catch (e) {
-            listEl.innerHTML = '<p class="text-muted" style="color: red;">Netzwerk-Fehler beim Laden.</p>';
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Rezepte - Wurstwerk</title>
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined" rel="stylesheet" />
+    <link rel="stylesheet" href="style.css">
+    <style>
+        .recipe-input, .recipe-select {
+            padding: 12px; background: #222; border: 1px solid #444; color: white; 
+            border-radius: 8px; font-size: 1rem; box-sizing: border-box; width: 100%;
         }
-    },
-
-    openDetail: function(encodedData) {
-        const r = JSON.parse(decodeURIComponent(encodedData));
-        this.currentRecipeData = r; 
-        const details = r.details || {};
-
-        document.getElementById('detail-title').innerText = r.name;
-
-        const ingContainer = document.getElementById('detail-ingredients');
-        ingContainer.innerHTML = '';
-        if (details.ingredients && details.ingredients.length > 0) {
-            details.ingredients.forEach(ing => {
-                ingContainer.innerHTML += `
-                    <div class="ing-row">
-                        <span>${ing.name}</span>
-                        <b style="color: var(--text-main);">${ing.amount} ${ing.unit}</b>
-                    </div>
-                `;
-            });
-        } else {
-            ingContainer.innerHTML = '<p class="text-muted">Keine Zutaten hinterlegt.</p>';
-        }
-
-        const stepsContainer = document.getElementById('detail-steps');
-        stepsContainer.innerHTML = '';
-        if (details.steps && details.steps.length > 0) {
-            let stepNum = 1;
-            details.steps.forEach(step => {
-                let icon = 'check_circle';
-                let styleClass = '';
-                let extraText = '';
-
-                if (step.type === 'timer') {
-                    icon = 'schedule'; styleClass = 'timer';
-                    extraText = `<br><b style="color:#4d4dff;">⏳ ${step.duration} ${step.unit}</b>`;
-                } else if (step.type === 'interval') {
-                    icon = 'sync'; styleClass = 'interval';
-                    extraText = `<br><b style="color:var(--accent-amber);">🔁 ${step.cycles}x ${step.duration} ${step.unit} (Pause: ${step.pauses}h)</b>`;
-                }
-
-                stepsContainer.innerHTML += `
-                    <div class="step-row ${styleClass}">
-                        <div class="step-icon"><span class="material-symbols-outlined">${icon}</span></div>
-                        <div class="step-text">
-                            <b style="color: #fff; font-size: 0.8rem; text-transform: uppercase;">Schritt ${stepNum}</b><br>
-                            ${step.text} ${extraText}
-                        </div>
-                    </div>
-                `;
-                stepNum++;
-            });
-        } else {
-            stepsContainer.innerHTML = '<p class="text-muted">Kein Ablauf hinterlegt.</p>';
-        }
-
-        this.showView('detail');
-    },
-
-    openEditor: function() {
-        document.getElementById('editor-title').innerText = "Neues Rezept";
-        document.getElementById('edit-id').value = '';
-        document.getElementById('edit-name').value = '';
-        document.getElementById('editor-ingredients-list').innerHTML = '';
-        document.getElementById('editor-steps-list').innerHTML = '';
+        .recipe-input:focus { border-color: var(--accent-amber); outline: none; }
+        .dynamic-row { display: flex; gap: 8px; margin-bottom: 10px; align-items: center; background: #1a1a1a; padding: 10px; border-radius: 8px; }
+        .editor-label { display: block; color: var(--accent-amber); font-size: 0.85rem; margin-bottom: 5px; font-weight: bold; text-transform: uppercase; }
         
-        this.addIngredientRow();
-        this.addStepRow();
+        .recipe-detail-card { background: var(--surface-color); border: 1px solid #333; border-radius: 12px; padding: 20px; margin-bottom: 20px; }
+        .ing-row { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #222; font-size: 0.95rem; }
+        .step-row { display: flex; gap: 12px; margin-bottom: 15px; background: #111; padding: 12px; border-radius: 8px; border-left: 3px solid #555; }
+        .step-row.timer { border-left-color: #4d4dff; background: rgba(77, 77, 255, 0.05); }
+        .step-row.interval { border-left-color: var(--accent-amber); background: rgba(255, 140, 0, 0.05); }
+    </style>
+</head>
+<body>
 
-        this.showView('editor');
-    },
+    <header>Rezeptbuch</header>
 
-    editCurrentRecipe: function() {
-        if (!this.currentRecipeData) return;
-        const r = this.currentRecipeData;
-        const details = r.details || {};
-
-        document.getElementById('editor-title').innerText = "Rezept bearbeiten";
-        document.getElementById('edit-id').value = r.id;
-        document.getElementById('edit-name').value = r.name;
-        
-        const ingList = document.getElementById('editor-ingredients-list');
-        ingList.innerHTML = '';
-        if (details.ingredients) {
-            details.ingredients.forEach(ing => this.addIngredientRow(ing.name, ing.amount, ing.unit));
-        }
-
-        const stepsList = document.getElementById('editor-steps-list');
-        stepsList.innerHTML = '';
-        if (details.steps) {
-            details.steps.forEach(s => this.addStepRow(s.type, s.text, s.duration, s.unit, s.cycles, s.pauses));
-        }
-
-        this.showView('editor');
-    },
-
-    addIngredientRow: function(name = '', amount = '', unit = 'g') {
-        const container = document.getElementById('editor-ingredients-list');
-        const row = document.createElement('div');
-        row.className = 'dynamic-row';
-        row.innerHTML = `
-            <input type="text" class="recipe-input ing-name" placeholder="Zutat (z.B. Salz)" value="${name}" style="flex: 2;">
-            <input type="number" class="recipe-input ing-amount" placeholder="Menge" value="${amount}" style="flex: 1;">
-            <select class="recipe-select ing-unit" style="flex: 1;">
-                <option value="g" ${unit==='g'?'selected':''}>g</option>
-                <option value="kg" ${unit==='kg'?'selected':''}>kg</option>
-                <option value="ml" ${unit==='ml'?'selected':''}>ml</option>
-                <option value="Stk" ${unit==='Stk'?'selected':''}>Stk</option>
-            </select>
-            <span class="material-symbols-outlined" style="color: var(--accent-danger); cursor: pointer; padding: 5px;" onclick="this.parentElement.remove()">close</span>
-        `;
-        container.appendChild(row);
-    },
-
-    addStepRow: function(type = 'task', text = '', duration = '', unit = 'Stunden', cycles = '', pauses = '') {
-        const container = document.getElementById('editor-steps-list');
-        const row = document.createElement('div');
-        row.className = 'dynamic-row';
-        row.style.flexDirection = 'column';
-        row.style.alignItems = 'stretch';
-        
-        row.innerHTML = `
-            <div style="display: flex; gap: 8px;">
-                <select class="recipe-select step-type" style="flex: 1;" onchange="window.rezeptManager.toggleStepFields(this)">
-                    <option value="task" ${type==='task'?'selected':''}>✅ Einfacher Schritt</option>
-                    <option value="timer" ${type==='timer'?'selected':''}>⏳ Wartezeit / Timer</option>
-                    <option value="interval" ${type==='interval'?'selected':''}>🔁 Intervall (z.B. Räuchern)</option>
-                </select>
-                <span class="material-symbols-outlined" style="color: var(--accent-danger); cursor: pointer; padding: 10px;" onclick="this.parentElement.parentElement.remove()">delete</span>
-            </div>
-            <input type="text" class="recipe-input step-text" placeholder="Beschreibung (z.B. Fleisch wolfen)" value="${text}">
+    <main>
+        <div id="recipe-list-view" style="display: block;">
             
-            <div class="timer-fields" style="display: ${type === 'task' ? 'none' : 'flex'}; gap: 8px;">
-                <input type="number" class="recipe-input step-duration" placeholder="Dauer" value="${duration}" style="flex: 1;">
-                <select class="recipe-select step-unit" style="flex: 1;">
-                    <option value="Minuten" ${unit==='Minuten'?'selected':''}>Minuten</option>
-                    <option value="Stunden" ${unit==='Stunden'?'selected':''}>Stunden</option>
-                    <option value="Tage" ${unit==='Tage'?'selected':''}>Tage</option>
-                </select>
-            </div>
+            <button class="action-btn" style="background-color: var(--accent-amber); color: #000; margin-bottom: 25px; height: 55px; font-size: 1.1rem;" onclick="window.rezeptManager.openEditor()">
+                <span class="material-symbols-outlined">add_circle</span> Neues Rezept erstellen
+            </button>
             
-            <div class="interval-fields" style="display: ${type === 'interval' ? 'flex' : 'none'}; gap: 8px; margin-top: 8px;">
-                <input type="number" class="recipe-input step-cycles" placeholder="Durchgänge (z.B. 3)" value="${cycles}" style="flex: 1;">
-                <input type="number" class="recipe-input step-pauses" placeholder="Pause (Std) (z.B. 12)" value="${pauses}" style="flex: 1;">
+            <div class="section-title">Deine Wurstsorten</div>
+            <div id="recipe-page-list">
+                <p class="text-muted" style="text-align: center;">Lade Rezepte...</p>
             </div>
-        `;
-        container.appendChild(row);
-    },
+        </div>
 
-    toggleStepFields: function(selectElement) {
-        const row = selectElement.parentElement.parentElement;
-        const type = selectElement.value;
-        row.querySelector('.timer-fields').style.display = type === 'task' ? 'none' : 'flex';
-        row.querySelector('.interval-fields').style.display = type === 'interval' ? 'flex' : 'none';
-    },
+        <div id="recipe-detail-view" style="display: none;">
+            <div class="sub-header" style="padding: 0 0 15px 0; margin-bottom: 15px; border-bottom: 1px solid #333;">
+                <div class="back-btn" onclick="window.rezeptManager.showView('list')"><span class="material-symbols-outlined">arrow_back_ios</span> Zurück</div>
+                <div class="header-title" id="detail-title" style="color: white; font-size: 1.1rem;">Rezept</div>
+                <span class="material-symbols-outlined" style="color: var(--accent-amber); cursor: pointer;" onclick="window.rezeptManager.editCurrentRecipe()">edit</span>
+            </div>
 
-    saveRecipe: async function() {
-        const id = document.getElementById('edit-id').value;
-        const nameVal = document.getElementById('edit-name').value.trim();
-        if (!nameVal) { alert("Bitte gib dem Rezept einen Namen!"); return; }
+            <div class="recipe-detail-card" style="border-top: 3px solid var(--accent-amber);">
+                <div style="font-size: 0.8rem; color: var(--accent-amber); text-transform: uppercase; margin-bottom: 15px; letter-spacing: 1px;">
+                    <span class="material-symbols-outlined" style="vertical-align: middle; font-size: 1.1rem;">scale</span> Normiert auf 1 kg Fleischmasse
+                </div>
+                <h4 style="margin: 0 0 10px 0; color: #aaa;">Zutaten pro Kilo</h4>
+                <div id="detail-ingredients" style="margin-bottom: 25px;"></div>
+                <h4 style="margin: 0 0 10px 0; color: #aaa;">Ablauf & Prozesse</h4>
+                <div id="detail-steps"></div>
+            </div>
 
-        const ingredients = [];
-        document.querySelectorAll('#editor-ingredients-list .dynamic-row').forEach(row => {
-            const name = row.querySelector('.ing-name').value.trim();
-            const amount = Number(row.querySelector('.ing-amount').value);
-            const unit = row.querySelector('.ing-unit').value;
-            if (name && amount > 0) ingredients.push({ name, amount, unit });
-        });
+            <button class="action-btn" style="background-color: #2e7d32; color: white; height: 60px; font-size: 1.1rem; margin-bottom: 40px;" onclick="window.rezeptManager.startProduction()">
+                <span class="material-symbols-outlined">rocket_launch</span> Produktion jetzt starten
+            </button>
+        </div>
 
-        const steps = [];
-        document.querySelectorAll('#editor-steps-list .dynamic-row').forEach(row => {
-            const type = row.querySelector('.step-type').value;
-            const text = row.querySelector('.step-text').value.trim();
-            if (!text) return; 
-            
-            let stepData = { type, text };
-            if (type !== 'task') {
-                stepData.duration = Number(row.querySelector('.step-duration').value);
-                stepData.unit = row.querySelector('.step-unit').value;
-            }
-            if (type === 'interval') {
-                stepData.cycles = Number(row.querySelector('.step-cycles').value);
-                stepData.pauses = Number(row.querySelector('.step-pauses').value);
-            }
-            steps.push(stepData);
-        });
+        <div id="recipe-editor-view" style="display: none;">
+            <div class="sub-header" style="padding: 0 0 15px 0; margin-bottom: 15px; border-bottom: 1px solid #333;">
+                <div class="back-btn" onclick="window.rezeptManager.showView('list')"><span class="material-symbols-outlined">arrow_back_ios</span> Abbrechen</div>
+                <div class="header-title" id="editor-title" style="color: white;">Rezept Editor</div>
+            </div>
 
-        const detailsObj = { ingredients, steps };
-        const payload = { name: nameVal, details: detailsObj };
+            <input type="hidden" id="edit-id">
 
-        try {
-            let url = `${supabaseUrl}/rest/v1/recipes`;
-            let method = 'POST';
+            <label class="editor-label">Name der Wurst</label>
+            <input type="text" id="edit-name" class="recipe-input" style="margin-bottom: 20px;" placeholder="z.B. Feuerabend Speck">
 
-            if (id) {
-                url = `${url}?id=eq.${id}`;
-                method = 'PATCH';
-            }
+            <label class="editor-label">Zutaten (Genormt auf 1 kg Fleisch)</label>
+            <div id="editor-ingredients-list"></div>
+            <button onclick="window.rezeptManager.addIngredientRow()" style="background: none; border: 1px dashed var(--accent-amber); color: var(--accent-amber); padding: 10px; width: 100%; border-radius: 8px; cursor: pointer; margin-bottom: 25px;">
+                + Zutat hinzufügen
+            </button>
 
-            const response = await fetch(url, {
-                method: method,
-                headers: { 'apikey': supabaseKey, 'Authorization': `Bearer ${supabaseKey}`, 'Content-Type': 'application/json' },
-                body: JSON.stringify(payload)
-            });
+            <label class="editor-label">Ablauf-Schritte (Aufgaben & Timer)</label>
+            <div id="editor-steps-list"></div>
+            <button onclick="window.rezeptManager.addStepRow()" style="background: none; border: 1px dashed #4d4dff; color: #4d4dff; padding: 10px; width: 100%; border-radius: 8px; cursor: pointer; margin-bottom: 25px;">
+                + Arbeitsschritt / Zeit hinzufügen
+            </button>
 
-            if (response.ok) {
-                this.showView('list');
-                await this.loadList();
-            } else {
-                alert("Fehler beim Speichern!");
-            }
-        } catch (e) { alert("Netzwerkfehler"); }
-    },
+            <button class="action-btn" style="background-color: #2e7d32; color: white; height: 55px; margin-bottom: 30px;" onclick="window.rezeptManager.saveRecipe()">
+                <span class="material-symbols-outlined">save</span> Rezept abspeichern
+            </button>
+        </div>
+    </main>
 
-    deleteRecipe: async function(id, name) {
-        if (!confirm(`Rezept "${name}" wirklich löschen?`)) return;
-        try {
-            const res = await fetch(`${supabaseUrl}/rest/v1/recipes?id=eq.${id}`, {
-                method: 'DELETE',
-                headers: { 'apikey': supabaseKey, 'Authorization': `Bearer ${supabaseKey}` }
-            });
-            if (res.ok) await this.loadList();
-        } catch (e) { alert("Fehler beim Löschen."); }
-    },
+    <nav>
+        <div class="nav-item" onclick="window.location.href='index.html'"><span class="material-symbols-outlined">dashboard</span><span>Home</span></div>
+        <div class="nav-item active"><span class="material-symbols-outlined">menu_book</span><span>Rezepte</span></div>
+        <div class="nav-item" onclick="window.location.href='lager.html'"><span class="material-symbols-outlined">inventory</span><span>Lager</span></div>
+        <div class="nav-item" onclick="window.location.href='kunden.html'"><span class="material-symbols-outlined">group</span><span>Kunden</span></div>
+    </nav>
 
-    startProduction: function() {
-        if (!this.currentRecipeData) return;
-        // HIER IST DIE WICHTIGE ÄNDERUNG: Wir leiten zur Produktion weiter!
-        window.location.href = `produktion.html?id=${this.currentRecipeData.id}`;
-    }
-};
-
-document.addEventListener('DOMContentLoaded', () => window.rezeptManager.init());
+    <script src="db.js?v=3"></script>
+    <script src="app.js?v=3"></script>
+    <script src="rezepte.js?v=3"></script>
+</body>
+</html>
