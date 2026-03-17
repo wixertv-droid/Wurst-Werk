@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Kunden - Wurstwerk</title>
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined" rel="stylesheet" />
+    <link rel="stylesheet" href="style.css">
+    <style>
+        .customer-input {
+            width: 100%; padding: 15px; background: #222; border: 1px solid #444;
+            color: white; border-radius: 12px; font-size: 1.1rem; box-sizing: border-box;
+            margin-bottom: 15px;
+        }
+        .customer-input:focus { border-color: var(--accent-amber); outline: none; background: #2a2a2a; }
+    </style>
+</head>
+<body>
+
+    <header>Kundenverwaltung</header>
+
+    <main>
+        <div class="stat-card" style="border-top: 3px solid var(--accent-amber); margin-bottom: 25px;">
+            <label style="display: block; color: var(--text-muted); font-size: 0.85rem; margin-bottom: 8px; text-transform: uppercase;">Neuen Kunden anlegen</label>
+            <input type="text" id="new-customer-name" class="customer-input" placeholder="z.B. Familie Mustermann">
+            
+            <button class="action-btn" onclick="kundenManager.addCustomer()">
+                <span class="material-symbols-outlined">person_add</span> Kunde speichern
+            </button>
+        </div>
+
+        <div class="section-title">Dein Kundenstamm</div>
+        <div id="customer-page-list">
+            <p class="text-muted" style="text-align: center; margin-top: 20px;">Lade Kunden...</p>
+        </div>
+    </main>
+
+    <nav>
+        <div class="nav-item" onclick="window.location.href='index.html'"><span class="material-symbols-outlined">dashboard</span><span>Home</span></div>
+        <div class="nav-item" onclick="window.location.href='rezepte.html'"><span class="material-symbols-outlined">menu_book</span><span>Rezepte</span></div>
+        <div class="nav-item" onclick="window.location.href='lager.html'"><span class="material-symbols-outlined">inventory</span><span>Lager</span></div>
+        <div class="nav-item active"><span class="material-symbols-outlined">group</span><span>Kunden</span></div>
+    </nav>
+
+    <script src="db.js"></script>
+    <script src="app.js"></script>
+    <script src="kunden.js"></script>
+</body>
+</html>
