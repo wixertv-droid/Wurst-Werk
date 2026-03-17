@@ -1,4 +1,7 @@
 window.lagerManager = {
+    currentFilter: 'Alles',
+    inventoryData: [],
+
     init: async function() {
         await this.loadList();
     },
@@ -8,60 +11,130 @@ window.lagerManager = {
         if (!container) return;
 
         try {
-            const items = await db.getInventory();
-            if (!items || items.length === 0) {
-                container.innerHTML = '<p class="text-muted" style="text-align: center;">Dein Lager ist noch leer.</p>';
-                return;
-            }
-
-            // Gruppieren nach Kategorien
-            const grouped = {};
-            items.forEach(item => {
-                const cat = item.category || 'Sonstiges';
-                if (!grouped[cat]) grouped[cat] = [];
-                grouped[cat].push(item);
-            });
-
-            container.innerHTML = '';
-
-            // Kategorien durchlaufen und unsere schönen list-cards rendern
-            for (const [category, catItems] of Object.entries(grouped)) {
-                
-                // Passendes Icon zur Kategorie suchen
-                let iconName = 'inventory_2';
-                if (category === 'Fleisch') iconName = 'set_meal';
-                if (category === 'Gewürze') iconName = 'eco';
-                if (category === 'Darm') iconName = 'looks';
-                if (category === 'Pfandglas') iconName = 'kitchen';
-                if (category === 'Maschine') iconName = 'blender';
-
-                let catHtml = `<div class="section-title" style="margin-top: 25px;">${category}</div>`;
-                
-                catItems.forEach(i => {
-                    const safeData = encodeURIComponent(JSON.stringify(i));
-                    catHtml += `
-                        <div class="list-card" style="border-left: 3px solid var(--accent-amber); cursor: pointer;" onclick="window.lagerManager.openEditor('${safeData}')">
-                            <div class="icon-box" style="background: #222;">
-                                <span class="material-symbols-outlined" style="color: var(--accent-amber);">${iconName}</span>
-                            </div>
-                            <div class="info">
-                                <h3 style="font-size: 1.1rem; margin-bottom: 4px;">${i.name}</h3>
-                                <p style="color: var(--text-muted); font-size: 0.85rem; margin: 0;">
-                                    ${i.amount} ${i.unit} | ${Number(i.price).toFixed(2)} €
-                                </p>
-                            </div>
-                            <button onclick="event.stopPropagation(); window.lagerManager.deleteItem('${i.id}', '${i.name}')" style="background:none; border:none; color:var(--accent-danger); cursor:pointer; padding: 10px;">
-                                <span class="material-symbols-outlined">delete</span>
-                            </button>
-                        </div>
-                    `;
-                });
-                container.innerHTML += catHtml;
-            }
-
+            this.inventoryData = await db.getInventory();
+            this.renderFilteredList();
+            this.updateGlassStats();
         } catch (e) {
             container.innerHTML = '<p class="text-muted" style="color: var(--accent-danger);">Fehler beim Laden des Lagers.</p>';
         }
+    },
+
+    setFilter: function(filterName) {
+        this.currentFilter = filterName;
+        
+        // Pillen umfärben
+        document.getElementById('filter-all').className = filterName === 'Alles' ? 'filter-pill' : 'filter-pill inactive';
+        document.getElementById('filter-fleisch').className = filterName === 'Fleisch' ? 'filter-pill' : 'filter-pill inactive';
+        document.getElementById('filter-gewuerze').className = filterName === 'Gewürze' ? 'filter-pill' : 'filter-pill inactive';
+        document.getElementById('filter-material').className = filterName === 'Verpackung' ? 'filter-pill' : 'filter-pill inactive';
+        
+        this.renderFilteredList();
+    },
+
+    renderFilteredList: function() {
+        const container = document.getElementById('inventory-list-container');
+        container.innerHTML = '';
+
+        let filteredItems = this.inventoryData.filter(i => i.category !== 'Pfandglas');
+
+        if (this.currentFilter !== 'Alles') {
+            filteredItems = filteredItems.filter(i => i.category === this.currentFilter);
+        }
+
+        if (filteredItems.length === 0) {
+            container.innerHTML = '<p class="text-muted" style="text-align: center;">Keine Artikel in dieser Kategorie.</p>';
+            return;
+        }
+
+        filteredItems.forEach(i => {
+            const safeData = encodeURIComponent(JSON.stringify(i));
+            
+            // Icon Logik
+            let icon = 'grain';
+            if (i.category === 'Fleisch') icon = 'set_meal';
+            if (i.category === 'Verpackung') icon = 'inventory_2';
+            
+            container.innerHTML += `
+                <div class="lager-item-card" onclick="window.lagerManager.openEditor('${safeData}')">
+                    <div class="lager-icon-box">
+                        <span class="material-symbols-outlined" style="color: #aaa;">${icon}</span>
+                    </div>
+                    <div style="flex: 1;">
+                        <h3 style="margin: 0; font-size: 1.1rem; color: white;">${i.name}</h3>
+                        <p style="margin: 3px 0 0 0; color: #aaa; font-size: 0.85rem;">${i.amount} ${i.unit} | Wert: ${Number(i.price).toFixed(2)}€</p>
+                    </div>
+                    <div onclick="event.stopPropagation(); window.lagerManager.deleteItem('${i.id}', '${i.name}')" style="background: #331111; padding: 10px; border-radius: 8px; display: flex; align-items: center; justify-content: center;">
+                        <span class="material-symbols-outlined" style="color: var(--accent-danger);">delete</span>
+                    </div>
+                </div>
+            `;
+        });
+    },
+
+    updateGlassStats: async function() {
+        let g250 = 0, g400 = 0;
+        
+        // Aus dem Lager zählen
+        const gl250Item = this.inventoryData.find(i => i.category === 'Pfandglas' && i.name.includes('250'));
+        const gl400Item = this.inventoryData.find(i => i.category === 'Pfandglas' && i.name.includes('400'));
+        
+        if (gl250Item) g250 = Number(gl250Item.amount);
+        if (gl400Item) g400 = Number(gl400Item.amount);
+
+        // Vom Kunden zählen
+        let kunden250 = 0, kunden400 = 0;
+        try {
+            const kunden = await db.getCustomers();
+            kunden.forEach(k => {
+                kunden250 += Number(k.pfand_250) || 0;
+                kunden400 += Number(k.pfand_400) || 0;
+            });
+        } catch (e) {}
+
+        document.getElementById('glass-250-stock').innerText = g250 - kunden250;
+        document.getElementById('glass-250-kunden').innerText = kunden250;
+        
+        document.getElementById('glass-400-stock').innerText = g400 - kunden400;
+        document.getElementById('glass-400-kunden').innerText = kunden400;
+
+        const infoText = document.getElementById('pfand-info-text');
+        if (kunden250 > 0 || kunden400 > 0) {
+            infoText.innerText = "⚠️ Achtung: Gläser im Umlauf!";
+            infoText.style.color = "var(--accent-amber)";
+        } else {
+            infoText.innerText = "Keine Gläser im Umlauf.";
+            infoText.style.color = "var(--text-muted)";
+        }
+    },
+
+    changeGlass: async function(type, modifier) {
+        let amountStr = prompt(`Wie viele ${type}ml Gläser möchtest du ${modifier > 0 ? 'hinzufügen' : 'abziehen'}?`, "10");
+        if (!amountStr) return;
+        let amount = parseInt(amountStr);
+        if (isNaN(amount) || amount <= 0) return;
+
+        let item = this.inventoryData.find(i => i.category === 'Pfandglas' && i.name.includes(type));
+        
+        try {
+            if (item) {
+                let newAmount = Number(item.amount) + (amount * modifier);
+                if (newAmount < 0) newAmount = 0;
+                await fetch(`${supabaseUrl}/rest/v1/inventory?id=eq.${item.id}`, {
+                    method: 'PATCH',
+                    headers: { 'apikey': supabaseKey, 'Authorization': `Bearer ${supabaseKey}`, 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ amount: newAmount })
+                });
+            } else if (modifier > 0) {
+                // Neues Glas anlegen
+                await fetch(`${supabaseUrl}/rest/v1/inventory`, {
+                    method: 'POST',
+                    headers: { 'apikey': supabaseKey, 'Authorization': `Bearer ${supabaseKey}`, 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ name: `Pfandglas ${type}ml`, category: 'Pfandglas', amount: amount, unit: 'Stk', price: 0 })
+                });
+            }
+            await this.loadList();
+            if(window.app && window.app.refreshData) window.app.refreshData();
+        } catch (e) { alert("Fehler beim Speichern!"); }
     },
 
     openEditor: function(encodedData = null) {
@@ -101,10 +174,7 @@ window.lagerManager = {
             price: Number(document.getElementById('edit-price').value)
         };
 
-        if (!payload.name) {
-            alert("Bitte gib einen Namen ein!");
-            return;
-        }
+        if (!payload.name) { alert("Bitte gib einen Namen ein!"); return; }
 
         try {
             let url = `${supabaseUrl}/rest/v1/inventory`;
@@ -124,12 +194,8 @@ window.lagerManager = {
                 this.closeEditor();
                 await this.loadList();
                 if(window.app && window.app.refreshData) window.app.refreshData(); 
-            } else {
-                alert("Fehler beim Speichern!");
-            }
-        } catch (e) {
-            alert("Netzwerkfehler beim Speichern.");
-        }
+            } else { alert("Fehler beim Speichern!"); }
+        } catch (e) { alert("Netzwerkfehler beim Speichern."); }
     },
 
     deleteItem: async function(id, name) {
@@ -143,9 +209,7 @@ window.lagerManager = {
                 await this.loadList();
                 if(window.app && window.app.refreshData) window.app.refreshData(); 
             }
-        } catch (e) {
-            alert("Fehler beim Löschen.");
-        }
+        } catch (e) { alert("Fehler beim Löschen."); }
     }
 };
 
