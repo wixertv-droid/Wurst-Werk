@@ -28,18 +28,18 @@
             <div class="dashboard-grid">
                 <div class="stat-card">
                     <span class="material-symbols-outlined">inventory_2</span>
-                    <span class="stat-value">42</span>
+                    <span id="stat-gläser" class="stat-value">--</span>
                     <span class="stat-label">Gläser auf Lager</span>
                 </div>
-                <div class="stat-card" style="border-color: rgba(255, 68, 68, 0.3);">
-                    <span class="material-symbols-outlined" style="color: var(--accent-danger);">warning</span>
-                    <span class="stat-value" style="color: var(--accent-danger);">Knapp</span>
-                    <span class="stat-label">Majoran fehlt</span>
+                <div class="stat-card">
+                    <span class="material-symbols-outlined">weight</span>
+                    <span id="stat-fleisch" class="stat-value">--</span>
+                    <span class="stat-label">Fleisch gesamt</span>
                 </div>
             </div>
 
             <button class="action-btn" style="margin-top: 25px; background-color: #2e7d32; color: white;" onclick="assistant.logPurchase('Nacken', 3000)">
-                <span class="material-symbols-outlined">add_shopping_cart</span> Einkauf: 3kg Nacken scannen
+                <span class="material-symbols-outlined">add_shopping_cart</span> Einkauf: 3kg Nacken buchen
             </button>
 
             <div id="suggestion-box" class="suggestion-card" style="display: none;">
@@ -52,13 +52,12 @@
 
         <div id="view-rezepte" class="view">
             <div class="section-title">Produktion starten</div>
-            
             <div class="list-card" style="flex-direction: column; align-items: flex-start;">
                 <div style="display: flex; align-items: center; width: 100%;">
                     <div class="icon-box"><span class="material-symbols-outlined">kitchen</span></div>
                     <div class="info">
                         <h3>Mettwurst im Glas</h3>
-                        <p>Zutaten für 10 Gläser vorrätig</p>
+                        <p>Zutaten für 10 Gläser prüfen...</p>
                     </div>
                 </div>
                 <button class="action-btn" onclick="production.startRun('Mettwurst im Glas', 7200)">
@@ -68,18 +67,16 @@
         </div>
 
         <div id="view-lager" class="view">
-            <div class="section-title">Inventar & Chargen</div>
-            <p class="text-muted" style="text-align: center; margin-top: 50px;">Lade Datenbank...</p>
+            <div class="section-title">Inventar & Bestand</div>
+            <div id="inventory-list">
+                <p class="text-muted" style="text-align: center; margin-top: 50px;">Lade Datenbank...</p>
+            </div>
         </div>
 
         <div id="view-kunden" class="view">
             <div class="section-title">Kunden & Glaspfand</div>
-            <div class="list-card" style="border-left: 3px solid var(--accent-amber);">
-                <div class="icon-box"><span class="material-symbols-outlined">person</span></div>
-                <div class="info">
-                    <h3>Thomas Müller</h3>
-                    <p>Schuldet 5x Glaspfand</p>
-                </div>
+            <div id="customer-list">
+                <p class="text-muted" style="text-align: center; margin-top: 50px;">Lade Kunden...</p>
             </div>
         </div>
     </main>
@@ -103,6 +100,7 @@
         </div>
     </nav>
 
+    <script src="db.js"></script>
     <script src="app.js"></script>
     <script src="production.js"></script>
     <script src="assistant.js"></script>
