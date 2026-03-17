@@ -1,40 +1,30 @@
-const supabaseUrl = 'https://lphunsmxoruyovvhjrxy.supabase.co';
-const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxwaHVuc214b3J1eW92dmhqcnh5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM3NDYxNDAsImV4cCI6MjA4OTMyMjE0MH0.LhW4nqr98xAU-0eun-qTByJBxBjRk767CTzVCtB0eEI';
+// --- Supabase Zugangsdaten ---
+// BITTE HIER DEINE EIGENEN DATEN EINTRAGEN!
+const supabaseUrl = 'DEINE_SUPABASE_URL_HIER';
+const supabaseKey = 'DEIN_SUPABASE_ANON_KEY_HIER';
 
 const db = {
-    // Daten aus dem Lager holen
+    // Holt den gesamten Lagerbestand aus Supabase
     getInventory: async function() {
         try {
-            const response = await fetch(`${supabaseUrl}/rest/v1/inventory?select=*&order=name.asc`, {
+            const response = await fetch(`${supabaseUrl}/rest/v1/inventory?select=*`, {
                 headers: {
                     'apikey': supabaseKey,
                     'Authorization': `Bearer ${supabaseKey}`
                 }
             });
+            
+            if (!response.ok) {
+                throw new Error('Netzwerk-Fehler beim Laden der Datenbank');
+            }
+            
             return await response.json();
-        } catch (e) {
-            console.error("Fehler beim Abrufen des Lagers:", e);
-            return [];
-        }
-    },
-
-    // Neuen Einkauf speichern
-    insertInventory: async function(itemData) {
-        try {
-            const response = await fetch(`${supabaseUrl}/rest/v1/inventory`, {
-                method: 'POST',
-                headers: {
-                    'apikey': supabaseKey,
-                    'Authorization': `Bearer ${supabaseKey}`,
-                    'Content-Type': 'application/json',
-                    'Prefer': 'return=minimal'
-                },
-                body: JSON.stringify(itemData)
-            });
-            return response;
-        } catch (e) {
-            console.error("Netzwerkfehler beim Speichern:", e);
-            return { ok: false };
+        } catch (error) {
+            console.error("Datenbank-Fehler (getInventory):", error);
+            return []; // Gibt ein leeres Array zurück, damit die App bei einem Fehler nicht abstürzt
         }
     }
+    
+    // Anmerkung: Das Speichern und Updaten machen wir im nächsten Schritt in der assistant.js, 
+    // da dort die Logik für "Produkt vorhanden = addieren" passiert.
 };
