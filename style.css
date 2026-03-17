@@ -1,4 +1,3 @@
-/* --- Basis & Reset --- */
 * {
     box-sizing: border-box;
     margin: 0;
@@ -13,17 +12,14 @@ body {
     padding-bottom: 90px;
 }
 
-/* --- Farbschema: Smoker / Feuer / Fleisch --- */
 :root {
-    --primary: #dd2c00; /* Tiefes Feuer-Orange-Rot */
+    --primary: #dd2c00; 
     --primary-light: #ff6e40;
     --primary-dark: #bf360c;
-    --bg-dark: #121212;
     --card-bg: #1e1e1e;
     --border-color: #333;
 }
 
-/* --- Header --- */
 .main-header {
     background: linear-gradient(135deg, var(--primary-dark) 0%, var(--primary) 100%);
     padding: 25px 20px;
@@ -40,10 +36,9 @@ body {
 
 .brand {
     font-weight: 900;
-    font-size: 1.5rem;
+    font-size: 1.4rem;
     color: #ffffff;
     letter-spacing: 1px;
-    text-transform: uppercase;
 }
 
 .header-stats {
@@ -53,11 +48,10 @@ body {
     background: rgba(0, 0, 0, 0.3);
     padding: 6px 12px;
     border-radius: 20px;
-    font-size: 0.8rem;
+    font-size: 0.75rem;
     color: #ffd180;
 }
 
-/* --- Layout & Sections --- */
 main {
     padding: 0 15px;
     max-width: 800px;
@@ -83,12 +77,12 @@ main {
     gap: 8px;
 }
 
-/* --- Dashboard Cards --- */
+/* Dashboard */
 .dashboard-grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
     gap: 15px;
-    margin-bottom: 25px;
+    margin-bottom: 20px;
 }
 
 .dash-card {
@@ -97,201 +91,74 @@ main {
     border-radius: 16px;
     padding: 15px;
     display: flex;
-    align-items: flex-start;
+    align-items: center;
     gap: 12px;
-    box-shadow: 0 4px 10px rgba(0,0,0,0.2);
 }
 
 .dash-card .card-icon {
     color: var(--primary);
-    font-size: 28px;
+    font-size: 26px;
     background: rgba(221, 44, 0, 0.1);
-    padding: 8px;
-    border-radius: 10px;
+    padding: 10px;
+    border-radius: 12px;
 }
 
-.card-info {
-    display: flex;
-    flex-direction: column;
-}
+.card-info small { font-size: 0.75rem; color: #aaa; }
+.card-info strong { display: block; font-size: 1.1rem; color: #fff; }
 
-.card-info small {
-    font-size: 0.75rem;
-    color: #aaa;
-}
-
-.card-info strong {
-    font-size: 1.1rem;
-    color: #fff;
-    margin-top: 2px;
-}
-
-/* --- Eingabe-Formulare (Einkauf) --- */
+/* Einkauf & Forms */
 .purchase-container {
     background: var(--card-bg);
     border-radius: 16px;
     padding: 20px;
     border: 1px solid var(--border-color);
-    box-shadow: 0 4px 20px rgba(0,0,0,0.2);
 }
 
-.input-row {
-    margin-bottom: 15px;
-}
-
-.input-group label {
-    display: block;
-    font-size: 0.85rem;
-    color: #9e9e9e;
-    margin-bottom: 6px;
-    margin-left: 4px;
-}
-
+.input-row { margin-bottom: 15px; }
+.input-group label { display: block; font-size: 0.8rem; color: #9e9e9e; margin-bottom: 6px; margin-left: 4px; }
 .input-group input, .select-input {
-    width: 100%;
-    background: #2a2a2a;
-    border: 1.5px solid #333;
-    border-radius: 10px;
-    padding: 14px;
-    color: #fff;
-    font-size: 1rem;
-    transition: 0.2s;
+    width: 100%; background: #2a2a2a; border: 1.5px solid #333; border-radius: 10px; padding: 14px; color: #fff; font-size: 1rem;
 }
-
-.input-group input:focus, .select-input:focus {
-    outline: none;
-    border-color: var(--primary);
-    background: #333;
-}
+.input-group input:focus, .select-input:focus { outline: none; border-color: var(--primary); }
 
 .hint-badge {
-    background: rgba(221, 44, 0, 0.15);
-    color: var(--primary-light);
-    border: 1px solid rgba(221, 44, 0, 0.3);
-    font-size: 0.75rem;
-    padding: 5px 10px;
-    border-radius: 6px;
-    margin-top: 8px;
-    display: inline-block;
+    background: rgba(221, 44, 0, 0.15); color: var(--primary-light); border: 1px solid rgba(221, 44, 0, 0.3);
+    font-size: 0.75rem; padding: 5px 10px; border-radius: 6px; margin-top: 8px; display: inline-block;
 }
 
-/* --- Suchleiste Lager --- */
-.search-bar {
-    position: relative;
-    margin-bottom: 20px;
-}
-.search-bar .search-icon {
-    position: absolute;
-    left: 12px;
-    top: 50%;
-    transform: translateY(-50%);
-    color: #888;
-}
-.search-bar input {
-    width: 100%;
-    background: #1e1e1e;
-    border: 1px solid #333;
-    border-radius: 12px;
-    padding: 14px 14px 14px 45px;
-    color: white;
-    font-size: 1rem;
-}
-.search-bar input:focus {
-    border-color: var(--primary);
-    outline: none;
-}
-
-/* --- Buttons --- */
 .save-btn {
-    width: 100%;
-    background: var(--primary);
-    color: white;
-    border: none;
-    padding: 16px;
-    border-radius: 10px;
-    font-size: 1.1rem;
-    font-weight: 600;
-    cursor: pointer;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    gap: 8px;
-    margin-top: 20px;
-    box-shadow: 0 4px 12px rgba(221, 44, 0, 0.25);
+    width: 100%; background: var(--primary); color: white; border: none; padding: 16px; border-radius: 10px;
+    font-size: 1.1rem; font-weight: 600; cursor: pointer; display: flex; justify-content: center; align-items: center; gap: 8px;
 }
 
-.save-btn:active {
-    background: var(--primary-dark);
-    transform: scale(0.98);
-}
+/* Lager & Listen */
+.search-bar { position: relative; margin-bottom: 20px; }
+.search-bar .search-icon { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: #888; }
+.search-bar input { width: 100%; background: #1e1e1e; border: 1px solid #333; border-radius: 12px; padding: 14px 14px 14px 45px; color: white; font-size: 1rem; }
+.search-bar input:focus { border-color: var(--primary); outline: none; }
 
-/* --- Listen (Recent & Lager) --- */
 .recent-item, .lager-item {
-    background: var(--card-bg);
-    padding: 15px;
-    border-radius: 12px;
-    margin-bottom: 10px;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    border-left: 4px solid var(--primary);
-    border-right: 1px solid var(--border-color);
-    border-top: 1px solid var(--border-color);
-    border-bottom: 1px solid var(--border-color);
+    background: var(--card-bg); padding: 15px; border-radius: 12px; margin-bottom: 10px;
+    display: flex; justify-content: space-between; align-items: center; border-left: 4px solid var(--primary);
+    border: 1px solid var(--border-color); border-left: 4px solid var(--primary);
 }
 
-.lager-item-info strong {
-    display: block;
-    font-size: 1.05rem;
-    color: #fff;
-}
-.lager-item-info span {
-    font-size: 0.85rem;
-    color: #aaa;
-}
-.lager-item-amount {
-    font-size: 1.2rem;
-    font-weight: bold;
-    color: var(--primary-light);
-}
+.lager-item-info strong { display: block; font-size: 1rem; color: #fff; }
+.lager-item-info span { font-size: 0.85rem; color: #aaa; }
+.lager-item-amount { font-size: 1.1rem; font-weight: bold; color: var(--primary-light); text-align: right;}
+.lager-item-amount small { display: block; font-size: 0.7rem; color: #888; font-weight: normal; }
 
-/* --- Navigation Unten --- */
+/* Navigation */
 .bottom-nav {
-    position: fixed;
-    bottom: 0;
-    left: 0;
-    width: 100%;
-    background: var(--card-bg);
-    display: flex;
-    justify-content: space-around;
-    padding: 10px 0 20px 0;
-    border-top: 1px solid #333;
-    z-index: 1000;
+    position: fixed; bottom: 0; left: 0; width: 100%; background: var(--card-bg);
+    display: flex; justify-content: space-around; padding: 10px 0 20px 0; border-top: 1px solid #333; z-index: 1000;
 }
 
 .bottom-nav button {
-    background: none;
-    border: none;
-    color: #777;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    font-size: 0.75rem;
-    gap: 4px;
-    cursor: pointer;
-    flex: 1;
+    background: none; border: none; color: #777; display: flex; flex-direction: column; align-items: center;
+    font-size: 0.65rem; gap: 4px; cursor: pointer; flex: 1; /* Font-Size verkleinert wegen 5 Buttons */
 }
 
-.bottom-nav button.active {
-    color: var(--primary-light);
-}
-
-/* --- Utilities --- */
-.material-symbols-outlined {
-    vertical-align: middle;
-}
-
-@keyframes fadeIn {
-    from { opacity: 0; }
-    to { opacity: 1; }
-}
+.bottom-nav button.active { color: var(--primary-light); }
+.material-symbols-outlined { vertical-align: middle; }
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
