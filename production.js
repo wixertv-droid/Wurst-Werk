@@ -49,16 +49,25 @@ window.produktionManager = {
         container.innerHTML = '';
         this.mappedIngredients = [];
 
+        // WICHTIG: Gläser und Maschinen vorher komplett aussortieren, damit sie das Suchergebnis nicht verfälschen
+        const availableInv = this.inventory.filter(item => 
+            item.category !== 'Pfandglas' && item.category !== 'Maschine'
+        );
+
+        // Hilfsfunktion: Putzt alle Leerzeichen und Kommas weg, damit "Salz " und "Salz" als gleich erkannt werden
+        const cleanString = (str) => (str || '').replace(/[.,\/#!$%\^&\*;:{}=\-_`~()]/g,"").trim().toLowerCase();
+
         ingredients.forEach((ing, index) => {
-            const searchStr = (ing.name || '').toLowerCase();
+            const searchStr = cleanString(ing.name);
             
-            // Punkte-System für die Sortierung
+            // Punkte-System für die schlaue Sortierung
             const getScore = (itemName) => {
-                const nameL = (itemName || '').toLowerCase();
-                if (nameL === searchStr) return 100; // Exakter Treffer ganz nach oben
-                if (nameL.includes(searchStr) || searchStr.includes(nameL)) return 50; // Enthält das Wort
+                const nameL = cleanString(itemName);
+                if (nameL === searchStr) return 100; // Exakter Treffer (ohne Leerzeichen) ist der Jackpot
+                if (nameL.includes(searchStr) || searchStr.includes(nameL)) return 50; // Wenn das Wort komplett enthalten ist
                 
-                const searchWords = searchStr.split(/[ \-]/);
+                // Einzelne Wortteile checken
+                const searchWords = searchStr.split(/\s+/);
                 let score = 0;
                 searchWords.forEach(w => {
                     if (w.length > 2 && nameL.includes(w)) score += 10;
@@ -66,17 +75,19 @@ window.produktionManager = {
                 return score;
             };
 
-            // Lager sortieren
-            const sortedInv = [...this.inventory].sort((a, b) => {
+            // Liste sortieren: Höchste Punktzahl steht ganz oben!
+            const sortedInv = [...availableInv].sort((a, b) => {
                 const scoreA = getScore(a.name);
                 const scoreB = getScore(b.name);
                 
                 if (scoreA !== scoreB) {
                     return scoreB - scoreA; 
                 }
+                // Bei Gleichstand nach Alphabet in der Kategorie sortieren
                 return (a.category || '').localeCompare(b.category || '');
             });
 
+            // Den absoluten Top-Treffer automatisch auswählen (wenn er Punkte gemacht hat)
             let bestMatch = null;
             if (sortedInv.length > 0 && getScore(sortedInv[0].name) > 0) {
                 bestMatch = sortedInv[0];
@@ -85,7 +96,6 @@ window.produktionManager = {
             let optionsHtml = `<option value="">-- Bitte Lager-Artikel zuordnen --</option>`;
             
             sortedInv.forEach(item => {
-                if(item.category === 'Pfandglas' || item.category === 'Maschine') return; 
                 const isSelected = bestMatch && bestMatch.id === item.id ? 'selected' : '';
                 optionsHtml += `<option value="${item.id}" ${isSelected}>[${item.category}] ${item.name} (${item.amount} ${item.unit})</option>`;
             });
@@ -119,6 +129,7 @@ window.produktionManager = {
         const multiplier = parseFloat(document.getElementById('multiplier-input').value) || 0; 
         this.mappedIngredients.forEach(ing => {
             const calc = (ing.baseAmount * multiplier);
+            // Schönere Zahlen: Wenn es eine glatte Zahl ist, ohne Komma anzeigen
             document.getElementById(`calc-val-${ing.index}`).innerText = `${calc % 1 === 0 ? calc : calc.toFixed(1)} ${ing.unit}`;
         });
     },
