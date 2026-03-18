@@ -50,13 +50,41 @@ window.produktionManager = {
         this.mappedIngredients = [];
 
         ingredients.forEach((ing, index) => {
-            let bestMatch = this.inventory.find(item => 
-                item.name.toLowerCase().includes(ing.name.toLowerCase()) || 
-                ing.name.toLowerCase().includes(item.name.toLowerCase())
-            );
+            const searchStr = (ing.name || '').toLowerCase();
+            
+            // NEUE LOGIK: Punkte-System für die Sortierung
+            const getScore = (itemName) => {
+                const nameL = (itemName || '').toLowerCase();
+                if (nameL === searchStr) return 100; // Exakter Treffer ganz nach oben
+                if (nameL.includes(searchStr) || searchStr.includes(nameL)) return 50; // Enthält das Wort
+                
+                // Einzelne Wortfetzen prüfen (z.B. bei "Avo")
+                const searchWords = searchStr.split(/[ \-]/);
+                let score = 0;
+                searchWords.forEach(w => {
+                    if (w.length > 2 && nameL.includes(w)) score += 10;
+                });
+                return score;
+            };
+
+            // Lager sortieren: Der Artikel mit den meisten Punkten steht GANZ OBEN
+            const sortedInv = [...this.inventory].sort((a, b) => {
+                const scoreA = getScore(a.name);
+                const scoreB = getScore(b.name);
+                
+                if (scoreA !== scoreB) {
+                    return scoreB - scoreA; // Höchste Punktzahl zuerst
+                }
+                return (a.category || '').localeCompare(b.category || '');
+            });
+
+            // Der beste Treffer ist automatisch der erste Eintrag, WENN er Punkte > 0 hat
+            let bestMatch = null;
+            if (sortedInv.length > 0 && getScore(sortedInv[0].name) > 0) {
+                bestMatch = sortedInv[0];
+            }
 
             let optionsHtml = `<option value="">-- Bitte Lager-Artikel zuordnen --</option>`;
-            const sortedInv = [...this.inventory].sort((a,b) => a.category.localeCompare(b.category));
             
             sortedInv.forEach(item => {
                 if(item.category === 'Pfandglas' || item.category === 'Maschine') return; 
