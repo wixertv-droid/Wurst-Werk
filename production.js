@@ -52,13 +52,12 @@ window.produktionManager = {
         ingredients.forEach((ing, index) => {
             const searchStr = (ing.name || '').toLowerCase();
             
-            // NEUE LOGIK: Punkte-System für die Sortierung
+            // Punkte-System für die Sortierung
             const getScore = (itemName) => {
                 const nameL = (itemName || '').toLowerCase();
                 if (nameL === searchStr) return 100; // Exakter Treffer ganz nach oben
                 if (nameL.includes(searchStr) || searchStr.includes(nameL)) return 50; // Enthält das Wort
                 
-                // Einzelne Wortfetzen prüfen (z.B. bei "Avo")
                 const searchWords = searchStr.split(/[ \-]/);
                 let score = 0;
                 searchWords.forEach(w => {
@@ -67,18 +66,17 @@ window.produktionManager = {
                 return score;
             };
 
-            // Lager sortieren: Der Artikel mit den meisten Punkten steht GANZ OBEN
+            // Lager sortieren
             const sortedInv = [...this.inventory].sort((a, b) => {
                 const scoreA = getScore(a.name);
                 const scoreB = getScore(b.name);
                 
                 if (scoreA !== scoreB) {
-                    return scoreB - scoreA; // Höchste Punktzahl zuerst
+                    return scoreB - scoreA; 
                 }
                 return (a.category || '').localeCompare(b.category || '');
             });
 
-            // Der beste Treffer ist automatisch der erste Eintrag, WENN er Punkte > 0 hat
             let bestMatch = null;
             if (sortedInv.length > 0 && getScore(sortedInv[0].name) > 0) {
                 bestMatch = sortedInv[0];
@@ -139,7 +137,26 @@ window.produktionManager = {
             const invId = document.getElementById(`match-select-${ing.index}`).value;
             if (invId !== "" && invId !== "skip") {
                 const invItem = this.inventory.find(i => i.id == invId);
-                if(invItem) updates.push({ id: invItem.id, amount: Number(invItem.amount) - (ing.baseAmount * multiplier) });
+                if(invItem) {
+                    let neededAmount = ing.baseAmount * multiplier;
+                    let deductAmount = neededAmount;
+                    
+                    // --- AUTOMATISCHE UMRECHNUNG G <-> KG ---
+                    const recipeUnit = (ing.unit || '').toLowerCase();
+                    const invUnit = (invItem.unit || '').toLowerCase();
+                    
+                    if (recipeUnit === 'g' && invUnit === 'kg') {
+                        deductAmount = neededAmount / 1000;
+                    } else if (recipeUnit === 'kg' && invUnit === 'g') {
+                        deductAmount = neededAmount * 1000;
+                    } else if (recipeUnit === 'ml' && (invUnit === 'l' || invUnit === 'liter')) {
+                        deductAmount = neededAmount / 1000;
+                    } else if ((recipeUnit === 'l' || recipeUnit === 'liter') && invUnit === 'ml') {
+                        deductAmount = neededAmount * 1000;
+                    }
+                    
+                    updates.push({ id: invItem.id, amount: Number(invItem.amount) - deductAmount });
+                }
             }
         });
 
