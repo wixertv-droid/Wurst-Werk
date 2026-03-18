@@ -8,10 +8,14 @@
     <link rel="stylesheet" href="style.css">
     <style>
         .prod-card { background: var(--surface-color); border: 1px solid #333; border-radius: 12px; padding: 20px; margin-bottom: 20px; }
-        .calc-input { width: 100%; padding: 15px; background: #222; border: 2px solid #4caf50; color: white; border-radius: 8px; font-size: 1.5rem; text-align: center; margin-bottom: 20px; font-weight: bold; }
+        
+        /* HIER IST DER FIX FÜR DEN GRÜNEN RAND (box-sizing: border-box und outline: none) */
+        .calc-input { width: 100%; box-sizing: border-box; padding: 15px; background: #222; border: 2px solid #4caf50; color: white; border-radius: 8px; font-size: 1.5rem; text-align: center; margin-bottom: 20px; font-weight: bold; outline: none; }
+        .calc-input:focus { border-color: #66bb6a; }
+
         .match-row { display: flex; flex-direction: column; gap: 5px; padding: 12px 0; border-bottom: 1px dashed #333; }
         .match-header { display: flex; justify-content: space-between; align-items: center; font-size: 1.1rem; }
-        .match-select { width: 100%; padding: 10px; background: #111; border: 1px solid #444; color: white; border-radius: 6px; font-size: 0.95rem; }
+        .match-select { width: 100%; box-sizing: border-box; padding: 10px; background: #111; border: 1px solid #444; color: white; border-radius: 6px; font-size: 0.95rem; outline: none; }
         .match-select.matched { border-color: #4caf50; }
         .match-select.unmatched { border-color: var(--accent-danger); }
         
@@ -65,13 +69,13 @@
             </div>
 
             <button class="action-btn" style="background-color: #4caf50; color: white; height: 60px; font-size: 1.1rem; margin-bottom: 40px;" onclick="window.produktionManager.finishProduction()">
-                <span class="material-symbols-outlined">done_all</span> Produktion in Lager buchen
+                <span class="material-symbols-outlined">done_all</span> Produktion abschließen
             </button>
         </div>
 
     </main>
 
-    <script src="db.js?v=4"></script>
-    <script src="produktion.js?v=4"></script>
+    <script src="db.js?v=12"></script>
+    <script src="produktion.js?v=12"></script>
 </body>
 </html>
