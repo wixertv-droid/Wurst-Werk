@@ -3,18 +3,16 @@ window.app = {
     kundenData: [],
 
     init: async function() {
-        // 1. Lager & Kunden laden (Kugelsicher)
         try {
             await this.refreshData();
         } catch (e) {
             console.error("Fehler beim Laden der Basisdaten", e);
         }
 
-        // 2. Timer laden (nur wenn wir auf dem Dashboard sind!)
+        // Timer nur laden, wenn der Bereich auf der Seite (index.html) existiert
         if (document.getElementById('active-processes-list')) {
             try {
                 await this.loadActiveProcesses();
-                // Alle 30 Sekunden aktualisieren
                 setInterval(() => this.loadActiveProcesses(), 30000); 
             } catch (e) {
                 console.error("Fehler bei den Timern", e);
@@ -26,7 +24,6 @@ window.app = {
         const inv = await db.getInventory();
         const kund = await db.getCustomers();
         
-        // Sicherstellen, dass es Listen sind (verhindert Abstürze)
         this.inventoryData = Array.isArray(inv) ? inv : [];
         this.kundenData = Array.isArray(kund) ? kund : [];
         
@@ -37,10 +34,15 @@ window.app = {
         let wert = 0, g250 = 0, g400 = 0, u250 = 0, u400 = 0;
 
         this.inventoryData.forEach(i => {
-            if (i.category === 'Pfandglas') {
-                if (i.name.includes('250')) g250 += Number(i.amount) || 0;
-                else if (i.name.includes('400')) g400 += Number(i.amount) || 0;
-            } else if (i.category !== 'Maschine') { 
+            const nameStr = (i.name || '').toLowerCase();
+            const catStr = (i.category || '').toLowerCase();
+
+            // FIX: Gläser werden unter KEINEN Umständen mehr in den Warenwert berechnet!
+            if (catStr === 'pfandglas' || nameStr.includes('glas') || nameStr.includes('gläser')) {
+                if (nameStr.includes('250')) g250 += Number(i.amount) || 0;
+                else if (nameStr.includes('400')) g400 += Number(i.amount) || 0;
+                // Preis wird absichtlich ignoriert!
+            } else if (catStr !== 'maschine') { 
                 wert += Number(i.price) || 0; 
             }
         });
@@ -50,15 +52,13 @@ window.app = {
             u400 += Number(k.pfand_400) || 0;
         });
 
-        // Werte auf Startseite updaten
+        // Werte auf der Startseite (Dashboard) aktualisieren
         if(document.getElementById('stat-wert')) document.getElementById('stat-wert').innerText = wert.toFixed(2);
         if(document.getElementById('stat-glaeser-250')) document.getElementById('stat-glaeser-250').innerText = g250 - u250;
         if(document.getElementById('stat-glaeser-400')) document.getElementById('stat-glaeser-400').innerText = g400 - u400;
 
-        // Werte auf Lager-Seite updaten
+        // Werte auf der Lager-Seite aktualisieren
         if(document.getElementById('stat-warenwert')) document.getElementById('stat-warenwert').innerText = wert.toFixed(2);
-        if(document.getElementById('glass-250-available')) document.getElementById('glass-250-available').innerText = g250 - u250;
-        if(document.getElementById('glass-400-available')) document.getElementById('glass-400-available').innerText = g400 - u400;
     },
 
     loadActiveProcesses: async function() {
@@ -110,7 +110,7 @@ window.app = {
         
         const update = () => {
             const el = document.getElementById(`timer-${id}`);
-            if (!el) return; // Wenn Seite gewechselt wurde, stoppen
+            if (!el) return; 
             
             const dist = end - Date.now();
             
