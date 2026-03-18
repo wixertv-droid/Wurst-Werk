@@ -1,113 +1,158 @@
-const kundenManager = {
+window.kundenManager = {
+    kundenData: [],
+
     init: async function() {
         await this.loadList();
     },
 
     loadList: async function() {
-        const listEl = document.getElementById('customer-page-list');
-        if (!listEl) return;
+        const container = document.getElementById('kunden-list-container');
+        if (!container) return;
 
         try {
-            const customers = await db.getCustomers();
+            this.kundenData = await db.getCustomers();
             
-            // SICHERHEITS-CHECK: Hat die Datenbank einen Fehler gemeldet?
-            if (!Array.isArray(customers)) {
-                console.error("Supabase Fehler:", customers);
-                listEl.innerHTML = `<p class="text-muted" style="color: var(--accent-danger); text-align: center;">Verbindungsfehler oder Datenbank-Problem.</p>`;
+            if (!this.kundenData || this.kundenData.length === 0) {
+                container.innerHTML = '<p class="text-muted" style="text-align: center;">Keine Kunden angelegt.</p>';
                 return;
             }
 
-            listEl.innerHTML = '';
+            container.innerHTML = '';
+            
+            // Kunden alphabetisch sortieren
+            const sortedKunden = [...this.kundenData].sort((a, b) => a.name.localeCompare(b.name));
 
-            if (customers.length === 0) {
-                listEl.innerHTML = '<p class="text-muted" style="text-align: center;">Du hast noch keine Kunden angelegt.</p>';
-                return;
-            }
+            sortedKunden.forEach(k => {
+                const safeData = encodeURIComponent(JSON.stringify(k));
+                const pfandSumme = (Number(k.pfand_250) || 0) + (Number(k.pfand_400) || 0);
+                
+                // Warn-Farbe, wenn der Kunde Gläser hat
+                const pfandColor = pfandSumme > 0 ? 'var(--accent-danger)' : '#aaa';
+                const pfandText = pfandSumme > 0 ? `${pfandSumme} Gläser im Rückstand` : `Keine Pfandschulden`;
 
-            // Alphabetisch sortieren und anzeigen
-            customers.sort((a, b) => a.name.localeCompare(b.name)).forEach(k => {
-                const pfand250 = Number(k.pfand_250) || 0;
-                const pfand400 = Number(k.pfand_400) || 0;
-
-                listEl.innerHTML += `
-                    <div class="list-card">
-                        <div class="icon-box" style="background: #222;"><span class="material-symbols-outlined" style="color: var(--accent-amber);">person</span></div>
-                        <div class="info">
-                            <h3 style="font-size: 1.1rem; margin-bottom: 4px;">${k.name}</h3>
-                            <p style="color: var(--accent-danger); font-size: 0.85rem; margin: 0;">
-                                Pfand: ${pfand250}x 250ml | ${pfand400}x 400ml
+                container.innerHTML += `
+                    <div class="kunden-card" onclick="window.kundenManager.openEditor('${safeData}')">
+                        <div class="icon-box">
+                            <span class="material-symbols-outlined" style="color: var(--accent-amber);">person</span>
+                        </div>
+                        <div style="flex: 1;">
+                            <h3 style="margin: 0; font-size: 1.1rem; color: white;">${k.name}</h3>
+                            <p style="margin: 3px 0 0 0; color: ${pfandColor}; font-size: 0.85rem; font-weight: bold;">
+                                <span class="material-symbols-outlined" style="font-size: 1rem; vertical-align: middle;">kitchen</span> ${pfandText}
                             </p>
                         </div>
-                        <button onclick="kundenManager.deleteCustomer('${k.id}', '${k.name}')" style="background:none; border:none; color:var(--accent-danger); cursor:pointer; padding: 10px;">
-                            <span class="material-symbols-outlined">delete</span>
-                        </button>
+                        <div onclick="event.stopPropagation(); window.kundenManager.deleteCustomer('${k.id}', '${k.name}')" style="background: #331111; padding: 10px; border-radius: 8px; display: flex; align-items: center; justify-content: center;">
+                            <span class="material-symbols-outlined" style="color: var(--accent-danger);">delete</span>
+                        </div>
                     </div>
                 `;
             });
+
         } catch (e) {
-            console.error("Fehler beim Laden der Kunden", e);
-            listEl.innerHTML = '<p class="text-muted" style="color: var(--accent-danger); text-align: center;">Fehler beim Laden der Datenbank.</p>';
+            container.innerHTML = '<p class="text-muted" style="color: var(--accent-danger);">Fehler beim Laden der Kunden.</p>';
         }
     },
 
-    addCustomer: async function() {
-        const nameEl = document.getElementById('new-customer-name');
-        const nameVal = nameEl.value.trim();
+    openEditor: function(encodedData = null) {
+        document.getElementById('kunden-list-view').style.display = 'none';
+        document.getElementById('kunden-editor-view').style.display = 'block';
 
-        if (!nameVal) {
-            alert("⚠️ Bitte gib einen Namen ein!");
+        if (encodedData) {
+            const k = JSON.parse(decodeURIComponent(encodedData));
+            document.getElementById('editor-title').innerText = "Kunde bearbeiten";
+            document.getElementById('edit-id').value = k.id;
+            document.getElementById('edit-name').value = k.name;
+            document.getElementById('edit-contact').value = k.contact || '';
+            document.getElementById('edit-pfand-250').innerText = k.pfand_250 || 0;
+            document.getElementById('edit-pfand-400').innerText = k.pfand_400 || 0;
+        } else {
+            document.getElementById('editor-title').innerText = "Neuer Kunde";
+            document.getElementById('edit-id').value = '';
+            document.getElementById('edit-name').value = '';
+            document.getElementById('edit-contact').value = '';
+            document.getElementById('edit-pfand-250').innerText = '0';
+            document.getElementById('edit-pfand-400').innerText = '0';
+        }
+    },
+
+    closeEditor: function() {
+        document.getElementById('kunden-list-view').style.display = 'block';
+        document.getElementById('kunden-editor-view').style.display = 'none';
+    },
+
+    changePfand: function(type, modifier) {
+        const spanId = `edit-pfand-${type}`;
+        const currentVal = parseInt(document.getElementById(spanId).innerText) || 0;
+        
+        let actionText = modifier > 0 ? 'ausgeben' : 'zurücknehmen';
+        let amountStr = prompt(`Wie viele ${type}ml Gläser möchtest du ${actionText}?`, "1");
+        
+        if (!amountStr) return;
+        let amount = parseInt(amountStr);
+        if (isNaN(amount) || amount <= 0) return;
+
+        let newVal = currentVal + (amount * modifier);
+        if (newVal < 0) newVal = 0; // Pfand kann nicht negativ sein
+        
+        document.getElementById(spanId).innerText = newVal;
+    },
+
+    saveCustomer: async function() {
+        const id = document.getElementById('edit-id').value;
+        const payload = {
+            name: document.getElementById('edit-name').value.trim(),
+            contact: document.getElementById('edit-contact').value.trim(),
+            pfand_250: parseInt(document.getElementById('edit-pfand-250').innerText) || 0,
+            pfand_400: parseInt(document.getElementById('edit-pfand-400').innerText) || 0
+        };
+
+        if (!payload.name) {
+            alert("Der Kunde braucht mindestens einen Namen!");
             return;
         }
 
         try {
-            const response = await fetch(`${supabaseUrl}/rest/v1/customers`, {
-                method: 'POST',
-                headers: { 
-                    'apikey': supabaseKey, 
-                    'Authorization': `Bearer ${supabaseKey}`, 
-                    'Content-Type': 'application/json',
-                    'Prefer': 'return=representation'
-                },
-                body: JSON.stringify({ name: nameVal, pfand_250: 0, pfand_400: 0 })
+            let url = `${supabaseUrl}/rest/v1/customers`;
+            let method = 'POST';
+            if (id) {
+                url += `?id=eq.${id}`;
+                method = 'PATCH';
+            }
+
+            const res = await fetch(url, {
+                method: method,
+                headers: { 'apikey': supabaseKey, 'Authorization': `Bearer ${supabaseKey}`, 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
             });
 
-            if (response.ok) {
-                nameEl.value = ''; 
-                await this.loadList(); 
-                
-                if (typeof app !== 'undefined' && app.refreshData) {
-                    app.refreshData();
-                }
+            if (res.ok) {
+                this.closeEditor();
+                await this.loadList();
+                // Globale App-Daten aktualisieren (damit Dashboard & Lager das merken!)
+                if(window.app && window.app.refreshData) window.app.refreshData(); 
             } else {
-                const err = await response.json();
-                alert("❌ Fehler beim Speichern: " + JSON.stringify(err));
+                alert("Fehler beim Speichern in der Datenbank!");
             }
-        } catch (e) { 
-            alert("Netzwerkfehler beim Speichern!"); 
+        } catch (e) {
+            alert("Netzwerkfehler beim Speichern.");
         }
     },
 
     deleteCustomer: async function(id, name) {
-        if (!confirm(`Möchtest du den Kunden "${name}" wirklich unwiderruflich löschen?`)) return;
-
+        if (!confirm(`Kunde "${name}" wirklich löschen?\n(Die offenen Gläser werden dabei ebenfalls gelöscht!)`)) return;
         try {
             const res = await fetch(`${supabaseUrl}/rest/v1/customers?id=eq.${id}`, {
                 method: 'DELETE',
                 headers: { 'apikey': supabaseKey, 'Authorization': `Bearer ${supabaseKey}` }
             });
-
             if (res.ok) {
                 await this.loadList();
-                if (typeof app !== 'undefined' && app.refreshData) {
-                    app.refreshData();
-                }
-            } else {
-                alert("Fehler beim Löschen des Kunden.");
+                if(window.app && window.app.refreshData) window.app.refreshData(); 
             }
-        } catch (e) { 
-            alert("Verbindungsfehler."); 
+        } catch (e) {
+            alert("Fehler beim Löschen.");
         }
     }
 };
 
-document.addEventListener('DOMContentLoaded', () => kundenManager.init());
+document.addEventListener('DOMContentLoaded', () => window.kundenManager.init());
