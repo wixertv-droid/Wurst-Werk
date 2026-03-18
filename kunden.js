@@ -62,14 +62,12 @@ window.kundenManager = {
             document.getElementById('editor-title').innerText = "Kunde bearbeiten";
             document.getElementById('edit-id').value = k.id;
             document.getElementById('edit-name').value = k.name;
-            document.getElementById('edit-contact').value = k.contact || '';
             document.getElementById('edit-pfand-250').innerText = k.pfand_250 || 0;
             document.getElementById('edit-pfand-400').innerText = k.pfand_400 || 0;
         } else {
             document.getElementById('editor-title').innerText = "Neuer Kunde";
             document.getElementById('edit-id').value = '';
             document.getElementById('edit-name').value = '';
-            document.getElementById('edit-contact').value = '';
             document.getElementById('edit-pfand-250').innerText = '0';
             document.getElementById('edit-pfand-400').innerText = '0';
         }
@@ -99,17 +97,22 @@ window.kundenManager = {
 
     saveCustomer: async function() {
         const id = document.getElementById('edit-id').value;
-        const payload = {
-            name: document.getElementById('edit-name').value.trim(),
-            contact: document.getElementById('edit-contact').value.trim(),
-            pfand_250: parseInt(document.getElementById('edit-pfand-250').innerText) || 0,
-            pfand_400: parseInt(document.getElementById('edit-pfand-400').innerText) || 0
-        };
+        const nameVal = document.getElementById('edit-name').value.trim();
+        const pfand250 = parseInt(document.getElementById('edit-pfand-250').innerText) || 0;
+        const pfand400 = parseInt(document.getElementById('edit-pfand-400').innerText) || 0;
 
-        if (!payload.name) {
+        if (!nameVal) {
             alert("Der Kunde braucht mindestens einen Namen!");
             return;
         }
+
+        // DAS IST DER FIX: Wir senden nur exakt die Spalten, die in deinem Screenshot zu sehen sind!
+        const payload = {
+            name: nameVal,
+            pfand_250: pfand250,
+            pfand_400: pfand400,
+            pfand_schulden: pfand250 + pfand400 // Füllt auch diese Spalte in deiner Tabelle
+        };
 
         try {
             let url = `${supabaseUrl}/rest/v1/customers`;
@@ -121,17 +124,22 @@ window.kundenManager = {
 
             const res = await fetch(url, {
                 method: method,
-                headers: { 'apikey': supabaseKey, 'Authorization': `Bearer ${supabaseKey}`, 'Content-Type': 'application/json' },
+                headers: { 
+                    'apikey': supabaseKey, 
+                    'Authorization': `Bearer ${supabaseKey}`, 
+                    'Content-Type': 'application/json',
+                    'Prefer': 'return=minimal'
+                },
                 body: JSON.stringify(payload)
             });
 
             if (res.ok) {
                 this.closeEditor();
                 await this.loadList();
-                // Globale App-Daten aktualisieren (damit Dashboard & Lager das merken!)
                 if(window.app && window.app.refreshData) window.app.refreshData(); 
             } else {
-                alert("Fehler beim Speichern in der Datenbank!");
+                const err = await res.text();
+                alert("Fehler beim Speichern in der Datenbank!\nDetails: " + err);
             }
         } catch (e) {
             alert("Netzwerkfehler beim Speichern.");
