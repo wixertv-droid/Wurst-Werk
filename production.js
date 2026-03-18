@@ -49,24 +49,20 @@ window.produktionManager = {
         container.innerHTML = '';
         this.mappedIngredients = [];
 
-        // WICHTIG: Gläser und Maschinen vorher komplett aussortieren, damit sie das Suchergebnis nicht verfälschen
         const availableInv = this.inventory.filter(item => 
             item.category !== 'Pfandglas' && item.category !== 'Maschine'
         );
 
-        // Hilfsfunktion: Putzt alle Leerzeichen und Kommas weg, damit "Salz " und "Salz" als gleich erkannt werden
         const cleanString = (str) => (str || '').replace(/[.,\/#!$%\^&\*;:{}=\-_`~()]/g,"").trim().toLowerCase();
 
         ingredients.forEach((ing, index) => {
             const searchStr = cleanString(ing.name);
             
-            // Punkte-System für die schlaue Sortierung
             const getScore = (itemName) => {
                 const nameL = cleanString(itemName);
-                if (nameL === searchStr) return 100; // Exakter Treffer (ohne Leerzeichen) ist der Jackpot
-                if (nameL.includes(searchStr) || searchStr.includes(nameL)) return 50; // Wenn das Wort komplett enthalten ist
+                if (nameL === searchStr) return 100; 
+                if (nameL.includes(searchStr) || searchStr.includes(nameL)) return 50; 
                 
-                // Einzelne Wortteile checken
                 const searchWords = searchStr.split(/\s+/);
                 let score = 0;
                 searchWords.forEach(w => {
@@ -75,7 +71,6 @@ window.produktionManager = {
                 return score;
             };
 
-            // Liste sortieren: Höchste Punktzahl steht ganz oben!
             const sortedInv = [...availableInv].sort((a, b) => {
                 const scoreA = getScore(a.name);
                 const scoreB = getScore(b.name);
@@ -83,11 +78,9 @@ window.produktionManager = {
                 if (scoreA !== scoreB) {
                     return scoreB - scoreA; 
                 }
-                // Bei Gleichstand nach Alphabet in der Kategorie sortieren
                 return (a.category || '').localeCompare(b.category || '');
             });
 
-            // Den absoluten Top-Treffer automatisch auswählen (wenn er Punkte gemacht hat)
             let bestMatch = null;
             if (sortedInv.length > 0 && getScore(sortedInv[0].name) > 0) {
                 bestMatch = sortedInv[0];
@@ -128,9 +121,10 @@ window.produktionManager = {
     recalculate: function() {
         const multiplier = parseFloat(document.getElementById('multiplier-input').value) || 0; 
         this.mappedIngredients.forEach(ing => {
-            const calc = (ing.baseAmount * multiplier);
-            // Schönere Zahlen: Wenn es eine glatte Zahl ist, ohne Komma anzeigen
-            document.getElementById(`calc-val-${ing.index}`).innerText = `${calc % 1 === 0 ? calc : calc.toFixed(1)} ${ing.unit}`;
+            let calc = (ing.baseAmount * multiplier);
+            // Schönere Zahlen für die Anzeige
+            calc = Math.round(calc * 100) / 100;
+            document.getElementById(`calc-val-${ing.index}`).innerText = `${calc} ${ing.unit}`;
         });
     },
 
@@ -152,9 +146,9 @@ window.produktionManager = {
                     let neededAmount = ing.baseAmount * multiplier;
                     let deductAmount = neededAmount;
                     
-                    // --- AUTOMATISCHE UMRECHNUNG G <-> KG ---
-                    const recipeUnit = (ing.unit || '').toLowerCase();
-                    const invUnit = (invItem.unit || '').toLowerCase();
+                    // KUGELSICHERE UMRECHNUNG (trim() entfernt unsichtbare Leerzeichen)
+                    const recipeUnit = (ing.unit || '').trim().toLowerCase();
+                    const invUnit = (invItem.unit || '').trim().toLowerCase();
                     
                     if (recipeUnit === 'g' && invUnit === 'kg') {
                         deductAmount = neededAmount / 1000;
@@ -166,7 +160,11 @@ window.produktionManager = {
                         deductAmount = neededAmount * 1000;
                     }
                     
-                    updates.push({ id: invItem.id, amount: Number(invItem.amount) - deductAmount });
+                    let newAmount = Number(invItem.amount) - deductAmount;
+                    // FIX: Verhindert krumme Zahlen wie 31.200000003 (Rundet auf max 3 Stellen)
+                    newAmount = Math.round(newAmount * 1000) / 1000;
+                    
+                    updates.push({ id: invItem.id, amount: newAmount });
                 }
             }
         });
