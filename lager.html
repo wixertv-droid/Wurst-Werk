@@ -7,7 +7,6 @@
     <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined" rel="stylesheet" />
     <link rel="stylesheet" href="style.css">
     <style>
-        /* Spezifisches Design aus deinem Screenshot */
         .glaeser-card { background: #1a1a1a; border-radius: 12px; padding: 15px; margin-bottom: 20px; border: 1px solid #222; }
         .outline-btn { flex: 1; background: transparent; padding: 12px; border-radius: 8px; font-weight: bold; display: flex; justify-content: center; align-items: center; gap: 5px; cursor: pointer; font-size: 1rem; }
         .outline-btn.green { border: 1px solid #4caf50; color: #4caf50; }
@@ -20,7 +19,6 @@
         .lager-item-card { background: #1a1a1a; border-radius: 12px; padding: 15px; display: flex; align-items: center; gap: 15px; margin-bottom: 10px; cursor: pointer; border: 1px solid #222; }
         .lager-icon-box { background: #2a2a2a; padding: 10px; border-radius: 8px; display: flex; justify-content: center; align-items: center; }
         
-        /* Editor Felder */
         .lager-input, .lager-select { width: 100%; padding: 15px; background: #222; border: 1px solid #444; color: white; border-radius: 12px; font-size: 1.1rem; box-sizing: border-box; margin-bottom: 15px; }
         .lager-input:focus, .lager-select:focus { border-color: #4caf50; outline: none; }
     </style>
@@ -99,7 +97,7 @@
                 <input type="hidden" id="edit-id">
                 
                 <label style="display:block; color:var(--text-muted); font-size:0.85rem; margin-bottom:5px; text-transform:uppercase;">Name des Artikels</label>
-                <input type="text" id="edit-name" class="lager-input" placeholder="z.B. Bakterien">
+                <input type="text" id="edit-name" class="lager-input" placeholder="z.B. Schweinenacken">
                 
                 <label style="display:block; color:var(--text-muted); font-size:0.85rem; margin-bottom:5px; text-transform:uppercase;">Kategorie</label>
                 <select id="edit-category" class="lager-select">
@@ -119,7 +117,6 @@
                         <label style="display:block; color:var(--text-muted); font-size:0.85rem; margin-bottom:5px; text-transform:uppercase;">Einheit</label>
                         <select id="edit-unit" class="lager-select">
                             <option value="g">g</option>
-                            <option value="kg">kg</option>
                             <option value="ml">ml</option>
                             <option value="Stk">Stück</option>
                             <option value="m">Meter</option>
@@ -145,8 +142,8 @@
         <div class="nav-item" onclick="window.location.href='kunden.html'"><span class="material-symbols-outlined">group</span><span>Kunden</span></div>
     </nav>
 
-    <script src="db.js?v=10"></script>
-    <script src="app.js?v=10"></script>
-    <script src="lager.js?v=10"></script>
+    <script src="db.js?v=15"></script>
+    <script src="app.js?v=15"></script>
+    <script src="lager.js?v=15"></script>
 </body>
 </html>
