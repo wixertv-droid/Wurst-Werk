@@ -19,14 +19,12 @@ window.kundenManager = {
 
             container.innerHTML = '';
             
-            // Kunden alphabetisch sortieren
             const sortedKunden = [...this.kundenData].sort((a, b) => a.name.localeCompare(b.name));
 
             sortedKunden.forEach(k => {
                 const safeData = encodeURIComponent(JSON.stringify(k));
                 const pfandSumme = (Number(k.pfand_250) || 0) + (Number(k.pfand_400) || 0);
                 
-                // Warn-Farbe, wenn der Kunde Gläser hat
                 const pfandColor = pfandSumme > 0 ? 'var(--accent-danger)' : '#aaa';
                 const pfandText = pfandSumme > 0 ? `${pfandSumme} Gläser im Rückstand` : `Keine Pfandschulden`;
 
@@ -90,7 +88,7 @@ window.kundenManager = {
         if (isNaN(amount) || amount <= 0) return;
 
         let newVal = currentVal + (amount * modifier);
-        if (newVal < 0) newVal = 0; // Pfand kann nicht negativ sein
+        if (newVal < 0) newVal = 0; 
         
         document.getElementById(spanId).innerText = newVal;
     },
@@ -106,13 +104,17 @@ window.kundenManager = {
             return;
         }
 
-        // DAS IST DER FIX: Wir senden nur exakt die Spalten, die in deinem Screenshot zu sehen sind!
         const payload = {
             name: nameVal,
             pfand_250: pfand250,
             pfand_400: pfand400,
-            pfand_schulden: pfand250 + pfand400 // Füllt auch diese Spalte in deiner Tabelle
+            pfand_schulden: pfand250 + pfand400
         };
+
+        // FIX: Generiert selbst eine UUID, falls es ein neuer Kunde ist, um Datenbank-Abstürze zu verhindern!
+        if (!id) {
+            payload.id = crypto.randomUUID();
+        }
 
         try {
             let url = `${supabaseUrl}/rest/v1/customers`;
@@ -139,7 +141,7 @@ window.kundenManager = {
                 if(window.app && window.app.refreshData) window.app.refreshData(); 
             } else {
                 const err = await res.text();
-                alert("Fehler beim Speichern in der Datenbank!\nDetails: " + err);
+                alert("Fehler beim Speichern!\n(Wahrscheinlich passen die Spalten nicht exakt. Details: " + err + ")");
             }
         } catch (e) {
             alert("Netzwerkfehler beim Speichern.");
