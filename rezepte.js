@@ -158,7 +158,6 @@ window.rezeptManager = {
             <input type="number" class="recipe-input ing-amount" placeholder="Menge" value="${amount}" style="flex: 1;">
             <select class="recipe-select ing-unit" style="flex: 1;">
                 <option value="g" ${unit==='g'?'selected':''}>g</option>
-                <option value="kg" ${unit==='kg'?'selected':''}>kg</option>
                 <option value="ml" ${unit==='ml'?'selected':''}>ml</option>
                 <option value="Stk" ${unit==='Stk'?'selected':''}>Stk</option>
             </select>
@@ -280,7 +279,6 @@ window.rezeptManager = {
 
     startProduction: function() {
         if (!this.currentRecipeData) return;
-        // HIER IST DIE WICHTIGE ÄNDERUNG: Wir leiten zur Produktion weiter!
         window.location.href = `produktion.html?id=${this.currentRecipeData.id}`;
     }
 };
