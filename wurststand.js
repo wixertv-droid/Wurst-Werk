@@ -35,13 +35,11 @@ window.wurstManager = {
             });
             
             if (!res.ok) {
-                container.innerHTML = '<p class="text-muted" style="color: var(--accent-danger);">Fehler: Tabelle "wurst_bestand" fehlt in Supabase!</p>';
+                container.innerHTML = '<p class="text-muted" style="color: var(--accent-danger);">Tabelle "wurst_bestand" fehlt in Supabase!</p>';
                 return;
             }
 
             const data = await res.json();
-            
-            // KUGELSICHER: Prüfen, ob es wirklich ein Array (Liste) ist!
             this.bestandData = Array.isArray(data) ? data : [];
             
             if (this.bestandData.length === 0) {
@@ -52,23 +50,19 @@ window.wurstManager = {
             container.innerHTML = '';
 
             this.bestandData.forEach(item => {
-                // KUGELSICHER: Fehlende Werte abfangen
-                const itemName = item.name || 'Unbenannt';
-                const itemAmount = Number(item.amount) || 0;
-                let dispUnit = item.unit || 'Stück'; 
+                const safeData = encodeURIComponent(JSON.stringify(item));
                 
-                if (dispUnit.includes('Glas') && itemAmount !== 1) {
+                let dispUnit = item.unit || 'Stück';
+                if (dispUnit.includes('Glas') && Number(item.amount) !== 1) {
                     dispUnit = dispUnit.replace('Glas', 'Gläser');
                 }
 
-                const amountText = itemAmount <= 0 ? 
+                const amountText = Number(item.amount) <= 0 ? 
                     `<span style="color: var(--accent-danger);">Ausverkauft! (0 ${dispUnit})</span>` : 
-                    `${itemAmount} ${dispUnit}`;
+                    `${item.amount} ${dispUnit}`;
 
                 const revenue = Number(item.revenue) || 0;
-
-                // Sicheres Verpacken für den Klick-Button
-                const safeData = encodeURIComponent(JSON.stringify(item));
+                const itemName = item.name || 'Unbenannt';
 
                 container.innerHTML += `
                     <div class="wurst-card" onclick="window.wurstManager.openEditor('${safeData}')">
@@ -86,7 +80,7 @@ window.wurstManager = {
                             </div>
                         </div>
                         <div style="border-top: 1px dashed #333; margin-top: 10px; padding-top: 5px;">
-                            <button class="sell-btn" onclick="event.stopPropagation(); window.wurstManager.openSellView('${safeData}')" ${itemAmount <= 0 ? 'disabled style="opacity:0.5; cursor:not-allowed;"' : ''}>
+                            <button class="sell-btn" onclick="event.stopPropagation(); window.wurstManager.openSellView('${safeData}')" ${Number(item.amount) <= 0 ? 'disabled style="opacity:0.5; cursor:not-allowed;"' : ''}>
                                 <span class="material-symbols-outlined" style="font-size: 1.2rem;">shopping_cart</span> An Kunde verkaufen
                             </button>
                         </div>
@@ -95,14 +89,14 @@ window.wurstManager = {
             });
 
         } catch (e) {
-            console.error(e);
-            container.innerHTML = `<p class="text-muted" style="color: var(--accent-danger); text-align: center;">Absturz-Fehler: ${e.message}</p>`;
+            container.innerHTML = '<p class="text-muted" style="color: var(--accent-danger);">Netzwerkfehler.</p>';
         }
     },
 
     populateRecipeDropdown: function() {
         const selectEl = document.getElementById('edit-name-select');
         if (!selectEl) return;
+        
         selectEl.innerHTML = '<option value="">-- Rezept wählen --</option>';
         if (Array.isArray(this.recipesData)) {
             this.recipesData.forEach(r => {
@@ -115,6 +109,8 @@ window.wurstManager = {
     toggleCustomName: function() {
         const select = document.getElementById('edit-name-select');
         const input = document.getElementById('edit-name-custom');
+        
+        // Verhindert Abstürze, wenn das Feld nicht da ist
         if (!select || !input) return;
 
         if (select.value === 'custom') {
@@ -130,29 +126,41 @@ window.wurstManager = {
         
         this.populateRecipeDropdown();
 
+        const idEl = document.getElementById('edit-id');
+        const amountEl = document.getElementById('edit-amount');
+        const unitEl = document.getElementById('edit-unit');
+        const selectEl = document.getElementById('edit-name-select');
+        const customEl = document.getElementById('edit-name-custom');
+
         if (encodedData) {
             const item = JSON.parse(decodeURIComponent(encodedData));
             document.getElementById('editor-title').innerText = "Bestand bearbeiten";
-            document.getElementById('edit-id').value = item.id || '';
-            document.getElementById('edit-amount').value = item.amount || 0;
-            document.getElementById('edit-unit').value = item.unit || 'Stück';
+            
+            if (idEl) idEl.value = item.id || '';
+            if (amountEl) amountEl.value = item.amount || 0;
+            if (unitEl) unitEl.value = item.unit || 'Stück';
             
             const recipeExists = Array.isArray(this.recipesData) && this.recipesData.some(r => r.name === item.name);
-            if (recipeExists) {
-                document.getElementById('edit-name-select').value = item.name;
-                document.getElementById('edit-name-custom').style.display = 'none';
-            } else {
-                document.getElementById('edit-name-select').value = 'custom';
-                document.getElementById('edit-name-custom').style.display = 'block';
-                document.getElementById('edit-name-custom').value = item.name || '';
+            
+            if (selectEl && customEl) {
+                if (recipeExists) {
+                    selectEl.value = item.name;
+                    customEl.style.display = 'none';
+                } else {
+                    selectEl.value = 'custom';
+                    customEl.style.display = 'block';
+                    customEl.value = item.name || '';
+                }
             }
         } else {
             document.getElementById('editor-title').innerText = "Neue Wurst einbuchen";
-            document.getElementById('edit-id').value = '';
-            document.getElementById('edit-name-select').value = '';
-            document.getElementById('edit-name-custom').style.display = 'none';
-            document.getElementById('edit-name-custom').value = '';
-            document.getElementById('edit-amount').value = '';
+            if (idEl) idEl.value = '';
+            if (selectEl) selectEl.value = '';
+            if (customEl) {
+                customEl.style.display = 'none';
+                customEl.value = '';
+            }
+            if (amountEl) amountEl.value = '';
         }
     },
 
@@ -162,13 +170,13 @@ window.wurstManager = {
     },
 
     saveItem: async function() {
-        let id = document.getElementById('edit-id').value;
-        const selectVal = document.getElementById('edit-name-select').value;
-        const customVal = document.getElementById('edit-name-custom').value.trim();
+        let id = document.getElementById('edit-id') ? document.getElementById('edit-id').value : '';
+        const selectVal = document.getElementById('edit-name-select') ? document.getElementById('edit-name-select').value : '';
+        const customVal = document.getElementById('edit-name-custom') ? document.getElementById('edit-name-custom').value.trim() : '';
         
         let nameVal = selectVal === 'custom' ? customVal : selectVal;
-        const amountVal = Number(document.getElementById('edit-amount').value) || 0;
-        const unitVal = document.getElementById('edit-unit').value;
+        const amountVal = document.getElementById('edit-amount') ? (Number(document.getElementById('edit-amount').value) || 0) : 0;
+        const unitVal = document.getElementById('edit-unit') ? document.getElementById('edit-unit').value : 'Stück';
 
         if (!nameVal) {
             alert("Bitte wähle ein Produkt oder gib einen Namen ein!");
@@ -214,32 +222,33 @@ window.wurstManager = {
 
         const item = JSON.parse(decodeURIComponent(encodedData));
         
-        let dispUnit = item.unit || '';
+        let dispUnit = item.unit || 'Stück';
         if (dispUnit.includes('Glas') && Number(item.amount) !== 1) dispUnit = dispUnit.replace('Glas', 'Gläser');
 
-        document.getElementById('sell-item-name').innerText = item.name || 'Unbenannt';
-        document.getElementById('sell-item-available').innerText = `${item.amount || 0} ${dispUnit}`;
-        document.getElementById('sell-item-id').value = item.id;
-        document.getElementById('sell-item-unit').value = item.unit || ''; 
+        if(document.getElementById('sell-item-name')) document.getElementById('sell-item-name').innerText = item.name || 'Unbenannt';
+        if(document.getElementById('sell-item-available')) document.getElementById('sell-item-available').innerText = `${item.amount || 0} ${dispUnit}`;
+        if(document.getElementById('sell-item-id')) document.getElementById('sell-item-id').value = item.id;
+        if(document.getElementById('sell-item-unit')) document.getElementById('sell-item-unit').value = item.unit || ''; 
         
-        document.getElementById('sell-amount').value = '';
-        document.getElementById('sell-price').value = '';
+        if(document.getElementById('sell-amount')) document.getElementById('sell-amount').value = '';
+        if(document.getElementById('sell-price')) document.getElementById('sell-price').value = '';
         
-        // Felder zurücksetzen (nur wenn sie existieren)
         if(document.getElementById('sell-pfand-250')) document.getElementById('sell-pfand-250').value = 0;
         if(document.getElementById('sell-pfand-400')) document.getElementById('sell-pfand-400').value = 0;
 
         const customerSelect = document.getElementById('sell-customer');
-        customerSelect.innerHTML = '<option value="">-- Kunde wählen --</option>';
-        
-        const safeCustomers = Array.isArray(this.customersData) ? this.customersData : [];
-        const sortedKunden = [...safeCustomers].sort((a, b) => (a.name || '').localeCompare(b.name || ''));
-        
-        sortedKunden.forEach(c => {
-            if(c.name) {
-                customerSelect.innerHTML += `<option value="${c.id}">${c.name}</option>`;
-            }
-        });
+        if (customerSelect) {
+            customerSelect.innerHTML = '<option value="">-- Kunde wählen --</option>';
+            
+            const safeCustomers = Array.isArray(this.customersData) ? this.customersData : [];
+            const sortedKunden = [...safeCustomers].sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+            
+            sortedKunden.forEach(c => {
+                if(c.name) {
+                    customerSelect.innerHTML += `<option value="${c.id}">${c.name}</option>`;
+                }
+            });
+        }
     },
 
     closeSellView: function() {
@@ -248,9 +257,13 @@ window.wurstManager = {
     },
 
     autoFillPfand: function() {
-        const unit = (document.getElementById('sell-item-unit').value || '').toLowerCase();
-        const name = (document.getElementById('sell-item-name').innerText || '').toLowerCase();
-        const amount = Math.floor(Number(document.getElementById('sell-amount').value) || 0);
+        const unitEl = document.getElementById('sell-item-unit');
+        const nameEl = document.getElementById('sell-item-name');
+        const amountEl = document.getElementById('sell-amount');
+
+        const unit = unitEl ? (unitEl.value || '').toLowerCase() : '';
+        const name = nameEl ? (nameEl.innerText || '').toLowerCase() : '';
+        const amount = amountEl ? Math.floor(Number(amountEl.value) || 0) : 0;
 
         let p250 = 0;
         let p400 = 0;
@@ -268,13 +281,13 @@ window.wurstManager = {
     },
 
     confirmSale: async function() {
-        const itemId = document.getElementById('sell-item-id').value;
-        const itemUnit = document.getElementById('sell-item-unit').value;
-        const itemName = document.getElementById('sell-item-name').innerText;
+        const itemId = document.getElementById('sell-item-id') ? document.getElementById('sell-item-id').value : null;
+        const itemUnit = document.getElementById('sell-item-unit') ? document.getElementById('sell-item-unit').value : '';
+        const itemName = document.getElementById('sell-item-name') ? document.getElementById('sell-item-name').innerText : '';
         
-        const customerId = document.getElementById('sell-customer').value;
-        const sellAmount = Number(document.getElementById('sell-amount').value);
-        const sellPrice = Number(document.getElementById('sell-price').value) || 0;
+        const customerId = document.getElementById('sell-customer') ? document.getElementById('sell-customer').value : null;
+        const sellAmount = document.getElementById('sell-amount') ? Number(document.getElementById('sell-amount').value) : 0;
+        const sellPrice = document.getElementById('sell-price') ? (Number(document.getElementById('sell-price').value) || 0) : 0;
 
         if (!customerId || sellAmount <= 0) {
             alert("Bitte wähle einen Kunden und gib eine Menge ein (größer als 0)!");
