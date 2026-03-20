@@ -3,13 +3,11 @@ window.produktionManager = {
     inventory: [],
     mappedIngredients: [], 
     totalCosts: 0, 
+    activeProcesses: [], // Speichert die Timer aus der DB
 
     init: async function() {
         const params = new URLSearchParams(window.location.search);
         const id = params.get('id');
-        
-        this.loadActiveProcesses();
-        setInterval(() => this.loadActiveProcesses(), 10000); 
 
         if (!id) {
             alert("Kein Rezept ausgewählt!");
@@ -18,99 +16,56 @@ window.produktionManager = {
         }
 
         try {
-            const [recipeRes, invData] = await Promise.all([
-                fetch(`${supabaseUrl}/rest/v1/recipes?id=eq.${id}&select=*`, { 
-                    headers: { 'apikey': supabaseKey, 'Authorization': `Bearer ${supabaseKey}` } 
-                }),
-                db.getInventory()
-            ]);
-
+            // 1. Rezept laden
+            const recipeRes = await fetch(`${supabaseUrl}/rest/v1/recipes?id=eq.${id}&select=*`, { 
+                headers: { 'apikey': supabaseKey, 'Authorization': `Bearer ${supabaseKey}` } 
+            });
             const recipes = await recipeRes.json();
             if (recipes.length === 0) throw new Error("Rezept nicht gefunden");
-            
             this.recipe = recipes[0];
+
+            // 2. Lager und aktive Produktionen (Timer) FÜR DIESES REZEPT laden!
+            const [invData, activeRes] = await Promise.all([
+                db.getInventory(),
+                fetch(`${supabaseUrl}/rest/v1/active_processes?recipe_name=eq.${encodeURIComponent(this.recipe.name)}&status=eq.running`, {
+                    headers: { 'apikey': supabaseKey, 'Authorization': `Bearer ${supabaseKey}` }
+                })
+            ]);
+
             this.inventory = Array.isArray(invData) ? invData : [];
+            this.activeProcesses = activeRes.ok ? await activeRes.json() : [];
 
             document.getElementById('prod-title').innerText = `Produktion: ${this.recipe.name}`;
-            this.buildMatchingUI();
+
+            // 3. LOGIK: Läuft hier schon eine Produktion?
+            if (this.activeProcesses.length > 0) {
+                // JA! Produktion läuft -> Überspringe Lagerabzug und gehe direkt in die Checkliste
+                document.getElementById('step-1-setup').style.display = 'none';
+                document.getElementById('step-2-checklist').style.display = 'block';
+                
+                // Kosten ausblenden, da diese in der Vergangenheit abgebucht wurden
+                const costsCard = document.getElementById('costs-card');
+                if (costsCard) costsCard.style.display = 'none';
+
+                // Zurück-Button anpassen (geht jetzt zu Rezepten statt Schritt 1)
+                const backBtn = document.getElementById('back-btn-step2');
+                if (backBtn) {
+                    backBtn.setAttribute('onclick', "window.location.href='rezepte.html'");
+                    backBtn.innerHTML = '<span class="material-symbols-outlined">arrow_back_ios</span> Zurück zu Rezepte';
+                }
+
+                this.buildChecklist();
+            } else {
+                // NEIN! Neue Produktion -> Starte ganz normal bei Schritt 1
+                document.getElementById('step-1-setup').style.display = 'block';
+                document.getElementById('step-2-checklist').style.display = 'none';
+                this.buildMatchingUI();
+            }
 
         } catch (e) {
             alert("Fehler beim Laden der Produktionsdaten!");
             window.location.href = 'rezepte.html';
         }
-    },
-
-    loadActiveProcesses: async function() {
-        const container = document.getElementById('active-processes-list');
-        const mainContainer = document.getElementById('active-processes-container');
-        if (!container || !mainContainer) return; 
-
-        try {
-            const res = await fetch(`${supabaseUrl}/rest/v1/active_processes?status=eq.running&order=end_time.asc`, {
-                headers: { 'apikey': supabaseKey, 'Authorization': `Bearer ${supabaseKey}` }
-            });
-            
-            if (!res.ok) return;
-
-            const processes = await res.json();
-            
-            if (!Array.isArray(processes) || processes.length === 0) {
-                mainContainer.style.display = 'none'; 
-                return;
-            }
-
-            mainContainer.style.display = 'block'; 
-            container.innerHTML = '';
-            
-            processes.forEach(p => {
-                container.innerHTML += `
-                    <div class="prod-card" style="border-left:4px solid #4d4dff; margin-bottom:10px; background:#1a1a1a; padding:10px; border-radius:8px;">
-                        <div style="display:flex; justify-content:space-between; align-items: flex-start;">
-                            <div style="flex: 1;">
-                                <b style="color:#4d4dff; font-size:0.75rem; text-transform:uppercase;">${p.recipe_name}</b>
-                                <p style="margin:2px 0; font-size:0.85rem; color: #eee; line-height: 1.2;">${p.step_text}</p>
-                            </div>
-                        </div>
-                        <div id="prod-timer-${p.id}" style="color:var(--accent-amber); font-weight:bold; font-size:1.1rem; margin-top:5px; text-align: left;">
-                            Berechne...
-                        </div>
-                    </div>`;
-                
-                this.startCountdown(p.id, p.end_time);
-            });
-        } catch (e) {
-            console.error("Fehler beim Laden der Timer in der Produktion.", e);
-        }
-    },
-
-    startCountdown: function(id, endStr) {
-        const end = new Date(endStr).getTime();
-        
-        const update = () => {
-            const el = document.getElementById(`prod-timer-${id}`);
-            if (!el) return; 
-            
-            const dist = end - Date.now();
-            
-            if (dist < 0) { 
-                el.innerText = "✅ FERTIG!"; 
-                el.style.color = "#4caf50"; 
-                return; 
-            }
-            
-            const d = Math.floor(dist / 86400000);
-            const h = Math.floor((dist % 86400000) / 3600000);
-            const m = Math.floor((dist % 3600000) / 60000);
-            const s = Math.floor((dist % 60000) / 1000);
-            
-            let timeStr = "";
-            if (d > 0) timeStr += d + " Tage ";
-            timeStr += (h < 10 ? "0" : "") + h + ":" + (m < 10 ? "0" : "") + m + ":" + (s < 10 ? "0" : "") + s;
-            el.innerText = timeStr;
-            
-            setTimeout(update, 1000);
-        };
-        update();
     },
 
     buildMatchingUI: function() {
@@ -281,21 +236,39 @@ window.produktionManager = {
             let timerBtn = '';
             let extra = '';
 
+            // Prüfen, ob für diesen Schritt bereits ein Timer in der Datenbank läuft!
+            const activeProc = this.activeProcesses.find(p => p.step_text === step.text);
+
             if (step.type === 'timer' || step.type === 'interval') {
                 if (step.type === 'timer') extra = `<br><b style="color:#4d4dff;">⏳ ${step.duration} ${step.unit}</b>`;
                 if (step.type === 'interval') extra = `<br><b style="color:var(--accent-amber);">🔁 ${step.cycles}x ${step.duration} ${step.unit} (Pause: ${step.pauses}h)</b>`;
                 
-                timerBtn = `
-                    <div class="timer-controls" id="timer-ctrl-${i}" style="display: flex; gap: 10px; margin-top: 15px; padding-left: 50px;">
-                        <button class="btn-start" onclick="window.produktionManager.startTimer(${i})">▶️ Starten</button>
-                        <button class="btn-skip" onclick="window.produktionManager.skipStep(${i})">⏭️ Überspringen</button>
-                    </div>
-                    <div id="timer-status-${i}" style="display:none; padding-left:50px; margin-top: 10px; color:#4caf50; font-weight: bold;"></div>
-                `;
+                if (activeProc) {
+                    // TIMER LÄUFT BEREITS! -> Zeige den laufenden Timer anstelle der Buttons
+                    timerBtn = `
+                        <div id="timer-status-${i}" style="padding-left:50px; margin-top: 10px; color:#4caf50; font-weight: bold;">
+                            <span class="material-symbols-outlined" style="vertical-align: middle;">hourglass_bottom</span> Läuft: 
+                            <span id="prod-timer-${activeProc.id}" style="color:var(--accent-amber); font-size:1.2rem; margin-left: 5px;">Berechne...</span>
+                        </div>
+                    `;
+                    // Countdown asynchron starten, damit das HTML erst gerendert wird
+                    setTimeout(() => this.startCountdown(activeProc.id, activeProc.end_time), 100);
+                } else {
+                    // TIMER LÄUFT NOCH NICHT -> Zeige Start-Buttons
+                    timerBtn = `
+                        <div class="timer-controls" id="timer-ctrl-${i}" style="display: flex; gap: 10px; margin-top: 15px; padding-left: 50px;">
+                            <button class="btn-start" onclick="window.produktionManager.startTimer(${i})">▶️ Starten</button>
+                            <button class="btn-skip" onclick="window.produktionManager.skipStep(${i})">⏭️ Überspringen</button>
+                        </div>
+                        <div id="timer-status-${i}" style="display:none; padding-left:50px; margin-top: 10px; color:#4caf50; font-weight: bold;"></div>
+                    `;
+                }
             }
 
+            const isRunningClass = activeProc ? 'running' : '';
+
             container.innerHTML += `
-                <div class="check-step" id="step-row-${i}">
+                <div class="check-step ${isRunningClass}" id="step-row-${i}">
                     <div class="step-header" onclick="window.produktionManager.toggleStep(${i})">
                         <div class="check-btn"><span class="material-symbols-outlined">check</span></div>
                         <div style="flex:1;"><b style="font-size:0.8rem; color:#888;">SCHRITT ${i+1}</b><p style="margin: 3px 0 0 0; line-height: 1.4;">${step.text} ${extra}</p></div>
@@ -305,7 +278,6 @@ window.produktionManager = {
         });
     },
 
-    // FIX: Abhaken funktioniert jetzt kugelsicher
     toggleStep: function(i) { 
         const row = document.getElementById(`step-row-${i}`);
         if(row) {
@@ -346,18 +318,49 @@ window.produktionManager = {
             });
 
             if (res.ok) {
-                // Den Block markieren und Button verstecken
-                document.getElementById(`step-row-${index}`).classList.add('running');
-                document.getElementById(`timer-ctrl-${index}`).style.display = 'none';
-                statusEl.style.display = 'block';
-                statusEl.innerText = "✅ Timer gestartet!";
-                this.loadActiveProcesses(); 
+                // Wir laden die Prozesse neu und bauen die Checkliste neu auf, 
+                // damit der Timer den exakten Eintrag aus der DB bekommt!
+                const activeRes = await fetch(`${supabaseUrl}/rest/v1/active_processes?recipe_name=eq.${encodeURIComponent(this.recipe.name)}&status=eq.running`, {
+                    headers: { 'apikey': supabaseKey, 'Authorization': `Bearer ${supabaseKey}` }
+                });
+                this.activeProcesses = await activeRes.json();
+                this.buildChecklist();
             } else {
                 alert("Fehler: Hast du die Tabelle 'active_processes' in Supabase angelegt?");
             }
         } catch (e) {
             alert("Netzwerkfehler: " + e.message);
         }
+    },
+
+    startCountdown: function(id, endStr) {
+        const end = new Date(endStr).getTime();
+        
+        const update = () => {
+            const el = document.getElementById(`prod-timer-${id}`);
+            if (!el) return; 
+            
+            const dist = end - Date.now();
+            
+            if (dist < 0) { 
+                el.innerText = "✅ FERTIG!"; 
+                el.style.color = "#4caf50"; 
+                return; 
+            }
+            
+            const d = Math.floor(dist / 86400000);
+            const h = Math.floor((dist % 86400000) / 3600000);
+            const m = Math.floor((dist % 3600000) / 60000);
+            const s = Math.floor((dist % 60000) / 1000);
+            
+            let timeStr = "";
+            if (d > 0) timeStr += d + " Tage ";
+            timeStr += (h < 10 ? "0" : "") + h + ":" + (m < 10 ? "0" : "") + m + ":" + (s < 10 ? "0" : "") + s;
+            el.innerText = timeStr;
+            
+            setTimeout(update, 1000);
+        };
+        update();
     },
 
     skipStep: function(i) {
@@ -370,7 +373,6 @@ window.produktionManager = {
     },
 
     finishProduction: function() {
-        alert(`Produktion beendet!\n\nMaterialkosten: ${this.totalCosts.toFixed(2)} €`);
         window.location.href = 'index.html';
     }
 };
