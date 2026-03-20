@@ -35,8 +35,7 @@ window.wurstManager = {
                 return;
             }
 
-            const data = await res.json();
-            this.bestandData = Array.isArray(data) ? data : [];
+            this.bestandData = await res.json();
             
             if (this.bestandData.length === 0) {
                 container.innerHTML = '<p class="text-muted" style="text-align: center;">Der Wurststand ist aktuell leer.</p>';
@@ -215,7 +214,6 @@ window.wurstManager = {
         const customerSelect = document.getElementById('sell-customer');
         customerSelect.innerHTML = '<option value="">-- Kunde wählen --</option>';
         
-        // FIX: Kugelsicheres Sortieren, fängt Kunden ohne Namen ab!
         const safeCustomers = Array.isArray(this.customersData) ? this.customersData : [];
         const sortedKunden = [...safeCustomers].sort((a, b) => (a.name || '').localeCompare(b.name || ''));
         
@@ -247,6 +245,7 @@ window.wurstManager = {
             p250 = amount; 
         }
 
+        // Füllt die Felder automatisch aus (Die App stolpert hier, wenn die HTML Felder fehlen!)
         document.getElementById('sell-pfand-250').value = p250;
         document.getElementById('sell-pfand-400').value = p400;
     },
