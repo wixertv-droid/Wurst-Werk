@@ -104,7 +104,7 @@
                 <div style="display: flex; gap: 15px;">
                     <div style="flex: 1;">
                         <label class="editor-label">Verkaufsmenge</label>
-                        <input type="number" id="sell-amount" step="0.1" class="wurst-input" placeholder="z.B. 2">
+                        <input type="number" id="sell-amount" step="0.1" class="wurst-input" placeholder="z.B. 2" oninput="window.wurstManager.autoFillPfand()">
                     </div>
                     <div style="flex: 1;">
                         <label class="editor-label">Preis (€)</label>
@@ -112,9 +112,19 @@
                     </div>
                 </div>
                 
-                <div style="background: rgba(255,140,0,0.1); border-left: 3px solid var(--accent-amber); padding: 10px; border-radius: 6px; font-size: 0.85rem; color: #ccc;">
-                    <span class="material-symbols-outlined" style="font-size: 1rem; vertical-align: middle; color: var(--accent-amber);">bolt</span>
-                    <b>Direktverkauf!</b><br>Menge wird vom Bestand abgezogen. Umsatz wird gezählt. Gläser gehen sofort ins Pfandkonto.
+                <div style="background: rgba(255,140,0,0.1); border-left: 3px solid var(--accent-amber); padding: 15px; border-radius: 6px; margin-top: 15px;">
+                    <label class="editor-label" style="color: var(--accent-amber);"><span class="material-symbols-outlined" style="font-size: 1.2rem; vertical-align: middle;">kitchen</span> Gehen Gläser ans Kunden-Pfandkonto?</label>
+                    <div style="display: flex; gap: 10px; margin-top: 10px;">
+                        <div style="flex: 1;">
+                            <label style="font-size: 0.8rem; color: #ccc;">250ml Gläser</label>
+                            <input type="number" id="sell-pfand-250" class="wurst-input" value="0" style="margin-bottom: 0; padding: 10px;">
+                        </div>
+                        <div style="flex: 1;">
+                            <label style="font-size: 0.8rem; color: #ccc;">400ml Gläser</label>
+                            <input type="number" id="sell-pfand-400" class="wurst-input" value="0" style="margin-bottom: 0; padding: 10px;">
+                        </div>
+                    </div>
+                    <p style="font-size: 0.75rem; color: #aaa; margin: 8px 0 0 0;">Wird automatisch ausgefüllt. Korrigiere die Zahl bei Bedarf einfach manuell.</p>
                 </div>
             </div>
 
@@ -133,8 +143,8 @@
         <div class="nav-item" onclick="window.location.href='kunden.html'"><span class="material-symbols-outlined">group</span><span>Kunden</span></div>
     </nav>
 
-    <script src="db.js?v=21"></script>
-    <script src="app.js?v=21"></script>
-    <script src="wurststand.js?v=21"></script>
+    <script src="db.js?v=23"></script>
+    <script src="app.js?v=23"></script>
+    <script src="wurststand.js?v=23"></script>
 </body>
 </html>
