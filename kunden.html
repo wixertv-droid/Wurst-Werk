@@ -10,14 +10,16 @@
         .kunden-card { background: #1a1a1a; border-radius: 12px; padding: 15px; margin-bottom: 10px; border: 1px solid #222; display: flex; align-items: center; gap: 15px; cursor: pointer; }
         .icon-box { background: #2a2a2a; padding: 12px; border-radius: 8px; display: flex; justify-content: center; align-items: center; }
         
-        .kunden-input { width: 100%; box-sizing: border-box; padding: 15px; background: #222; border: 1px solid #444; color: white; border-radius: 12px; font-size: 1.1rem; margin-bottom: 15px; outline: none; }
-        .kunden-input:focus { border-color: #4caf50; }
+        .kunden-input, .kunden-select { width: 100%; box-sizing: border-box; padding: 15px; background: #222; border: 1px solid #444; color: white; border-radius: 12px; font-size: 1.1rem; margin-bottom: 15px; outline: none; }
+        .kunden-input:focus, .kunden-select:focus { border-color: #4caf50; }
         .editor-label { display: block; color: var(--text-muted); font-size: 0.85rem; margin-bottom: 5px; text-transform: uppercase; }
         
         .pfand-box { background: #222; border-radius: 12px; padding: 15px; margin-bottom: 15px; border: 1px dashed #444; }
         .outline-btn { flex: 1; background: transparent; padding: 10px; border-radius: 8px; font-weight: bold; display: flex; justify-content: center; align-items: center; gap: 5px; cursor: pointer; font-size: 0.95rem; }
         .outline-btn.red { border: 1px solid var(--accent-danger); color: var(--accent-danger); }
         .outline-btn.green { border: 1px solid #4caf50; color: #4caf50; }
+        
+        .order-card { background: #111; border-left: 3px solid #4caf50; padding: 12px; border-radius: 8px; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; }
     </style>
 </head>
 <body>
@@ -47,6 +49,43 @@
                 
                 <label class="editor-label">Name des Kunden</label>
                 <input type="text" id="edit-name" class="kunden-input" placeholder="z.B. Max Mustermann">
+
+                <hr style="border: 0; border-top: 1px dashed #444; margin: 25px 0;">
+                
+                <div style="color: #4caf50; text-transform: uppercase; font-size: 0.9rem; letter-spacing: 1px; margin-bottom: 15px; display: flex; align-items: center; gap: 5px; font-weight: bold;">
+                    <span class="material-symbols-outlined">shopping_cart</span> Käufe & Bestellungen
+                </div>
+
+                <div class="pfand-box" style="border-color: #333;">
+                    <label class="editor-label">Produkt auswählen (aus Rezepten)</label>
+                    <select id="order-recipe" class="kunden-select" style="padding: 12px; background: #111; margin-bottom: 15px; font-size: 1rem;">
+                        <option value="">Lade Rezepte...</option>
+                    </select>
+
+                    <div style="display: flex; gap: 10px; margin-bottom: 15px;">
+                        <div style="flex: 1;">
+                            <label class="editor-label">Menge</label>
+                            <input type="number" id="order-amount" step="0.1" class="kunden-input" style="padding: 12px; background: #111; margin-bottom: 0; font-size: 1rem;" placeholder="z.B. 2">
+                        </div>
+                        <div style="flex: 1;">
+                            <label class="editor-label">Einheit</label>
+                            <select id="order-unit" class="kunden-select" style="padding: 12px; background: #111; margin-bottom: 0; font-size: 1rem;">
+                                <option value="g">Gramm (g)</option>
+                                <option value="Stk">Stückzahl</option>
+                                <option value="Glas">Glas</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <label class="editor-label">Gesamtpreis (€)</label>
+                    <div style="display: flex; gap: 10px;">
+                        <input type="number" id="order-price" step="0.01" class="kunden-input" style="padding: 12px; background: #111; margin-bottom: 0; flex: 2; font-size: 1rem;" placeholder="0.00">
+                        <button class="outline-btn green" style="flex: 1;" onclick="window.kundenManager.addOrder()"><span class="material-symbols-outlined">add</span> Buchen</button>
+                    </div>
+                </div>
+
+                <div id="customer-orders-list">
+                    </div>
 
                 <hr style="border: 0; border-top: 1px dashed #444; margin: 25px 0;">
                 
@@ -91,8 +130,8 @@
         <div class="nav-item active"><span class="material-symbols-outlined">group</span><span>Kunden</span></div>
     </nav>
 
-    <script src="db.js?v=14"></script>
-    <script src="app.js?v=14"></script>
-    <script src="kunden.js?v=14"></script>
+    <script src="db.js?v=16"></script>
+    <script src="app.js?v=16"></script>
+    <script src="kunden.js?v=16"></script>
 </body>
 </html>
