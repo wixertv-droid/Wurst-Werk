@@ -28,6 +28,10 @@
     <main>
         <div id="kunden-list-view">
             
+            <button class="action-btn" style="background-color: #4d4dff; color: white; margin-bottom: 15px; height: 60px; font-size: 1.1rem;" onclick="window.kundenManager.openGlobalOrders()">
+                <span class="material-symbols-outlined">list_alt</span> Getätigte Bestellungen anzeigen
+            </button>
+
             <button class="action-btn" style="background-color: var(--accent-amber); color: #000; margin-bottom: 25px; height: 60px; font-size: 1.1rem;" onclick="window.kundenManager.openEditor()">
                 <span class="material-symbols-outlined">person_add</span> Neuen Kunden anlegen
             </button>
@@ -38,9 +42,19 @@
             </div>
         </div>
 
+        <div id="global-orders-view" style="display: none;">
+            <div class="sub-header" style="padding: 0 0 15px 0; margin-bottom: 20px; border-bottom: 1px solid #333;">
+                <div class="back-btn" onclick="window.kundenManager.closeGlobalOrders()"><span class="material-symbols-outlined">arrow_back_ios</span> Zurück</div>
+                <div class="header-title" style="color: white;">Alle Bestellungen</div>
+            </div>
+            
+            <div id="global-orders-container">
+                </div>
+        </div>
+
         <div id="kunden-editor-view" style="display: none;">
             <div class="sub-header" style="padding: 0 0 15px 0; margin-bottom: 20px; border-bottom: 1px solid #333;">
-                <div class="back-btn" onclick="window.kundenManager.closeEditor()"><span class="material-symbols-outlined">arrow_back_ios</span> Zurück</div>
+                <div class="back-btn" onclick="window.kundenManager.saveAndClose()"><span class="material-symbols-outlined">arrow_back_ios</span> Zurück (Speichert)</div>
                 <div class="header-title" id="editor-title" style="color: white;">Kunden Profil</div>
             </div>
 
@@ -48,7 +62,7 @@
                 <input type="hidden" id="edit-id">
                 
                 <label class="editor-label">Name des Kunden</label>
-                <input type="text" id="edit-name" class="kunden-input" placeholder="z.B. Max Mustermann">
+                <input type="text" id="edit-name" class="kunden-input" placeholder="z.B. Max Mustermann" onchange="window.kundenManager.silentSave()">
 
                 <hr style="border: 0; border-top: 1px dashed #444; margin: 25px 0;">
                 
@@ -116,8 +130,8 @@
                 </div>
             </div>
 
-            <button class="action-btn" style="background-color: #4caf50; color: white; height: 60px; font-size: 1.1rem;" onclick="window.kundenManager.saveCustomer()">
-                <span class="material-symbols-outlined">save</span> Profil Speichern
+            <button class="action-btn" style="background-color: #4caf50; color: white; height: 60px; font-size: 1.1rem;" onclick="window.kundenManager.saveAndClose()">
+                <span class="material-symbols-outlined">done</span> Fertig & Schließen
             </button>
         </div>
 
@@ -130,8 +144,8 @@
         <div class="nav-item active"><span class="material-symbols-outlined">group</span><span>Kunden</span></div>
     </nav>
 
-    <script src="db.js?v=16"></script>
-    <script src="app.js?v=16"></script>
-    <script src="kunden.js?v=16"></script>
+    <script src="db.js?v=17"></script>
+    <script src="app.js?v=17"></script>
+    <script src="kunden.js?v=17"></script>
 </body>
 </html>
