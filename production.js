@@ -8,9 +8,8 @@ window.produktionManager = {
         const params = new URLSearchParams(window.location.search);
         const id = params.get('id');
         
-        // Läd die Timer oben in der Produktionsansicht
         this.loadActiveProcesses();
-        setInterval(() => this.loadActiveProcesses(), 10000); // Alle 10 Sekunden aktualisieren
+        setInterval(() => this.loadActiveProcesses(), 10000); 
 
         if (!id) {
             alert("Kein Rezept ausgewählt!");
@@ -234,10 +233,9 @@ window.produktionManager = {
                     const currentInvAmount = Number(invItem.amount) || 0;
                     const currentInvPrice = Number(invItem.price) || 0;
                     
-                    // Exakte Preis-Berechnung
                     if (currentInvAmount > 0 && deductAmount > 0) {
                         let proportion = deductAmount / currentInvAmount;
-                        if (proportion > 1) proportion = 1; // Falls man mehr verbraucht als da ist, maximal 100% Preis abziehen
+                        if (proportion > 1) proportion = 1; 
                         
                         const costForThisItem = currentInvPrice * proportion;
                         this.totalCosts += costForThisItem;
@@ -289,17 +287,17 @@ window.produktionManager = {
                 
                 timerBtn = `
                     <div class="timer-controls" id="timer-ctrl-${i}" style="display: flex; gap: 10px; margin-top: 15px; padding-left: 50px;">
-                        <button style="background: #4d4dff; color: white; border: none; padding: 10px; border-radius: 8px; flex: 1; font-weight: bold; cursor: pointer;" onclick="window.produktionManager.startTimer(${i})">▶️ Starten</button>
-                        <button style="background: #333; color: white; border: 1px solid #555; padding: 10px; border-radius: 8px; flex: 1; cursor: pointer;" onclick="window.produktionManager.skipStep(${i})">⏭️ Überspringen</button>
+                        <button class="btn-start" onclick="window.produktionManager.startTimer(${i})">▶️ Starten</button>
+                        <button class="btn-skip" onclick="window.produktionManager.skipStep(${i})">⏭️ Überspringen</button>
                     </div>
                     <div id="timer-status-${i}" style="display:none; padding-left:50px; margin-top: 10px; color:#4caf50; font-weight: bold;"></div>
                 `;
             }
 
             container.innerHTML += `
-                <div class="check-step" id="step-row-${i}" style="padding: 15px; background: #111; border-radius: 8px; margin-bottom: 12px; border-left: 4px solid #444;">
-                    <div class="step-header" style="display: flex; gap: 15px; align-items: center; cursor: pointer;" onclick="window.produktionManager.toggleStep(${i})">
-                        <div class="check-btn" style="background: #222; border: 2px solid #444; border-radius: 50%; min-width: 35px; height: 35px; display: flex; align-items: center; justify-content: center; color: transparent;"><span class="material-symbols-outlined">check</span></div>
+                <div class="check-step" id="step-row-${i}">
+                    <div class="step-header" onclick="window.produktionManager.toggleStep(${i})">
+                        <div class="check-btn"><span class="material-symbols-outlined">check</span></div>
                         <div style="flex:1;"><b style="font-size:0.8rem; color:#888;">SCHRITT ${i+1}</b><p style="margin: 3px 0 0 0; line-height: 1.4;">${step.text} ${extra}</p></div>
                     </div>
                     ${timerBtn}
@@ -307,8 +305,12 @@ window.produktionManager = {
         });
     },
 
+    // FIX: Abhaken funktioniert jetzt kugelsicher
     toggleStep: function(i) { 
-        document.getElementById(`step-row-${i}`).classList.toggle('done'); 
+        const row = document.getElementById(`step-row-${i}`);
+        if(row) {
+            row.classList.toggle('done');
+        }
     },
 
     startTimer: async function(index) {
@@ -344,11 +346,12 @@ window.produktionManager = {
             });
 
             if (res.ok) {
-                document.getElementById(`step-row-${index}`).style.borderLeftColor = '#4d4dff';
+                // Den Block markieren und Button verstecken
+                document.getElementById(`step-row-${index}`).classList.add('running');
                 document.getElementById(`timer-ctrl-${index}`).style.display = 'none';
                 statusEl.style.display = 'block';
-                statusEl.innerText = "✅ Timer läuft! Erscheint jetzt oben und auf dem Dashboard.";
-                this.loadActiveProcesses(); // Lade die Liste oben direkt neu!
+                statusEl.innerText = "✅ Timer gestartet!";
+                this.loadActiveProcesses(); 
             } else {
                 alert("Fehler: Hast du die Tabelle 'active_processes' in Supabase angelegt?");
             }
@@ -358,9 +361,12 @@ window.produktionManager = {
     },
 
     skipStep: function(i) {
-        document.getElementById(`step-row-${i}`).style.borderLeftColor = '#4caf50';
-        document.getElementById(`step-row-${i}`).style.opacity = '0.6';
-        if(document.getElementById(`timer-ctrl-${i}`)) document.getElementById(`timer-ctrl-${i}`).style.display = 'none';
+        const row = document.getElementById(`step-row-${i}`);
+        if(row) {
+            row.classList.add('done');
+            const ctrl = document.getElementById(`timer-ctrl-${i}`);
+            if(ctrl) ctrl.style.display = 'none';
+        }
     },
 
     finishProduction: function() {
