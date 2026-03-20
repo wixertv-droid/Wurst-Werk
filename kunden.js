@@ -28,7 +28,6 @@ window.kundenManager = {
         }
     },
 
-    // Kleine Hilfsfunktion für Plural ("Glas" -> "Gläser")
     formatUnit: function(amount, unit) {
         if (unit.includes('Glas') && Number(amount) !== 1) {
             return unit.replace('Glas', 'Gläser');
@@ -41,17 +40,23 @@ window.kundenManager = {
         if (!container) return;
 
         try {
-            this.kundenData = await db.getCustomers();
+            const data = await db.getCustomers();
+            this.kundenData = Array.isArray(data) ? data : [];
             
-            if (!this.kundenData || this.kundenData.length === 0) {
+            if (this.kundenData.length === 0) {
                 container.innerHTML = '<p class="text-muted" style="text-align: center;">Keine Kunden angelegt.</p>';
                 return;
             }
 
             container.innerHTML = '';
-            const sortedKunden = [...this.kundenData].sort((a, b) => a.name.localeCompare(b.name));
+            
+            // FIX: Kugelsicheres Sortieren
+            const sortedKunden = [...this.kundenData].sort((a, b) => (a.name || '').localeCompare(b.name || ''));
 
             sortedKunden.forEach(k => {
+                // Überspringe defekte Einträge ohne Namen
+                if (!k.name) return;
+
                 const safeData = encodeURIComponent(JSON.stringify(k));
                 const pfandSumme = (Number(k.pfand_250) || 0) + (Number(k.pfand_400) || 0);
                 
@@ -103,7 +108,7 @@ window.kundenManager = {
         let hasOrders = false;
 
         this.kundenData.forEach(k => {
-            if (Array.isArray(k.orders) && k.orders.length > 0) {
+            if (Array.isArray(k.orders) && k.orders.length > 0 && k.name) {
                 hasOrders = true;
                 let orderListHTML = '';
                 k.orders.forEach(o => {
@@ -201,16 +206,14 @@ window.kundenManager = {
         await this.silentSave(); 
     },
 
-    // NEU: Bestellung als Erledigt markieren & Gläser zubuchen
     fulfillOrder: async function(orderId) {
-        if (!confirm("Bestellung an den Kunden übergeben?\n\n(Falls Gläser in der Bestellung sind, werden diese automatisch auf sein Pfand-Konto gebucht!)")) return;
+        if (!confirm("Vorbestellung an den Kunden übergeben?\n\n(Falls Gläser in der Bestellung sind, werden diese automatisch auf sein Pfand-Konto gebucht!)")) return;
         
         const orderIndex = this.currentOrders.findIndex(o => o.id === orderId);
         if (orderIndex === -1) return;
         
         const order = this.currentOrders[orderIndex];
 
-        // Wenn es Gläser waren, auf das Pfandkonto draufschlagen!
         if (order.unit === 'Glas (250ml)') {
             const current250 = parseInt(document.getElementById('edit-pfand-250').innerText) || 0;
             document.getElementById('edit-pfand-250').innerText = current250 + order.amount;
@@ -219,11 +222,10 @@ window.kundenManager = {
             document.getElementById('edit-pfand-400').innerText = current400 + order.amount;
         }
 
-        // Bestellung aus der Liste werfen (da erledigt)
         this.currentOrders.splice(orderIndex, 1);
         
         this.renderOrders();
-        await this.silentSave(); // Speichert alles sofort in die DB
+        await this.silentSave(); 
     },
 
     removeOrder: async function(orderId) {
