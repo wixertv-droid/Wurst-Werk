@@ -1,304 +1,140 @@
-window.wurstManager = {
-    bestandData: [],
-    recipesData: [],
-    customersData: [],
-
-    init: async function() {
-        await this.loadDependencies();
-        await this.loadList();
-    },
-
-    loadDependencies: async function() {
-        try {
-            const resRecipes = await fetch(`${supabaseUrl}/rest/v1/recipes?select=id,name&order=name.asc`, {
-                headers: { 'apikey': supabaseKey, 'Authorization': `Bearer ${supabaseKey}` }
-            });
-            if (resRecipes.ok) this.recipesData = await resRecipes.json();
-
-            this.customersData = await db.getCustomers();
-        } catch (e) {
-            console.error("Fehler beim Laden von Rezepten/Kunden", e);
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Wurststand - Wurstwerk</title>
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined" rel="stylesheet" />
+    <link rel="stylesheet" href="style.css">
+    <style>
+        body { padding-bottom: 90px; }
+        
+        nav { 
+            position: fixed; bottom: 0; left: 0; width: 100%; z-index: 1000;
+            background-color: var(--nav-bg); display: flex; justify-content: space-around; 
+            padding: 12px 0; padding-bottom: calc(12px + env(safe-area-inset-bottom)); 
+            border-top: 1px solid #222; 
         }
-    },
+        .nav-item { flex: 1; color: #555; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; cursor: pointer; transition: 0.2s; }
+        .nav-item span:last-child { font-size: 0.75rem; font-weight: 500; }
+        .nav-item.active { color: var(--accent-amber); }
+        .nav-item .material-symbols-outlined { font-size: 1.8rem; }
 
-    loadList: async function() {
-        const container = document.getElementById('wurst-list-container');
-        if (!container) return;
+        .wurst-card { background: #1a1a1a; border-radius: 12px; padding: 15px; margin-bottom: 12px; border: 1px solid #222; border-left: 3px solid #4caf50; display: flex; flex-direction: column; align-items: stretch; }
+        .wurst-input, .wurst-select { width: 100%; box-sizing: border-box; padding: 15px; background: #222; border: 1px solid #444; color: white; border-radius: 12px; font-size: 1.1rem; margin-bottom: 15px; outline: none; }
+        .wurst-input:focus, .wurst-select:focus { border-color: #4caf50; }
+        .editor-label { display: block; color: var(--text-muted); font-size: 0.85rem; margin-bottom: 5px; text-transform: uppercase; }
+        
+        .sell-btn { width: 100%; background: rgba(76, 175, 80, 0.1); border: 1px solid #4caf50; color: #4caf50; padding: 12px; border-radius: 8px; font-weight: bold; cursor: pointer; display: flex; justify-content: center; align-items: center; gap: 5px; margin-top: 10px; font-size: 1rem; }
+    </style>
+</head>
+<body>
+    <header style="text-transform: uppercase; letter-spacing: 2px;">Wurststand (Fertig)</header>
+    
+    <main>
+        <div id="wurststand-list-view">
+            <button class="action-btn" style="background-color: #4caf50; color: white; margin-bottom: 25px; height: 60px; font-size: 1.1rem;" onclick="window.wurstManager.openEditor()">
+                <span class="material-symbols-outlined">add_circle</span> Fertige Wurst einbuchen
+            </button>
 
-        try {
-            const res = await fetch(`${supabaseUrl}/rest/v1/wurst_bestand?order=name.asc`, {
-                headers: { 'apikey': supabaseKey, 'Authorization': `Bearer ${supabaseKey}` }
-            });
-            
-            if (!res.ok) {
-                container.innerHTML = '<p class="text-muted" style="color: var(--accent-danger);">Tabelle "wurst_bestand" fehlt in Supabase!</p>';
-                return;
-            }
+            <div style="color: var(--text-muted); text-transform: uppercase; font-size: 0.85rem; letter-spacing: 1px; margin-bottom: 10px;">Aktueller Bestand & Umsatz</div>
+            <div id="wurst-list-container">
+                <p class="text-muted" style="text-align: center;">Lade Wurststand...</p>
+            </div>
+        </div>
 
-            this.bestandData = await res.json();
-            
-            if (this.bestandData.length === 0) {
-                container.innerHTML = '<p class="text-muted" style="text-align: center;">Der Wurststand ist aktuell leer.</p>';
-                return;
-            }
+        <div id="wurststand-editor-view" style="display: none;">
+            <div class="sub-header" style="padding: 0 0 15px 0; margin-bottom: 20px; border-bottom: 1px solid #333;">
+                <div class="back-btn" onclick="window.wurstManager.closeEditor()"><span class="material-symbols-outlined">arrow_back_ios</span> Zurück</div>
+                <div class="header-title" id="editor-title" style="color: white;">Bestand anpassen</div>
+            </div>
 
-            container.innerHTML = '';
-
-            this.bestandData.forEach(item => {
-                const safeData = encodeURIComponent(JSON.stringify(item));
+            <div style="background: #1a1a1a; padding: 20px; border-radius: 12px; margin-bottom: 30px; border: 1px solid #222;">
+                <input type="hidden" id="edit-id">
                 
-                let dispUnit = item.unit;
-                if (dispUnit.includes('Glas') && Number(item.amount) !== 1) {
-                    dispUnit = dispUnit.replace('Glas', 'Gläser');
-                }
+                <label class="editor-label">Produkt auswählen</label>
+                <select id="edit-name-select" class="wurst-select" onchange="window.wurstManager.toggleCustomName()">
+                    <option value="">Lade Rezepte...</option>
+                </select>
+                <input type="text" id="edit-name-custom" class="wurst-input" placeholder="Name der fertigen Wurst eingeben..." style="display: none;">
 
-                const amountText = Number(item.amount) === 0 ? 
-                    `<span style="color: var(--accent-danger);">Ausverkauft! (0 ${dispUnit})</span>` : 
-                    `${item.amount} ${dispUnit}`;
-
-                const revenue = Number(item.revenue) || 0;
-
-                container.innerHTML += `
-                    <div class="wurst-card" onclick="window.wurstManager.openEditor('${safeData}')">
-                        <div style="display: flex; align-items: center; gap: 15px;">
-                            <div style="background: #222; padding: 10px; border-radius: 8px; display: flex; align-items: center; justify-content: center;">
-                                <span class="material-symbols-outlined" style="color: #4caf50;">storefront</span>
-                            </div>
-                            <div style="flex: 1;">
-                                <h3 style="margin: 0; font-size: 1.1rem; color: white;">${item.name}</h3>
-                                <p style="margin: 3px 0 0 0; color: #aaa; font-size: 0.95rem; font-weight: bold;">Bestand: ${amountText}</p>
-                                <p style="margin: 3px 0 0 0; color: var(--accent-amber); font-size: 0.85rem; font-weight: bold;">💰 Umsatz: ${revenue.toFixed(2)} €</p>
-                            </div>
-                            <div onclick="event.stopPropagation(); window.wurstManager.deleteItem('${item.id}', '${item.name}')" style="background: #331111; padding: 10px; border-radius: 8px; display: flex; align-items: center; justify-content: center;">
-                                <span class="material-symbols-outlined" style="color: var(--accent-danger);">delete</span>
-                            </div>
-                        </div>
-                        <div style="border-top: 1px dashed #333; margin-top: 10px; padding-top: 5px;">
-                            <button class="sell-btn" onclick="event.stopPropagation(); window.wurstManager.openSellView('${safeData}')" ${Number(item.amount) <= 0 ? 'disabled style="opacity:0.5; cursor:not-allowed;"' : ''}>
-                                <span class="material-symbols-outlined" style="font-size: 1.2rem;">shopping_cart</span> An Kunde verkaufen
-                            </button>
-                        </div>
+                <div style="display: flex; gap: 15px;">
+                    <div style="flex: 1;">
+                        <label class="editor-label">Menge</label>
+                        <input type="number" id="edit-amount" step="0.1" class="wurst-input" placeholder="0">
                     </div>
-                `;
-            });
+                    <div style="flex: 1;">
+                        <label class="editor-label">Einheit</label>
+                        <select id="edit-unit" class="wurst-select">
+                            <option value="Stück">Stück</option>
+                            <option value="Glas (250ml)">Glas (250ml)</option>
+                            <option value="Glas (400ml)">Glas (400ml)</option>
+                            <option value="g">Gramm (g)</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
 
-        } catch (e) {
-            container.innerHTML = '<p class="text-muted" style="color: var(--accent-danger);">Netzwerkfehler.</p>';
-        }
-    },
+            <button class="action-btn" style="background-color: #4caf50; color: white; height: 60px; font-size: 1.1rem;" onclick="window.wurstManager.saveItem()">
+                <span class="material-symbols-outlined">save</span> Bestand Speichern
+            </button>
+        </div>
 
-    populateRecipeDropdown: function() {
-        const selectEl = document.getElementById('edit-name-select');
-        selectEl.innerHTML = '<option value="">-- Rezept wählen --</option>';
-        this.recipesData.forEach(r => {
-            selectEl.innerHTML += `<option value="${r.name}">${r.name}</option>`;
-        });
-        selectEl.innerHTML += '<option value="custom">✏️ Anderes (Manuell eingeben)...</option>';
-    },
+        <div id="wurststand-sell-view" style="display: none;">
+            <div class="sub-header" style="padding: 0 0 15px 0; margin-bottom: 20px; border-bottom: 1px solid #333;">
+                <div class="back-btn" onclick="window.wurstManager.closeSellView()"><span class="material-symbols-outlined">arrow_back_ios</span> Abbrechen</div>
+                <div class="header-title" style="color: white;">Direktverkauf</div>
+            </div>
 
-    toggleCustomName: function() {
-        const select = document.getElementById('edit-name-select');
-        const input = document.getElementById('edit-name-custom');
-        if (select.value === 'custom') {
-            input.style.display = 'block';
-        } else {
-            input.style.display = 'none';
-        }
-    },
+            <div style="background: #1a1a1a; padding: 20px; border-radius: 12px; margin-bottom: 30px; border: 1px solid #222;">
+                <div style="text-align: center; margin-bottom: 25px;">
+                    <span class="material-symbols-outlined" style="font-size: 3rem; color: #4caf50;">shopping_cart_checkout</span>
+                    <h2 id="sell-item-name" style="margin: 10px 0 5px 0; color: white;">Produkt</h2>
+                    <p style="color: var(--text-muted); margin: 0; font-size: 0.95rem;">Aktuell im Stand: <b id="sell-item-available" style="color: white;">0</b></p>
+                </div>
 
-    openEditor: function(encodedData = null) {
-        document.getElementById('wurststand-list-view').style.display = 'none';
-        document.getElementById('wurststand-editor-view').style.display = 'block';
-        
-        this.populateRecipeDropdown();
+                <input type="hidden" id="sell-item-id">
+                <input type="hidden" id="sell-item-unit">
 
-        if (encodedData) {
-            const item = JSON.parse(decodeURIComponent(encodedData));
-            document.getElementById('editor-title').innerText = "Bestand bearbeiten";
-            document.getElementById('edit-id').value = item.id;
-            document.getElementById('edit-amount').value = item.amount;
-            document.getElementById('edit-unit').value = item.unit;
-            
-            const recipeExists = this.recipesData.some(r => r.name === item.name);
-            if (recipeExists) {
-                document.getElementById('edit-name-select').value = item.name;
-                document.getElementById('edit-name-custom').style.display = 'none';
-            } else {
-                document.getElementById('edit-name-select').value = 'custom';
-                document.getElementById('edit-name-custom').style.display = 'block';
-                document.getElementById('edit-name-custom').value = item.name;
-            }
-        } else {
-            document.getElementById('editor-title').innerText = "Neue Wurst einbuchen";
-            document.getElementById('edit-id').value = '';
-            document.getElementById('edit-name-select').value = '';
-            document.getElementById('edit-name-custom').style.display = 'none';
-            document.getElementById('edit-name-custom').value = '';
-            document.getElementById('edit-amount').value = '';
-        }
-    },
+                <label class="editor-label">Kunde auswählen</label>
+                <select id="sell-customer" class="wurst-select">
+                    <option value="">Lade Kunden...</option>
+                </select>
 
-    closeEditor: function() {
-        document.getElementById('wurststand-list-view').style.display = 'block';
-        document.getElementById('wurststand-editor-view').style.display = 'none';
-    },
+                <div style="display: flex; gap: 15px;">
+                    <div style="flex: 1;">
+                        <label class="editor-label">Verkaufsmenge</label>
+                        <input type="number" id="sell-amount" step="0.1" class="wurst-input" placeholder="z.B. 2">
+                    </div>
+                    <div style="flex: 1;">
+                        <label class="editor-label">Preis (€)</label>
+                        <input type="number" id="sell-price" step="0.01" class="wurst-input" placeholder="0.00">
+                    </div>
+                </div>
+                
+                <div style="background: rgba(255,140,0,0.1); border-left: 3px solid var(--accent-amber); padding: 10px; border-radius: 6px; font-size: 0.85rem; color: #ccc;">
+                    <span class="material-symbols-outlined" style="font-size: 1rem; vertical-align: middle; color: var(--accent-amber);">bolt</span>
+                    <b>Direktverkauf!</b><br>Menge wird vom Bestand abgezogen. Umsatz wird gezählt. Gläser gehen sofort ins Pfandkonto.
+                </div>
+            </div>
 
-    saveItem: async function() {
-        let id = document.getElementById('edit-id').value;
-        const selectVal = document.getElementById('edit-name-select').value;
-        const customVal = document.getElementById('edit-name-custom').value.trim();
-        
-        let nameVal = selectVal === 'custom' ? customVal : selectVal;
-        const amountVal = Number(document.getElementById('edit-amount').value) || 0;
-        const unitVal = document.getElementById('edit-unit').value;
+            <button class="action-btn" style="background-color: #4caf50; color: white; height: 60px; font-size: 1.1rem;" onclick="window.wurstManager.confirmSale()">
+                <span class="material-symbols-outlined">done_all</span> Verkauf sofort abschließen
+            </button>
+        </div>
 
-        if (!nameVal) {
-            alert("Bitte wähle ein Produkt oder gib einen Namen ein!");
-            return;
-        }
+    </main>
 
-        const payload = {
-            name: nameVal,
-            amount: amountVal,
-            unit: unitVal
-        };
+    <nav>
+        <div class="nav-item" onclick="window.location.href='index.html'"><span class="material-symbols-outlined">dashboard</span><span>Home</span></div>
+        <div class="nav-item" onclick="window.location.href='rezepte.html'"><span class="material-symbols-outlined">menu_book</span><span>Rezepte</span></div>
+        <div class="nav-item" onclick="window.location.href='lager.html'"><span class="material-symbols-outlined">inventory</span><span>Lager</span></div>
+        <div class="nav-item active" onclick="window.location.href='wurststand.html'"><span class="material-symbols-outlined">storefront</span><span>Bestand</span></div>
+        <div class="nav-item" onclick="window.location.href='kunden.html'"><span class="material-symbols-outlined">group</span><span>Kunden</span></div>
+    </nav>
 
-        try {
-            let url = `${supabaseUrl}/rest/v1/wurst_bestand`;
-            let method = 'POST';
-
-            if (id) {
-                url += `?id=eq.${id}`;
-                method = 'PATCH';
-            } else {
-                payload.id = crypto.randomUUID();
-                payload.revenue = 0; // Bei neuen Artikeln Umsatz auf 0 setzen
-            }
-
-            const res = await fetch(url, {
-                method: method,
-                headers: { 'apikey': supabaseKey, 'Authorization': `Bearer ${supabaseKey}`, 'Content-Type': 'application/json', 'Prefer': 'return=minimal' },
-                body: JSON.stringify(payload)
-            });
-
-            if (res.ok) {
-                this.closeEditor();
-                await this.loadList();
-            } else {
-                alert("Fehler beim Speichern!");
-            }
-        } catch (e) { alert("Netzwerkfehler beim Speichern."); }
-    },
-
-    // ==========================================
-    // DIE DIREKTVERKAUFS-LOGIK (Ohne Vorbestellung!)
-    // ==========================================
-    openSellView: function(encodedData) {
-        document.getElementById('wurststand-list-view').style.display = 'none';
-        document.getElementById('wurststand-sell-view').style.display = 'block';
-
-        const item = JSON.parse(decodeURIComponent(encodedData));
-        
-        let dispUnit = item.unit;
-        if (dispUnit.includes('Glas') && Number(item.amount) !== 1) dispUnit = dispUnit.replace('Glas', 'Gläser');
-
-        document.getElementById('sell-item-name').innerText = item.name;
-        document.getElementById('sell-item-available').innerText = `${item.amount} ${dispUnit}`;
-        document.getElementById('sell-item-id').value = item.id;
-        document.getElementById('sell-item-unit').value = item.unit; 
-        
-        document.getElementById('sell-amount').value = '';
-        document.getElementById('sell-price').value = '';
-
-        const customerSelect = document.getElementById('sell-customer');
-        customerSelect.innerHTML = '<option value="">-- Kunde wählen --</option>';
-        
-        const sortedKunden = [...this.customersData].sort((a, b) => a.name.localeCompare(b.name));
-        sortedKunden.forEach(c => {
-            customerSelect.innerHTML += `<option value="${c.id}">${c.name}</option>`;
-        });
-    },
-
-    closeSellView: function() {
-        document.getElementById('wurststand-list-view').style.display = 'block';
-        document.getElementById('wurststand-sell-view').style.display = 'none';
-    },
-
-    confirmSale: async function() {
-        const itemId = document.getElementById('sell-item-id').value;
-        const itemUnit = document.getElementById('sell-item-unit').value;
-        const itemName = document.getElementById('sell-item-name').innerText;
-        
-        const customerId = document.getElementById('sell-customer').value;
-        const sellAmount = Number(document.getElementById('sell-amount').value);
-        const sellPrice = Number(document.getElementById('sell-price').value) || 0;
-
-        if (!customerId || sellAmount <= 0) {
-            alert("Bitte wähle einen Kunden und gib eine Menge ein (größer als 0)!");
-            return;
-        }
-
-        const item = this.bestandData.find(i => i.id === itemId);
-        const customer = this.customersData.find(c => c.id === customerId);
-
-        if (!item || !customer) return;
-
-        // 1. Wurststand aktualisieren: Menge abziehen & Umsatz hochzählen!
-        let newStockAmount = Number(item.amount) - sellAmount;
-        if (newStockAmount < 0) newStockAmount = 0;
-        
-        let currentRevenue = Number(item.revenue) || 0;
-        let newRevenue = currentRevenue + sellPrice;
-
-        // 2. Pfandkonto automatisch anpassen (Keine Vorbestellung, direkter Abzug!)
-        let pfand250 = Number(customer.pfand_250) || 0;
-        let pfand400 = Number(customer.pfand_400) || 0;
-
-        if (itemUnit.includes('250ml')) pfand250 += sellAmount;
-        if (itemUnit.includes('400ml')) pfand400 += sellAmount;
-        let pfandSchulden = pfand250 + pfand400;
-
-        try {
-            // Wurststand updaten
-            await fetch(`${supabaseUrl}/rest/v1/wurst_bestand?id=eq.${itemId}`, {
-                method: 'PATCH',
-                headers: { 'apikey': supabaseKey, 'Authorization': `Bearer ${supabaseKey}`, 'Content-Type': 'application/json' },
-                body: JSON.stringify({ amount: newStockAmount, revenue: newRevenue })
-            });
-
-            // Kundenakte updaten (NUR PFAND, wir lassen das 'orders' Array in Ruhe!)
-            await fetch(`${supabaseUrl}/rest/v1/customers?id=eq.${customerId}`, {
-                method: 'PATCH',
-                headers: { 'apikey': supabaseKey, 'Authorization': `Bearer ${supabaseKey}`, 'Content-Type': 'application/json' },
-                body: JSON.stringify({ 
-                    pfand_250: pfand250,
-                    pfand_400: pfand400,
-                    pfand_schulden: pfandSchulden
-                })
-            });
-
-            alert(`✅ Direktverkauf erledigt!\n\nUmsatz gebucht: ${sellPrice.toFixed(2)} €\nNeuer Bestand: ${newStockAmount} ${itemUnit}`);
-            this.closeSellView();
-            
-            await this.loadDependencies();
-            await this.loadList();
-            if(window.app && window.app.refreshData) window.app.refreshData();
-
-        } catch (e) {
-            alert("Fehler bei der Verbindung zur Datenbank.");
-        }
-    },
-
-    deleteItem: async function(id, name) {
-        if (!confirm(`"${name}" komplett aus dem Bestand löschen? (Umsatz-Historie geht dabei auch verloren!)`)) return;
-        try {
-            const res = await fetch(`${supabaseUrl}/rest/v1/wurst_bestand?id=eq.${id}`, {
-                method: 'DELETE',
-                headers: { 'apikey': supabaseKey, 'Authorization': `Bearer ${supabaseKey}` }
-            });
-            if (res.ok) await this.loadList();
-        } catch (e) { alert("Fehler beim Löschen."); }
-    }
-};
-
-document.addEventListener('DOMContentLoaded', () => window.wurstManager.init());
+    <script src="db.js?v=21"></script>
+    <script src="app.js?v=21"></script>
+    <script src="wurststand.js?v=21"></script>
+</body>
+</html>
