@@ -50,20 +50,19 @@ window.wurstManager = {
             container.innerHTML = '';
 
             this.bestandData.forEach(item => {
+                const safeData = encodeURIComponent(JSON.stringify(item));
                 const itemName = item.name || 'Unbenannt';
-                const itemAmount = Number(item.amount) || 0;
-                let dispUnit = item.unit || 'Stück'; 
                 
-                if (dispUnit.includes('Glas') && itemAmount !== 1) {
+                let dispUnit = item.unit || 'Stück';
+                if (dispUnit.includes('Glas') && Number(item.amount) !== 1) {
                     dispUnit = dispUnit.replace('Glas', 'Gläser');
                 }
 
-                const amountText = itemAmount <= 0 ? 
+                const amountText = Number(item.amount) <= 0 ? 
                     `<span style="color: var(--accent-danger);">Ausverkauft! (0 ${dispUnit})</span>` : 
-                    `${itemAmount} ${dispUnit}`;
+                    `${item.amount} ${dispUnit}`;
 
                 const revenue = Number(item.revenue) || 0;
-                const safeData = encodeURIComponent(JSON.stringify(item));
 
                 container.innerHTML += `
                     <div class="wurst-card" onclick="window.wurstManager.openEditor('${safeData}')">
@@ -81,7 +80,7 @@ window.wurstManager = {
                             </div>
                         </div>
                         <div style="border-top: 1px dashed #333; margin-top: 10px; padding-top: 5px;">
-                            <button class="sell-btn" onclick="event.stopPropagation(); window.wurstManager.openSellView('${safeData}')" ${itemAmount <= 0 ? 'disabled style="opacity:0.5; cursor:not-allowed;"' : ''}>
+                            <button class="sell-btn" onclick="event.stopPropagation(); window.wurstManager.openSellView('${safeData}')" ${Number(item.amount) <= 0 ? 'disabled style="opacity:0.5; cursor:not-allowed;"' : ''}>
                                 <span class="material-symbols-outlined" style="font-size: 1.2rem;">shopping_cart</span> An Kunde verkaufen
                             </button>
                         </div>
@@ -97,6 +96,7 @@ window.wurstManager = {
     populateRecipeDropdown: function() {
         const selectEl = document.getElementById('edit-name-select');
         if (!selectEl) return;
+        
         selectEl.innerHTML = '<option value="">-- Rezept wählen --</option>';
         if (Array.isArray(this.recipesData)) {
             this.recipesData.forEach(r => {
@@ -109,6 +109,7 @@ window.wurstManager = {
     toggleCustomName: function() {
         const select = document.getElementById('edit-name-select');
         const input = document.getElementById('edit-name-custom');
+        
         if (!select || !input) return;
 
         if (select.value === 'custom') {
@@ -154,7 +155,10 @@ window.wurstManager = {
             document.getElementById('editor-title').innerText = "Neue Wurst einbuchen";
             if (idEl) idEl.value = '';
             if (selectEl) selectEl.value = '';
-            if (customEl) { customEl.style.display = 'none'; customEl.value = ''; }
+            if (customEl) {
+                customEl.style.display = 'none';
+                customEl.value = '';
+            }
             if (amountEl) amountEl.value = '';
         }
     },
@@ -261,16 +265,14 @@ window.wurstManager = {
 
     confirmSale: async function() {
         const itemId = document.getElementById('sell-item-id') ? document.getElementById('sell-item-id').value : null;
-        const itemName = document.getElementById('sell-item-name') ? document.getElementById('sell-item-name').innerText : '';
         const originalUnit = document.getElementById('sell-item-original-unit') ? document.getElementById('sell-item-original-unit').value : '';
         
         const customerId = document.getElementById('sell-customer') ? document.getElementById('sell-customer').value : null;
         const sellAmount = document.getElementById('sell-amount') ? Number(document.getElementById('sell-amount').value) : 0;
         const sellPrice = document.getElementById('sell-price') ? (Number(document.getElementById('sell-price').value) || 0) : 0;
         
-        // HIER WIRD DIE AUSGEWÄHLTE EINHEIT GELESEN
-        const selectedUnit = document.getElementById('sell-unit-select') ? document.getElementById('sell-unit-select').value : '';
-
+        const selectedUnitRaw = document.getElementById('sell-unit-select') ? document.getElementById('sell-unit-select').value : '';
+        
         if (!customerId || sellAmount <= 0) {
             alert("Bitte wähle einen Kunden und gib eine Menge ein (größer als 0)!");
             return;
@@ -281,21 +283,27 @@ window.wurstManager = {
 
         if (!item || !customer) return;
 
-        // 1. Wurststand aktualisieren (Menge abziehen, Umsatz aufrechnen)
         let newStockAmount = Number(item.amount) - sellAmount;
         if (newStockAmount < 0) newStockAmount = 0;
         
         let currentRevenue = Number(item.revenue) || 0;
         let newRevenue = currentRevenue + sellPrice;
 
-        // 2. Pfand automatisch berechnen (Anhand der DROPDOWN Auswahl!)
+        // KUGELSICHERE PFAND-ERKENNUNG: Scannen nach "250" oder "400"
         let add250 = 0;
         let add400 = 0;
+        
+        const checkStr = selectedUnitRaw.toLowerCase();
 
-        if (selectedUnit === 'Glas (250ml)') {
-            add250 = Math.floor(sellAmount);
-        } else if (selectedUnit === 'Glas (400ml)') {
-            add400 = Math.floor(sellAmount);
+        // Runden, damit aus Versehen eingegebene halbe Gläser nicht zu Fehlern führen
+        const cleanAmount = Math.round(sellAmount);
+
+        if (checkStr.includes('250')) {
+            add250 = cleanAmount;
+        } else if (checkStr.includes('400')) {
+            add400 = cleanAmount;
+        } else if (checkStr.includes('glas')) {
+            add250 = cleanAmount; // Fallback auf 250ml
         }
 
         let pfand250 = (Number(customer.pfand_250) || 0) + add250;
