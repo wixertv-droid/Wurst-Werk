@@ -1,1 +1,100 @@
- 
+ <!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Wurststand - Wurstwerk</title>
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined" rel="stylesheet" />
+    <link rel="stylesheet" href="style.css">
+    <style>
+        /* HIER IST DER FIX FÜR DIE FESTE LEISTE! */
+        body {
+            padding-bottom: 90px; /* Macht unten Platz, damit nichts verdeckt wird */
+        }
+        nav {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            background-color: #111;
+            border-top: 1px solid #333;
+            display: flex;
+            justify-content: space-around;
+            padding: 10px 0 calc(10px + env(safe-area-inset-bottom)) 0; /* Für den iPhone Balken unten */
+            z-index: 1000;
+        }
+        /* Verkleinert die Icons minimal, damit 5 Stück perfekt nebeneinander passen */
+        .nav-item { font-size: 0.75rem; flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+
+        /* Design für den Wurststand */
+        .wurst-card { background: #1a1a1a; border-radius: 12px; padding: 15px; margin-bottom: 10px; border: 1px solid #222; display: flex; align-items: center; gap: 15px; cursor: pointer; border-left: 3px solid #4caf50;}
+        .wurst-input, .wurst-select { width: 100%; box-sizing: border-box; padding: 15px; background: #222; border: 1px solid #444; color: white; border-radius: 12px; font-size: 1.1rem; margin-bottom: 15px; outline: none; }
+        .wurst-input:focus, .wurst-select:focus { border-color: #4caf50; }
+        .editor-label { display: block; color: var(--text-muted); font-size: 0.85rem; margin-bottom: 5px; text-transform: uppercase; }
+    </style>
+</head>
+<body>
+    <header style="text-transform: uppercase; letter-spacing: 2px;">Wurststand (Fertig)</header>
+    
+    <main>
+        <div id="wurststand-list-view">
+            
+            <button class="action-btn" style="background-color: #4caf50; color: white; margin-bottom: 25px; height: 60px; font-size: 1.1rem;" onclick="window.wurstManager.openEditor()">
+                <span class="material-symbols-outlined">add_circle</span> Fertige Wurst einbuchen
+            </button>
+
+            <div style="color: var(--text-muted); text-transform: uppercase; font-size: 0.85rem; letter-spacing: 1px; margin-bottom: 10px;">Aktueller Bestand</div>
+            <div id="wurst-list-container">
+                <p class="text-muted" style="text-align: center;">Lade Wurststand...</p>
+            </div>
+        </div>
+
+        <div id="wurststand-editor-view" style="display: none;">
+            <div class="sub-header" style="padding: 0 0 15px 0; margin-bottom: 20px; border-bottom: 1px solid #333;">
+                <div class="back-btn" onclick="window.wurstManager.closeEditor()"><span class="material-symbols-outlined">arrow_back_ios</span> Zurück</div>
+                <div class="header-title" id="editor-title" style="color: white;">Bestand anpassen</div>
+            </div>
+
+            <div style="background: #1a1a1a; padding: 20px; border-radius: 12px; margin-bottom: 30px; border: 1px solid #222;">
+                <input type="hidden" id="edit-id">
+                
+                <label class="editor-label">Produktname (z.B. Leberwurst)</label>
+                <input type="text" id="edit-name" class="wurst-input" placeholder="Name der fertigen Wurst">
+
+                <div style="display: flex; gap: 15px;">
+                    <div style="flex: 1;">
+                        <label class="editor-label">Menge</label>
+                        <input type="number" id="edit-amount" step="0.1" class="wurst-input" placeholder="0">
+                    </div>
+                    <div style="flex: 1;">
+                        <label class="editor-label">Einheit</label>
+                        <select id="edit-unit" class="wurst-select">
+                            <option value="Stück">Stück</option>
+                            <option value="Glas (250ml)">Glas (250ml)</option>
+                            <option value="Glas (400ml)">Glas (400ml)</option>
+                            <option value="g">Gramm (g)</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <button class="action-btn" style="background-color: #4caf50; color: white; height: 60px; font-size: 1.1rem;" onclick="window.wurstManager.saveItem()">
+                <span class="material-symbols-outlined">save</span> Bestand Speichern
+            </button>
+        </div>
+
+    </main>
+
+    <nav>
+        <div class="nav-item" onclick="window.location.href='index.html'"><span class="material-symbols-outlined">dashboard</span><span>Home</span></div>
+        <div class="nav-item" onclick="window.location.href='rezepte.html'"><span class="material-symbols-outlined">menu_book</span><span>Rezepte</span></div>
+        <div class="nav-item" onclick="window.location.href='lager.html'"><span class="material-symbols-outlined">inventory</span><span>Lager</span></div>
+        <div class="nav-item active"><span class="material-symbols-outlined">storefront</span><span>Bestand</span></div>
+        <div class="nav-item" onclick="window.location.href='kunden.html'"><span class="material-symbols-outlined">group</span><span>Kunden</span></div>
+    </nav>
+
+    <script src="db.js?v=19"></script>
+    <script src="app.js?v=19"></script>
+    <script src="wurststand.js?v=19"></script>
+</body>
+</html>
