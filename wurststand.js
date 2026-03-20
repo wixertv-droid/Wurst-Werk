@@ -35,7 +35,8 @@ window.wurstManager = {
                 return;
             }
 
-            this.bestandData = await res.json();
+            const data = await res.json();
+            this.bestandData = Array.isArray(data) ? data : [];
             
             if (this.bestandData.length === 0) {
                 container.innerHTML = '<p class="text-muted" style="text-align: center;">Der Wurststand ist aktuell leer.</p>';
@@ -65,7 +66,7 @@ window.wurstManager = {
                                 <span class="material-symbols-outlined" style="color: #4caf50;">storefront</span>
                             </div>
                             <div style="flex: 1;">
-                                <h3 style="margin: 0; font-size: 1.1rem; color: white;">${item.name}</h3>
+                                <h3 style="margin: 0; font-size: 1.1rem; color: white;">${item.name || 'Unbenannt'}</h3>
                                 <p style="margin: 3px 0 0 0; color: #aaa; font-size: 0.95rem; font-weight: bold;">Bestand: ${amountText}</p>
                                 <p style="margin: 3px 0 0 0; color: var(--accent-amber); font-size: 0.85rem; font-weight: bold;">💰 Umsatz: ${revenue.toFixed(2)} €</p>
                             </div>
@@ -191,9 +192,6 @@ window.wurstManager = {
         } catch (e) { alert("Netzwerkfehler beim Speichern."); }
     },
 
-    // ==========================================
-    // DIE DIREKTVERKAUFS-LOGIK (MIT SICHTBAREM PFAND)
-    // ==========================================
     openSellView: function(encodedData) {
         document.getElementById('wurststand-list-view').style.display = 'none';
         document.getElementById('wurststand-sell-view').style.display = 'block';
@@ -203,7 +201,7 @@ window.wurstManager = {
         let dispUnit = item.unit || '';
         if (dispUnit.includes('Glas') && Number(item.amount) !== 1) dispUnit = dispUnit.replace('Glas', 'Gläser');
 
-        document.getElementById('sell-item-name').innerText = item.name;
+        document.getElementById('sell-item-name').innerText = item.name || 'Unbenannt';
         document.getElementById('sell-item-available').innerText = `${item.amount} ${dispUnit}`;
         document.getElementById('sell-item-id').value = item.id;
         document.getElementById('sell-item-unit').value = item.unit || ''; 
@@ -211,16 +209,20 @@ window.wurstManager = {
         document.getElementById('sell-amount').value = '';
         document.getElementById('sell-price').value = '';
         
-        // Pfand-Felder nullen
         document.getElementById('sell-pfand-250').value = 0;
         document.getElementById('sell-pfand-400').value = 0;
 
         const customerSelect = document.getElementById('sell-customer');
         customerSelect.innerHTML = '<option value="">-- Kunde wählen --</option>';
         
-        const sortedKunden = [...this.customersData].sort((a, b) => a.name.localeCompare(b.name));
+        // FIX: Kugelsicheres Sortieren, fängt Kunden ohne Namen ab!
+        const safeCustomers = Array.isArray(this.customersData) ? this.customersData : [];
+        const sortedKunden = [...safeCustomers].sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+        
         sortedKunden.forEach(c => {
-            customerSelect.innerHTML += `<option value="${c.id}">${c.name}</option>`;
+            if(c.name) {
+                customerSelect.innerHTML += `<option value="${c.id}">${c.name}</option>`;
+            }
         });
     },
 
@@ -229,7 +231,6 @@ window.wurstManager = {
         document.getElementById('wurststand-sell-view').style.display = 'none';
     },
 
-    // Füllt die Pfand-Felder automatisch aus, wenn du eine Verkaufsmenge eintippst!
     autoFillPfand: function() {
         const unit = (document.getElementById('sell-item-unit').value || '').toLowerCase();
         const name = (document.getElementById('sell-item-name').innerText || '').toLowerCase();
@@ -243,7 +244,7 @@ window.wurstManager = {
         } else if (unit.includes('400') || name.includes('400')) {
             p400 = amount;
         } else if (unit.includes('glas') || name.includes('glas')) {
-            p250 = amount; // Fallback: Wenn nur "Glas" steht, gehen wir von 250ml aus
+            p250 = amount; 
         }
 
         document.getElementById('sell-pfand-250').value = p250;
@@ -269,14 +270,12 @@ window.wurstManager = {
 
         if (!item || !customer) return;
 
-        // 1. Wurststand aktualisieren
         let newStockAmount = Number(item.amount) - sellAmount;
         if (newStockAmount < 0) newStockAmount = 0;
         
         let currentRevenue = Number(item.revenue) || 0;
         let newRevenue = currentRevenue + sellPrice;
 
-        // 2. Pfandkonto aus den neuen, SICHTBAREN Eingabefeldern holen!
         const add250 = Number(document.getElementById('sell-pfand-250').value) || 0;
         const add400 = Number(document.getElementById('sell-pfand-400').value) || 0;
 
