@@ -1,10 +1,10 @@
 window.kundenManager = {
     kundenData: [],
     recipesData: [],
-    currentOrders: [], // Speichert die Bestellungen des gerade geöffneten Kunden
+    currentOrders: [],
 
     init: async function() {
-        await this.loadRecipes(); // Läd die Rezepte für das Dropdown
+        await this.loadRecipes(); 
         await this.loadList();
     },
 
@@ -41,33 +41,42 @@ window.kundenManager = {
             }
 
             container.innerHTML = '';
-            
             const sortedKunden = [...this.kundenData].sort((a, b) => a.name.localeCompare(b.name));
 
             sortedKunden.forEach(k => {
                 const safeData = encodeURIComponent(JSON.stringify(k));
                 const pfandSumme = (Number(k.pfand_250) || 0) + (Number(k.pfand_400) || 0);
-                const orderCount = Array.isArray(k.orders) ? k.orders.length : 0;
                 
                 const pfandColor = pfandSumme > 0 ? 'var(--accent-danger)' : '#aaa';
                 const pfandText = pfandSumme > 0 ? `${pfandSumme} Gläser im Rückstand` : `Keine Pfandschulden`;
-                const orderText = orderCount > 0 ? `<br><span style="color:#4caf50;">🛒 ${orderCount} Bestellungen</span>` : '';
+
+                // NEU: Zeigt die Bestellungen direkt auf der Kundenkarte an!
+                let ordersHtml = '';
+                if (Array.isArray(k.orders) && k.orders.length > 0) {
+                    ordersHtml = `<div style="margin-top: 10px; padding-top: 10px; border-top: 1px dashed #333;">`;
+                    k.orders.forEach(o => {
+                        ordersHtml += `<div style="color: #4caf50; font-size: 0.85rem; margin-bottom: 2px;">🛒 ${o.amount} ${o.unit} ${o.recipe}</div>`;
+                    });
+                    ordersHtml += `</div>`;
+                }
 
                 container.innerHTML += `
-                    <div class="kunden-card" onclick="window.kundenManager.openEditor('${safeData}')">
-                        <div class="icon-box">
-                            <span class="material-symbols-outlined" style="color: var(--accent-amber);">person</span>
+                    <div class="kunden-card" style="flex-direction: column; align-items: stretch;" onclick="window.kundenManager.openEditor('${safeData}')">
+                        <div style="display: flex; align-items: center; gap: 15px;">
+                            <div class="icon-box">
+                                <span class="material-symbols-outlined" style="color: var(--accent-amber);">person</span>
+                            </div>
+                            <div style="flex: 1;">
+                                <h3 style="margin: 0; font-size: 1.1rem; color: white;">${k.name}</h3>
+                                <p style="margin: 3px 0 0 0; color: ${pfandColor}; font-size: 0.85rem; font-weight: bold;">
+                                    <span class="material-symbols-outlined" style="font-size: 1rem; vertical-align: middle;">kitchen</span> ${pfandText}
+                                </p>
+                            </div>
+                            <div onclick="event.stopPropagation(); window.kundenManager.deleteCustomer('${k.id}', '${k.name}')" style="background: #331111; padding: 10px; border-radius: 8px; display: flex; align-items: center; justify-content: center;">
+                                <span class="material-symbols-outlined" style="color: var(--accent-danger);">delete</span>
+                            </div>
                         </div>
-                        <div style="flex: 1;">
-                            <h3 style="margin: 0; font-size: 1.1rem; color: white;">${k.name}</h3>
-                            <p style="margin: 3px 0 0 0; color: ${pfandColor}; font-size: 0.85rem; font-weight: bold;">
-                                <span class="material-symbols-outlined" style="font-size: 1rem; vertical-align: middle;">kitchen</span> ${pfandText}
-                                ${orderText}
-                            </p>
-                        </div>
-                        <div onclick="event.stopPropagation(); window.kundenManager.deleteCustomer('${k.id}', '${k.name}')" style="background: #331111; padding: 10px; border-radius: 8px; display: flex; align-items: center; justify-content: center;">
-                            <span class="material-symbols-outlined" style="color: var(--accent-danger);">delete</span>
-                        </div>
+                        ${ordersHtml}
                     </div>
                 `;
             });
@@ -77,11 +86,51 @@ window.kundenManager = {
         }
     },
 
+    openGlobalOrders: function() {
+        document.getElementById('kunden-list-view').style.display = 'none';
+        document.getElementById('global-orders-view').style.display = 'block';
+        
+        const container = document.getElementById('global-orders-container');
+        container.innerHTML = '';
+        let hasOrders = false;
+
+        this.kundenData.forEach(k => {
+            if (Array.isArray(k.orders) && k.orders.length > 0) {
+                hasOrders = true;
+                let orderListHTML = '';
+                k.orders.forEach(o => {
+                    orderListHTML += `
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 5px; color: #eee;">
+                            <span>${o.amount} ${o.unit} ${o.recipe}</span>
+                            <span style="color: #4caf50;">${Number(o.price).toFixed(2)} €</span>
+                        </div>`;
+                });
+
+                container.innerHTML += `
+                    <div style="background: #1a1a1a; border-left: 3px solid #4d4dff; border-radius: 8px; padding: 15px; margin-bottom: 15px;">
+                        <h3 style="margin: 0 0 10px 0; color: var(--accent-amber); font-size: 1.1rem;">
+                            <span class="material-symbols-outlined" style="font-size: 1.1rem; vertical-align: middle;">person</span> ${k.name}
+                        </h3>
+                        ${orderListHTML}
+                    </div>
+                `;
+            }
+        });
+
+        if (!hasOrders) {
+            container.innerHTML = '<p class="text-muted" style="text-align: center;">Aktuell keine Bestellungen vorhanden.</p>';
+        }
+    },
+
+    closeGlobalOrders: function() {
+        document.getElementById('kunden-list-view').style.display = 'block';
+        document.getElementById('global-orders-view').style.display = 'none';
+    },
+
     openEditor: function(encodedData = null) {
         document.getElementById('kunden-list-view').style.display = 'none';
         document.getElementById('kunden-editor-view').style.display = 'block';
 
-        // Felder zurücksetzen
         document.getElementById('order-recipe').value = '';
         document.getElementById('order-amount').value = '';
         document.getElementById('order-price').value = '';
@@ -93,8 +142,6 @@ window.kundenManager = {
             document.getElementById('edit-name').value = k.name;
             document.getElementById('edit-pfand-250').innerText = k.pfand_250 || 0;
             document.getElementById('edit-pfand-400').innerText = k.pfand_400 || 0;
-            
-            // Bestellungen laden
             this.currentOrders = Array.isArray(k.orders) ? k.orders : [];
         } else {
             document.getElementById('editor-title').innerText = "Neuer Kunde";
@@ -108,12 +155,15 @@ window.kundenManager = {
         this.renderOrders();
     },
 
-    closeEditor: function() {
+    // Wird aufgerufen, wenn man auf "Zurück" drückt – speichert und schließt!
+    saveAndClose: async function() {
+        await this.silentSave();
         document.getElementById('kunden-list-view').style.display = 'block';
         document.getElementById('kunden-editor-view').style.display = 'none';
+        await this.loadList();
     },
 
-    addOrder: function() {
+    addOrder: async function() {
         const recipe = document.getElementById('order-recipe').value;
         const amount = document.getElementById('order-amount').value;
         const unit = document.getElementById('order-unit').value;
@@ -133,19 +183,22 @@ window.kundenManager = {
             price: Number(price) || 0
         };
 
-        this.currentOrders.unshift(newOrder); // Oben an die Liste hängen
+        this.currentOrders.unshift(newOrder); 
         this.renderOrders();
 
-        // Eingabefelder wieder leeren
         document.getElementById('order-recipe').value = '';
         document.getElementById('order-amount').value = '';
         document.getElementById('order-price').value = '';
+
+        // FIX: Automatisches Speichern sofort nach dem Hinzufügen!
+        await this.silentSave(); 
     },
 
-    removeOrder: function(orderId) {
+    removeOrder: async function(orderId) {
         if (!confirm("Diesen Kauf wirklich löschen?")) return;
         this.currentOrders = this.currentOrders.filter(o => o.id !== orderId);
         this.renderOrders();
+        await this.silentSave(); // Sofortiges Update in der DB
     },
 
     renderOrders: function() {
@@ -175,7 +228,6 @@ window.kundenManager = {
             `;
         });
 
-        // Summe aller Käufe anzeigen
         container.innerHTML += `
             <div style="text-align: right; padding-top: 10px; margin-top: 10px; border-top: 1px solid #333;">
                 <span style="color: var(--text-muted); font-size: 0.9rem;">Gesamtumsatz: </span>
@@ -184,7 +236,7 @@ window.kundenManager = {
         `;
     },
 
-    changePfand: function(type, modifier) {
+    changePfand: async function(type, modifier) {
         const spanId = `edit-pfand-${type}`;
         const currentVal = parseInt(document.getElementById(spanId).innerText) || 0;
         
@@ -199,40 +251,50 @@ window.kundenManager = {
         if (newVal < 0) newVal = 0; 
         
         document.getElementById(spanId).innerText = newVal;
+        
+        // FIX: Auch Pfandänderungen werden sofort in der DB gesichert
+        await this.silentSave(); 
     },
 
-    saveCustomer: async function() {
-        const id = document.getElementById('edit-id').value;
+    // DIE NEUE SPEICHER-FUNKTION (läuft lautlos im Hintergrund)
+    silentSave: async function() {
+        let id = document.getElementById('edit-id').value;
         const nameVal = document.getElementById('edit-name').value.trim();
         const pfand250 = parseInt(document.getElementById('edit-pfand-250').innerText) || 0;
         const pfand400 = parseInt(document.getElementById('edit-pfand-400').innerText) || 0;
 
-        if (!nameVal) {
-            alert("Der Kunde braucht mindestens einen Namen!");
-            return;
-        }
+        if (!nameVal) return; // Ohne Namen wird nicht gespeichert
 
         const payload = {
             name: nameVal,
             pfand_250: pfand250,
             pfand_400: pfand400,
             pfand_schulden: pfand250 + pfand400,
-            orders: this.currentOrders // HIER WERDEN DIE BESTELLUNGEN GESPEICHERT!
+            orders: this.currentOrders
         };
 
         if (!id) {
-            payload.id = crypto.randomUUID();
+            id = crypto.randomUUID();
+            payload.id = id;
+            document.getElementById('edit-id').value = id; // Setzt die ID, damit er ab jetzt updatet!
         }
 
         try {
             let url = `${supabaseUrl}/rest/v1/customers`;
             let method = 'POST';
-            if (id) {
+            // Wir prüfen, ob wir updaten oder neu erstellen
+            if (document.getElementById('edit-id').value && method !== 'POST') {
                 url += `?id=eq.${id}`;
                 method = 'PATCH';
+            } else if (id && payload.id) {
+                // Das ist ein neuer Kunde, der gerade im Hintergrund erstellt wird
+                 method = 'POST';
+            } else {
+                 url += `?id=eq.${id}`;
+                 method = 'PATCH';
             }
 
-            const res = await fetch(url, {
+            await fetch(url, {
                 method: method,
                 headers: { 
                     'apikey': supabaseKey, 
@@ -243,17 +305,17 @@ window.kundenManager = {
                 body: JSON.stringify(payload)
             });
 
-            if (res.ok) {
-                this.closeEditor();
-                await this.loadList();
-                if(window.app && window.app.refreshData) window.app.refreshData(); 
-            } else {
-                const err = await res.text();
-                alert("Fehler beim Speichern!\n(Hast du den SQL Befehl für die 'orders' Spalte ausgeführt? Details: " + err + ")");
-            }
+            if(window.app && window.app.refreshData) window.app.refreshData(); 
         } catch (e) {
-            alert("Netzwerkfehler beim Speichern.");
+            console.error("Auto-Save Fehler:", e);
         }
+    },
+
+    // Die manuelle "Profil Speichern" Funktion ruft jetzt einfach den Auto-Save auf und schließt
+    saveCustomer: async function() {
+        await this.silentSave();
+        this.closeEditor();
+        await this.loadList();
     },
 
     deleteCustomer: async function(id, name) {
