@@ -2,11 +2,16 @@ window.produktionManager = {
     recipe: null,
     inventory: [],
     mappedIngredients: [], 
+    totalCosts: 0, 
 
     init: async function() {
         const params = new URLSearchParams(window.location.search);
         const id = params.get('id');
         
+        // Läd die Timer oben in der Produktionsansicht
+        this.loadActiveProcesses();
+        setInterval(() => this.loadActiveProcesses(), 10000); // Alle 10 Sekunden aktualisieren
+
         if (!id) {
             alert("Kein Rezept ausgewählt!");
             window.location.href = 'rezepte.html';
@@ -34,6 +39,79 @@ window.produktionManager = {
             alert("Fehler beim Laden der Produktionsdaten!");
             window.location.href = 'rezepte.html';
         }
+    },
+
+    loadActiveProcesses: async function() {
+        const container = document.getElementById('active-processes-list');
+        const mainContainer = document.getElementById('active-processes-container');
+        if (!container || !mainContainer) return; 
+
+        try {
+            const res = await fetch(`${supabaseUrl}/rest/v1/active_processes?status=eq.running&order=end_time.asc`, {
+                headers: { 'apikey': supabaseKey, 'Authorization': `Bearer ${supabaseKey}` }
+            });
+            
+            if (!res.ok) return;
+
+            const processes = await res.json();
+            
+            if (!Array.isArray(processes) || processes.length === 0) {
+                mainContainer.style.display = 'none'; 
+                return;
+            }
+
+            mainContainer.style.display = 'block'; 
+            container.innerHTML = '';
+            
+            processes.forEach(p => {
+                container.innerHTML += `
+                    <div class="prod-card" style="border-left:4px solid #4d4dff; margin-bottom:10px; background:#1a1a1a; padding:10px; border-radius:8px;">
+                        <div style="display:flex; justify-content:space-between; align-items: flex-start;">
+                            <div style="flex: 1;">
+                                <b style="color:#4d4dff; font-size:0.75rem; text-transform:uppercase;">${p.recipe_name}</b>
+                                <p style="margin:2px 0; font-size:0.85rem; color: #eee; line-height: 1.2;">${p.step_text}</p>
+                            </div>
+                        </div>
+                        <div id="prod-timer-${p.id}" style="color:var(--accent-amber); font-weight:bold; font-size:1.1rem; margin-top:5px; text-align: left;">
+                            Berechne...
+                        </div>
+                    </div>`;
+                
+                this.startCountdown(p.id, p.end_time);
+            });
+        } catch (e) {
+            console.error("Fehler beim Laden der Timer in der Produktion.", e);
+        }
+    },
+
+    startCountdown: function(id, endStr) {
+        const end = new Date(endStr).getTime();
+        
+        const update = () => {
+            const el = document.getElementById(`prod-timer-${id}`);
+            if (!el) return; 
+            
+            const dist = end - Date.now();
+            
+            if (dist < 0) { 
+                el.innerText = "✅ FERTIG!"; 
+                el.style.color = "#4caf50"; 
+                return; 
+            }
+            
+            const d = Math.floor(dist / 86400000);
+            const h = Math.floor((dist % 86400000) / 3600000);
+            const m = Math.floor((dist % 3600000) / 60000);
+            const s = Math.floor((dist % 60000) / 1000);
+            
+            let timeStr = "";
+            if (d > 0) timeStr += d + " Tage ";
+            timeStr += (h < 10 ? "0" : "") + h + ":" + (m < 10 ? "0" : "") + m + ":" + (s < 10 ? "0" : "") + s;
+            el.innerText = timeStr;
+            
+            setTimeout(update, 1000);
+        };
+        update();
     },
 
     buildMatchingUI: function() {
@@ -74,10 +152,7 @@ window.produktionManager = {
             const sortedInv = [...availableInv].sort((a, b) => {
                 const scoreA = getScore(a.name);
                 const scoreB = getScore(b.name);
-                
-                if (scoreA !== scoreB) {
-                    return scoreB - scoreA; 
-                }
+                if (scoreA !== scoreB) return scoreB - scoreA; 
                 return (a.category || '').localeCompare(b.category || '');
             });
 
@@ -90,7 +165,8 @@ window.produktionManager = {
             
             sortedInv.forEach(item => {
                 const isSelected = bestMatch && bestMatch.id === item.id ? 'selected' : '';
-                optionsHtml += `<option value="${item.id}" ${isSelected}>[${item.category}] ${item.name} (${item.amount} ${item.unit})</option>`;
+                const itemPrice = Number(item.price) || 0;
+                optionsHtml += `<option value="${item.id}" ${isSelected}>[${item.category}] ${item.name} (${item.amount} ${item.unit}) - ${itemPrice.toFixed(2)}€</option>`;
             });
 
             container.innerHTML += `
@@ -122,7 +198,6 @@ window.produktionManager = {
         const multiplier = parseFloat(document.getElementById('multiplier-input').value) || 0; 
         this.mappedIngredients.forEach(ing => {
             let calc = (ing.baseAmount * multiplier);
-            // Schönere Zahlen für die Anzeige
             calc = Math.round(calc * 100) / 100;
             document.getElementById(`calc-val-${ing.index}`).innerText = `${calc} ${ing.unit}`;
         });
@@ -138,6 +213,8 @@ window.produktionManager = {
         if (multiplier <= 0) return alert("Bitte kg eingeben!");
 
         let updates = [];
+        this.totalCosts = 0; 
+
         this.mappedIngredients.forEach(ing => {
             const invId = document.getElementById(`match-select-${ing.index}`).value;
             if (invId !== "" && invId !== "skip") {
@@ -146,37 +223,50 @@ window.produktionManager = {
                     let neededAmount = ing.baseAmount * multiplier;
                     let deductAmount = neededAmount;
                     
-                    // KUGELSICHERE UMRECHNUNG (trim() entfernt unsichtbare Leerzeichen)
                     const recipeUnit = (ing.unit || '').trim().toLowerCase();
                     const invUnit = (invItem.unit || '').trim().toLowerCase();
                     
-                    if (recipeUnit === 'g' && invUnit === 'kg') {
-                        deductAmount = neededAmount / 1000;
-                    } else if (recipeUnit === 'kg' && invUnit === 'g') {
-                        deductAmount = neededAmount * 1000;
-                    } else if (recipeUnit === 'ml' && (invUnit === 'l' || invUnit === 'liter')) {
-                        deductAmount = neededAmount / 1000;
-                    } else if ((recipeUnit === 'l' || recipeUnit === 'liter') && invUnit === 'ml') {
-                        deductAmount = neededAmount * 1000;
+                    if (recipeUnit === 'g' && invUnit === 'kg') deductAmount = neededAmount / 1000;
+                    else if (recipeUnit === 'kg' && invUnit === 'g') deductAmount = neededAmount * 1000;
+                    else if (recipeUnit === 'ml' && (invUnit === 'l' || invUnit === 'liter')) deductAmount = neededAmount / 1000;
+                    else if ((recipeUnit === 'l' || recipeUnit === 'liter') && invUnit === 'ml') deductAmount = neededAmount * 1000;
+                    
+                    const currentInvAmount = Number(invItem.amount) || 0;
+                    const currentInvPrice = Number(invItem.price) || 0;
+                    
+                    // Exakte Preis-Berechnung
+                    if (currentInvAmount > 0 && deductAmount > 0) {
+                        let proportion = deductAmount / currentInvAmount;
+                        if (proportion > 1) proportion = 1; // Falls man mehr verbraucht als da ist, maximal 100% Preis abziehen
+                        
+                        const costForThisItem = currentInvPrice * proportion;
+                        this.totalCosts += costForThisItem;
+                        
+                        let newPrice = currentInvPrice - costForThisItem;
+                        if (newPrice < 0) newPrice = 0;
+                        
+                        let newAmount = currentInvAmount - deductAmount;
+                        if (newAmount < 0) newAmount = 0;
+                        newAmount = Math.round(newAmount * 1000) / 1000;
+                        
+                        updates.push({ id: invItem.id, amount: newAmount, price: newPrice });
                     }
-                    
-                    let newAmount = Number(invItem.amount) - deductAmount;
-                    // FIX: Verhindert krumme Zahlen wie 31.200000003 (Rundet auf max 3 Stellen)
-                    newAmount = Math.round(newAmount * 1000) / 1000;
-                    
-                    updates.push({ id: invItem.id, amount: newAmount });
                 }
             }
         });
 
-        if (updates.length > 0 && confirm(`Mengen jetzt vom Lager abbuchen?`)) {
+        if (updates.length > 0 && confirm(`Mengen jetzt vom Lager abbuchen?\n(Materialkosten dieser Charge ca. ${this.totalCosts.toFixed(2)} €)`)) {
             for (let u of updates) {
                 await fetch(`${supabaseUrl}/rest/v1/inventory?id=eq.${u.id}`, {
                     method: 'PATCH',
                     headers: { 'apikey': supabaseKey, 'Authorization': `Bearer ${supabaseKey}`, 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ amount: u.amount })
+                    body: JSON.stringify({ amount: u.amount, price: u.price })
                 });
             }
+        }
+
+        if (document.getElementById('prod-costs')) {
+            document.getElementById('prod-costs').innerText = this.totalCosts.toFixed(2);
         }
 
         document.getElementById('step-1-setup').style.display = 'none';
@@ -257,10 +347,10 @@ window.produktionManager = {
                 document.getElementById(`step-row-${index}`).style.borderLeftColor = '#4d4dff';
                 document.getElementById(`timer-ctrl-${index}`).style.display = 'none';
                 statusEl.style.display = 'block';
-                statusEl.innerText = "✅ Timer läuft! Erscheint jetzt auf dem Dashboard.";
+                statusEl.innerText = "✅ Timer läuft! Erscheint jetzt oben und auf dem Dashboard.";
+                this.loadActiveProcesses(); // Lade die Liste oben direkt neu!
             } else {
-                const errText = await res.text();
-                alert("DATENBANK-FEHLER: Hast du die Tabelle 'active_processes' in Supabase erstellt?\nDetails: " + errText);
+                alert("Fehler: Hast du die Tabelle 'active_processes' in Supabase angelegt?");
             }
         } catch (e) {
             alert("Netzwerkfehler: " + e.message);
@@ -274,7 +364,7 @@ window.produktionManager = {
     },
 
     finishProduction: function() {
-        alert("Produktion beendet!");
+        alert(`Produktion beendet!\n\nMaterialkosten: ${this.totalCosts.toFixed(2)} €`);
         window.location.href = 'index.html';
     }
 };
