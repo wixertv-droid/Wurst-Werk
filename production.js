@@ -3,60 +3,49 @@ window.produktionManager = {
     inventory: [],
     mappedIngredients: [], 
     totalCosts: 0, 
-    activeProcesses: [], // Speichert die Timer aus der DB
+    currentRun: null, 
 
     init: async function() {
         const params = new URLSearchParams(window.location.search);
         const id = params.get('id');
 
+        setInterval(() => this.updateLocalTimers(), 1000);
+
         if (!id) {
-            alert("Kein Rezept ausgewählt!");
             window.location.href = 'rezepte.html';
             return;
         }
 
         try {
-            // 1. Rezept laden
-            const recipeRes = await fetch(`${supabaseUrl}/rest/v1/recipes?id=eq.${id}&select=*`, { 
-                headers: { 'apikey': supabaseKey, 'Authorization': `Bearer ${supabaseKey}` } 
-            });
-            const recipes = await recipeRes.json();
-            if (recipes.length === 0) throw new Error("Rezept nicht gefunden");
-            this.recipe = recipes[0];
-
-            // 2. Lager und aktive Produktionen (Timer) FÜR DIESES REZEPT laden!
-            const [invData, activeRes] = await Promise.all([
+            const [recipeRes, invData, runRes] = await Promise.all([
+                fetch(`${supabaseUrl}/rest/v1/recipes?id=eq.${id}&select=*`, { headers: { 'apikey': supabaseKey, 'Authorization': `Bearer ${supabaseKey}` } }),
                 db.getInventory(),
-                fetch(`${supabaseUrl}/rest/v1/active_processes?recipe_name=eq.${encodeURIComponent(this.recipe.name)}&status=eq.running`, {
-                    headers: { 'apikey': supabaseKey, 'Authorization': `Bearer ${supabaseKey}` }
-                })
+                fetch(`${supabaseUrl}/rest/v1/production_runs?recipe_id=eq.${id}`, { headers: { 'apikey': supabaseKey, 'Authorization': `Bearer ${supabaseKey}` } })
             ]);
 
+            const recipes = await recipeRes.json();
+            if (recipes.length === 0) throw new Error("Rezept nicht gefunden");
+            
+            this.recipe = recipes[0];
             this.inventory = Array.isArray(invData) ? invData : [];
-            this.activeProcesses = activeRes.ok ? await activeRes.json() : [];
+            const activeRuns = runRes.ok ? await runRes.json() : [];
 
             document.getElementById('prod-title').innerText = `Produktion: ${this.recipe.name}`;
 
-            // 3. LOGIK: Läuft hier schon eine Produktion?
-            if (this.activeProcesses.length > 0) {
-                // JA! Produktion läuft -> Überspringe Lagerabzug und gehe direkt in die Checkliste
+            if (activeRuns.length > 0) {
+                this.currentRun = activeRuns[0];
+                if (!this.currentRun.state) this.currentRun.state = { checked: [], timers: {}, costs: 0 };
+                
                 document.getElementById('step-1-setup').style.display = 'none';
                 document.getElementById('step-2-checklist').style.display = 'block';
                 
-                // Kosten ausblenden, da diese in der Vergangenheit abgebucht wurden
-                const costsCard = document.getElementById('costs-card');
-                if (costsCard) costsCard.style.display = 'none';
-
-                // Zurück-Button anpassen (geht jetzt zu Rezepten statt Schritt 1)
-                const backBtn = document.getElementById('back-btn-step2');
-                if (backBtn) {
-                    backBtn.setAttribute('onclick', "window.location.href='rezepte.html'");
-                    backBtn.innerHTML = '<span class="material-symbols-outlined">arrow_back_ios</span> Zurück zu Rezepte';
+                if (document.getElementById('prod-costs')) {
+                    document.getElementById('prod-costs').innerText = Number(this.currentRun.state.costs || 0).toFixed(2);
                 }
 
                 this.buildChecklist();
+                this.checkFinishCondition(); // Prüfen, ob der Button schon gezeigt werden darf
             } else {
-                // NEIN! Neue Produktion -> Starte ganz normal bei Schritt 1
                 document.getElementById('step-1-setup').style.display = 'block';
                 document.getElementById('step-2-checklist').style.display = 'none';
                 this.buildMatchingUI();
@@ -81,10 +70,7 @@ window.produktionManager = {
         container.innerHTML = '';
         this.mappedIngredients = [];
 
-        const availableInv = this.inventory.filter(item => 
-            item.category !== 'Pfandglas' && item.category !== 'Maschine'
-        );
-
+        const availableInv = this.inventory.filter(item => item.category !== 'Pfandglas' && item.category !== 'Maschine');
         const cleanString = (str) => (str || '').replace(/[.,\/#!$%\^&\*;:{}=\-_`~()]/g,"").trim().toLowerCase();
 
         ingredients.forEach((ing, index) => {
@@ -94,13 +80,7 @@ window.produktionManager = {
                 const nameL = cleanString(itemName);
                 if (nameL === searchStr) return 100; 
                 if (nameL.includes(searchStr) || searchStr.includes(nameL)) return 50; 
-                
-                const searchWords = searchStr.split(/\s+/);
-                let score = 0;
-                searchWords.forEach(w => {
-                    if (w.length > 2 && nameL.includes(w)) score += 10;
-                });
-                return score;
+                return 0;
             };
 
             const sortedInv = [...availableInv].sort((a, b) => {
@@ -110,11 +90,7 @@ window.produktionManager = {
                 return (a.category || '').localeCompare(b.category || '');
             });
 
-            let bestMatch = null;
-            if (sortedInv.length > 0 && getScore(sortedInv[0].name) > 0) {
-                bestMatch = sortedInv[0];
-            }
-
+            let bestMatch = sortedInv.length > 0 && getScore(sortedInv[0].name) > 0 ? sortedInv[0] : null;
             let optionsHtml = `<option value="">-- Bitte Lager-Artikel zuordnen --</option>`;
             
             sortedInv.forEach(item => {
@@ -135,17 +111,13 @@ window.produktionManager = {
                     </select>
                 </div>
             `;
-
             this.mappedIngredients.push({ originalName: ing.name, baseAmount: ing.amount, unit: ing.unit, index: index });
         });
     },
 
     updateSelectColor: function(selectEl) {
-        if(selectEl.value && selectEl.value !== "") {
-            selectEl.classList.replace('unmatched', 'matched');
-        } else {
-            selectEl.classList.replace('matched', 'unmatched');
-        }
+        if(selectEl.value && selectEl.value !== "") selectEl.classList.replace('unmatched', 'matched');
+        else selectEl.classList.replace('matched', 'unmatched');
     },
 
     recalculate: function() {
@@ -155,11 +127,6 @@ window.produktionManager = {
             calc = Math.round(calc * 100) / 100;
             document.getElementById(`calc-val-${ing.index}`).innerText = `${calc} ${ing.unit}`;
         });
-    },
-
-    goBackToSetup: function() {
-        document.getElementById('step-2-checklist').style.display = 'none';
-        document.getElementById('step-1-setup').style.display = 'block';
     },
 
     deductAndStart: async function() {
@@ -222,53 +189,70 @@ window.produktionManager = {
             document.getElementById('prod-costs').innerText = this.totalCosts.toFixed(2);
         }
 
+        this.currentRun = {
+            id: crypto.randomUUID(),
+            recipe_id: this.recipe.id,
+            recipe_name: this.recipe.name,
+            state: { checked: [], timers: {}, costs: this.totalCosts }
+        };
+
+        await fetch(`${supabaseUrl}/rest/v1/production_runs`, {
+            method: 'POST',
+            headers: { 'apikey': supabaseKey, 'Authorization': `Bearer ${supabaseKey}`, 'Content-Type': 'application/json' },
+            body: JSON.stringify(this.currentRun)
+        });
+
         document.getElementById('step-1-setup').style.display = 'none';
         document.getElementById('step-2-checklist').style.display = 'block';
         this.buildChecklist();
+        this.checkFinishCondition();
+    },
+
+    syncState: async function() {
+        if (!this.currentRun) return;
+        await fetch(`${supabaseUrl}/rest/v1/production_runs?id=eq.${this.currentRun.id}`, {
+            method: 'PATCH',
+            headers: { 'apikey': supabaseKey, 'Authorization': `Bearer ${supabaseKey}`, 'Content-Type': 'application/json' },
+            body: JSON.stringify({ state: this.currentRun.state })
+        });
     },
 
     buildChecklist: function() {
         const container = document.getElementById('checklist-container');
         const steps = this.recipe.details.steps || [];
+        const state = this.currentRun.state || { checked: [], timers: {} };
+        
         container.innerHTML = '';
         
         steps.forEach((step, i) => {
             let timerBtn = '';
             let extra = '';
-
-            // Prüfen, ob für diesen Schritt bereits ein Timer in der Datenbank läuft!
-            const activeProc = this.activeProcesses.find(p => p.step_text === step.text);
+            // WICHTIG: Stellt sicher, dass das Array durchsucht wird, egal ob String oder Number gespeichert wurde
+            const isChecked = state.checked.some(val => Number(val) === Number(i));
+            const activeTimerEnd = state.timers[i]; 
 
             if (step.type === 'timer' || step.type === 'interval') {
                 if (step.type === 'timer') extra = `<br><b style="color:#4d4dff;">⏳ ${step.duration} ${step.unit}</b>`;
                 if (step.type === 'interval') extra = `<br><b style="color:var(--accent-amber);">🔁 ${step.cycles}x ${step.duration} ${step.unit} (Pause: ${step.pauses}h)</b>`;
                 
-                if (activeProc) {
-                    // TIMER LÄUFT BEREITS! -> Zeige den laufenden Timer anstelle der Buttons
+                if (activeTimerEnd) {
                     timerBtn = `
-                        <div id="timer-status-${i}" style="padding-left:50px; margin-top: 10px; color:#4caf50; font-weight: bold;">
+                        <div style="padding-left:50px; margin-top: 10px; color:#4caf50; font-weight: bold;">
                             <span class="material-symbols-outlined" style="vertical-align: middle;">hourglass_bottom</span> Läuft: 
-                            <span id="prod-timer-${activeProc.id}" style="color:var(--accent-amber); font-size:1.2rem; margin-left: 5px;">Berechne...</span>
+                            <span id="prod-timer-${i}" style="color:var(--accent-amber); font-size:1.2rem; margin-left: 5px;">Berechne...</span>
                         </div>
                     `;
-                    // Countdown asynchron starten, damit das HTML erst gerendert wird
-                    setTimeout(() => this.startCountdown(activeProc.id, activeProc.end_time), 100);
-                } else {
-                    // TIMER LÄUFT NOCH NICHT -> Zeige Start-Buttons
+                } else if (!isChecked) {
                     timerBtn = `
                         <div class="timer-controls" id="timer-ctrl-${i}" style="display: flex; gap: 10px; margin-top: 15px; padding-left: 50px;">
-                            <button class="btn-start" onclick="window.produktionManager.startTimer(${i})">▶️ Starten</button>
-                            <button class="btn-skip" onclick="window.produktionManager.skipStep(${i})">⏭️ Überspringen</button>
+                            <button class="btn-start" onclick="event.stopPropagation(); window.produktionManager.startTimer(${i})">▶️ Starten</button>
                         </div>
-                        <div id="timer-status-${i}" style="display:none; padding-left:50px; margin-top: 10px; color:#4caf50; font-weight: bold;"></div>
                     `;
                 }
             }
 
-            const isRunningClass = activeProc ? 'running' : '';
-
             container.innerHTML += `
-                <div class="check-step ${isRunningClass}" id="step-row-${i}">
+                <div class="check-step ${isChecked ? 'done' : ''} ${activeTimerEnd && !isChecked ? 'running' : ''}" id="step-row-${i}">
                     <div class="step-header" onclick="window.produktionManager.toggleStep(${i})">
                         <div class="check-btn"><span class="material-symbols-outlined">check</span></div>
                         <div style="flex:1;"><b style="font-size:0.8rem; color:#888;">SCHRITT ${i+1}</b><p style="margin: 3px 0 0 0; line-height: 1.4;">${step.text} ${extra}</p></div>
@@ -280,15 +264,42 @@ window.produktionManager = {
 
     toggleStep: function(i) { 
         const row = document.getElementById(`step-row-${i}`);
-        if(row) {
-            row.classList.toggle('done');
+        if(!row) return;
+
+        row.classList.toggle('done');
+        let checked = this.currentRun.state.checked || [];
+        
+        if (row.classList.contains('done')) {
+            if (!checked.includes(Number(i))) checked.push(Number(i));
+            const ctrl = document.getElementById(`timer-ctrl-${i}`);
+            if (ctrl) ctrl.style.display = 'none';
+        } else {
+            checked = checked.filter(val => Number(val) !== Number(i));
+        }
+        
+        this.currentRun.state.checked = checked;
+        this.syncState(); 
+        this.checkFinishCondition(); // Prüft nach jedem Klick, ob der "Abschließen" Button erscheinen soll
+    },
+
+    checkFinishCondition: function() {
+        const steps = this.recipe.details.steps || [];
+        if (steps.length === 0) return;
+
+        const lastIndex = steps.length - 1;
+        const checked = this.currentRun.state.checked || [];
+        const btnFinish = document.getElementById('btn-finish-prod');
+        
+        // Prüfen, ob der letzte Schritt abgehakt ist
+        if (checked.includes(lastIndex)) {
+            btnFinish.style.display = 'flex';
+        } else {
+            btnFinish.style.display = 'none';
         }
     },
 
     startTimer: async function(index) {
         const step = this.recipe.details.steps[index];
-        const statusEl = document.getElementById(`timer-status-${index}`);
-        
         let ms = 0;
         const d = Number(step.duration) || 0;
         const unit = (step.unit || '').toLowerCase();
@@ -298,82 +309,103 @@ window.produktionManager = {
         else if (unit.includes('tag') || unit.includes('day')) ms = d * 86400000;
 
         const end = new Date(Date.now() + ms).toISOString();
-        const payload = { 
-            recipe_name: this.recipe.name || "Rezept", 
-            step_text: step.text || "Schritt", 
-            end_time: end, 
-            status: 'running' 
-        };
+        
+        if (!this.currentRun.state.timers) this.currentRun.state.timers = {};
+        this.currentRun.state.timers[index] = end;
 
-        try {
-            const res = await fetch(`${supabaseUrl}/rest/v1/active_processes`, {
-                method: 'POST',
-                headers: { 
-                    'apikey': supabaseKey, 
-                    'Authorization': `Bearer ${supabaseKey}`, 
-                    'Content-Type': 'application/json',
-                    'Prefer': 'return=minimal' 
-                },
-                body: JSON.stringify(payload)
-            });
-
-            if (res.ok) {
-                // Wir laden die Prozesse neu und bauen die Checkliste neu auf, 
-                // damit der Timer den exakten Eintrag aus der DB bekommt!
-                const activeRes = await fetch(`${supabaseUrl}/rest/v1/active_processes?recipe_name=eq.${encodeURIComponent(this.recipe.name)}&status=eq.running`, {
-                    headers: { 'apikey': supabaseKey, 'Authorization': `Bearer ${supabaseKey}` }
-                });
-                this.activeProcesses = await activeRes.json();
-                this.buildChecklist();
-            } else {
-                alert("Fehler: Hast du die Tabelle 'active_processes' in Supabase angelegt?");
-            }
-        } catch (e) {
-            alert("Netzwerkfehler: " + e.message);
-        }
+        document.getElementById(`step-row-${index}`).classList.add('running');
+        await this.syncState();
+        this.buildChecklist();
     },
 
-    startCountdown: function(id, endStr) {
-        const end = new Date(endStr).getTime();
+    updateLocalTimers: function() {
+        if (!this.currentRun || !this.currentRun.state || !this.currentRun.state.timers) return;
         
-        const update = () => {
-            const el = document.getElementById(`prod-timer-${id}`);
-            if (!el) return; 
+        const timers = this.currentRun.state.timers;
+        
+        for (const [idx, endStr] of Object.entries(timers)) {
+            const el = document.getElementById(`prod-timer-${idx}`);
+            if (!el) continue; 
             
-            const dist = end - Date.now();
+            const dist = new Date(endStr).getTime() - Date.now();
             
             if (dist < 0) { 
                 el.innerText = "✅ FERTIG!"; 
                 el.style.color = "#4caf50"; 
-                return; 
+            } else {
+                const d = Math.floor(dist / 86400000);
+                const h = Math.floor((dist % 86400000) / 3600000);
+                const m = Math.floor((dist % 3600000) / 60000);
+                const s = Math.floor((dist % 60000) / 1000);
+                
+                let timeStr = "";
+                if (d > 0) timeStr += d + " T ";
+                timeStr += (h < 10 ? "0" : "") + h + ":" + (m < 10 ? "0" : "") + m + ":" + (s < 10 ? "0" : "") + s;
+                el.innerText = timeStr;
             }
-            
-            const d = Math.floor(dist / 86400000);
-            const h = Math.floor((dist % 86400000) / 3600000);
-            const m = Math.floor((dist % 3600000) / 60000);
-            const s = Math.floor((dist % 60000) / 1000);
-            
-            let timeStr = "";
-            if (d > 0) timeStr += d + " Tage ";
-            timeStr += (h < 10 ? "0" : "") + h + ":" + (m < 10 ? "0" : "") + m + ":" + (s < 10 ? "0" : "") + s;
-            el.innerText = timeStr;
-            
-            setTimeout(update, 1000);
-        };
-        update();
-    },
-
-    skipStep: function(i) {
-        const row = document.getElementById(`step-row-${i}`);
-        if(row) {
-            row.classList.add('done');
-            const ctrl = document.getElementById(`timer-ctrl-${i}`);
-            if(ctrl) ctrl.style.display = 'none';
         }
     },
 
-    finishProduction: function() {
-        window.location.href = 'index.html';
+    // Zeigt den finalen Ertrags-Bildschirm
+    showFinalStep: function() {
+        document.getElementById('step-2-checklist').style.display = 'none';
+        document.getElementById('step-3-finish').style.display = 'block';
+    },
+
+    // Bucht den Ertrag in den Wurststand ein und löscht die laufende Akte
+    saveToWurststand: async function() {
+        const finalAmount = Number(document.getElementById('final-amount').value);
+        const finalUnit = document.getElementById('final-unit').value;
+
+        if (!finalAmount || finalAmount <= 0) {
+            alert("Bitte gib eine gültige Menge ein!");
+            return;
+        }
+
+        try {
+            // 1. Prüfen, ob das Rezept schon im Wurststand existiert
+            const checkRes = await fetch(`${supabaseUrl}/rest/v1/wurst_bestand?name=eq.${encodeURIComponent(this.recipe.name)}`, {
+                headers: { 'apikey': supabaseKey, 'Authorization': `Bearer ${supabaseKey}` }
+            });
+            const existing = checkRes.ok ? await checkRes.json() : [];
+
+            if (existing.length > 0) {
+                // Update (Menge auf den Bestand addieren)
+                const newAmount = Number(existing[0].amount) + finalAmount;
+                await fetch(`${supabaseUrl}/rest/v1/wurst_bestand?id=eq.${existing[0].id}`, {
+                    method: 'PATCH',
+                    headers: { 'apikey': supabaseKey, 'Authorization': `Bearer ${supabaseKey}`, 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ amount: newAmount, unit: finalUnit })
+                });
+            } else {
+                // Neu anlegen
+                await fetch(`${supabaseUrl}/rest/v1/wurst_bestand`, {
+                    method: 'POST',
+                    headers: { 'apikey': supabaseKey, 'Authorization': `Bearer ${supabaseKey}`, 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ 
+                        id: crypto.randomUUID(), 
+                        name: this.recipe.name, 
+                        amount: finalAmount, 
+                        unit: finalUnit, 
+                        revenue: 0 
+                    })
+                });
+            }
+
+            // 2. Laufende Akte (Produktion) löschen
+            if(this.currentRun) {
+                await fetch(`${supabaseUrl}/rest/v1/production_runs?id=eq.${this.currentRun.id}`, {
+                    method: 'DELETE',
+                    headers: { 'apikey': supabaseKey, 'Authorization': `Bearer ${supabaseKey}` }
+                });
+            }
+
+            alert("✅ Produktion erfolgreich beendet und in den Wurststand eingebucht!");
+            window.location.href = 'wurststand.html';
+
+        } catch (e) {
+            alert("Fehler beim Einbuchen in den Wurststand.");
+        }
     }
 };
 
