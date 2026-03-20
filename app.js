@@ -13,7 +13,7 @@ window.app = {
         if (document.getElementById('active-processes-list')) {
             try {
                 await this.loadActiveProcesses();
-                setInterval(() => this.loadActiveProcesses(), 10000); // Lädt das Dashboard alle 10 Sek neu
+                setInterval(() => this.loadActiveProcesses(), 10000); 
             } catch (e) {
                 console.error("Fehler bei den Timern", e);
             }
@@ -140,7 +140,6 @@ window.app = {
         if (!container) return; 
 
         try {
-            // Liest jetzt die komplette Produktions-Sitzung aus
             const res = await fetch(`${supabaseUrl}/rest/v1/production_runs`, {
                 headers: { 'apikey': supabaseKey, 'Authorization': `Bearer ${supabaseKey}` }
             });
@@ -160,7 +159,6 @@ window.app = {
                 const timers = state.timers || {};
                 let timerHtml = '';
                 
-                // Prüft, ob in dieser Produktion Timer laufen
                 for (const [stepIdx, endTime] of Object.entries(timers)) {
                     if (new Date(endTime).getTime() > Date.now() || new Date(endTime).getTime() <= Date.now()) {
                         timerHtml += `<div id="dash-timer-${run.id}-${stepIdx}" style="color:var(--accent-amber); font-weight:bold; font-size:1.1rem; margin-top:8px;">Berechne...</div>`;
@@ -225,6 +223,41 @@ window.app = {
             await this.loadActiveProcesses();
         } catch (e) {
             alert("Fehler beim Löschen!");
+        }
+    },
+
+    // NEU: Setzt alle Finanzen auf 0 zurück (Ausgaben & Einnahmen)
+    resetFinances: async function() {
+        if (!confirm("⚠️ ACHTUNG: Möchtest du die Gewinn/Verlust-Rechnung wirklich zurücksetzen?\n\nDadurch werden alle bisherigen Umsätze am Wurststand UND alle hinterlegten Einkaufspreise im Lager auf 0,00 € gesetzt. Deine tatsächlichen Wurst- und Lagerbestände (Mengen) bleiben komplett erhalten!")) return;
+
+        try {
+            // Alle Preise im Lager nullen
+            const invUpdates = this.inventoryData.map(item => 
+                fetch(`${supabaseUrl}/rest/v1/inventory?id=eq.${item.id}`, {
+                    method: 'PATCH',
+                    headers: { 'apikey': supabaseKey, 'Authorization': `Bearer ${supabaseKey}`, 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ price: 0 })
+                })
+            );
+
+            // Alle Umsätze im Wurststand nullen
+            const wurstUpdates = this.wurstData.map(wurst => 
+                fetch(`${supabaseUrl}/rest/v1/wurst_bestand?id=eq.${wurst.id}`, {
+                    method: 'PATCH',
+                    headers: { 'apikey': supabaseKey, 'Authorization': `Bearer ${supabaseKey}`, 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ revenue: 0 })
+                })
+            );
+
+            // Ausführen
+            await Promise.all([...invUpdates, ...wurstUpdates]);
+
+            alert("✅ Finanzen wurden erfolgreich auf 0,00 € zurückgesetzt! Du bist bereit für den echten Modus.");
+            await this.refreshData(); // Lädt das Dashboard sofort neu
+
+        } catch (e) {
+            alert("Fehler beim Zurücksetzen der Finanzen.");
+            console.error(e);
         }
     }
 };
