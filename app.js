@@ -1,6 +1,7 @@
 window.app = {
     inventoryData: [],
     kundenData: [],
+    wurstData: [], // NEU: Für den Wurststand
 
     init: async function() {
         try {
@@ -21,44 +22,104 @@ window.app = {
     },
 
     refreshData: async function() {
-        const inv = await db.getInventory();
-        const kund = await db.getCustomers();
+        // Lädt jetzt 3 Tabellen parallel für absolute Genauigkeit
+        const [inv, kund, wurst] = await Promise.all([
+            db.getInventory(),
+            db.getCustomers(),
+            fetch(`${supabaseUrl}/rest/v1/wurst_bestand?select=*`, { 
+                headers: { 'apikey': supabaseKey, 'Authorization': `Bearer ${supabaseKey}` } 
+            }).then(res => res.ok ? res.json() : [])
+        ]);
         
         this.inventoryData = Array.isArray(inv) ? inv : [];
         this.kundenData = Array.isArray(kund) ? kund : [];
+        this.wurstData = Array.isArray(wurst) ? wurst : [];
         
         this.render();
     },
 
     render: function() {
-        let wert = 0, g250 = 0, g400 = 0, u250 = 0, u400 = 0;
+        let wert = 0;
+        
+        // Glas-Zähler
+        let total250 = 0, total400 = 0; // Gesamt aus dem Roh-Lager (Gekaufte Leerkartons)
+        let gefuellt250 = 0, gefuellt400 = 0; // Fertige Wurst im Wurststand
+        let kunden250 = 0, kunden400 = 0; // Pfand beim Kunden
+        
+        let fertigeWurstArtikel = 0;
 
+        // 1. Roh-Lager durchsuchen (Gesamtzahl der Gläser & Warenwert)
         this.inventoryData.forEach(i => {
             const nameStr = (i.name || '').toLowerCase();
             const catStr = (i.category || '').toLowerCase();
 
-            // FIX: Gläser werden unter KEINEN Umständen mehr in den Warenwert berechnet!
             if (catStr === 'pfandglas' || nameStr.includes('glas') || nameStr.includes('gläser')) {
-                if (nameStr.includes('250')) g250 += Number(i.amount) || 0;
-                else if (nameStr.includes('400')) g400 += Number(i.amount) || 0;
-                // Preis wird absichtlich ignoriert!
+                if (nameStr.includes('250')) total250 += Number(i.amount) || 0;
+                else if (nameStr.includes('400')) total400 += Number(i.amount) || 0;
+                // Preis wird bei Gläsern absichtlich ignoriert
             } else if (catStr !== 'maschine') { 
                 wert += Number(i.price) || 0; 
             }
         });
 
-        this.kundenData.forEach(k => {
-            u250 += Number(k.pfand_250) || 0;
-            u400 += Number(k.pfand_400) || 0;
+        // 2. Wurststand durchsuchen (Wie viele Gläser sind aktuell mit Wurst befüllt?)
+        this.wurstData.forEach(w => {
+            const unit = (w.unit || '').toLowerCase();
+            const name = (w.name || '').toLowerCase();
+            const amount = Number(w.amount) || 0;
+
+            if (amount > 0) fertigeWurstArtikel += amount;
+
+            if (unit.includes('250') || name.includes('250')) {
+                gefuellt250 += amount;
+            } else if (unit.includes('400') || name.includes('400')) {
+                gefuellt400 += amount;
+            } else if (unit.includes('glas') || name.includes('glas')) {
+                gefuellt250 += amount; // Fallback auf 250
+            }
         });
 
-        // Werte auf der Startseite (Dashboard) aktualisieren
-        if(document.getElementById('stat-wert')) document.getElementById('stat-wert').innerText = wert.toFixed(2);
-        if(document.getElementById('stat-glaeser-250')) document.getElementById('stat-glaeser-250').innerText = g250 - u250;
-        if(document.getElementById('stat-glaeser-400')) document.getElementById('stat-glaeser-400').innerText = g400 - u400;
+        // 3. Kunden durchsuchen (Wie viele Gläser sind beim Kunden?)
+        this.kundenData.forEach(k => {
+            kunden250 += Number(k.pfand_250) || 0;
+            kunden400 += Number(k.pfand_400) || 0;
+        });
 
-        // Werte auf der Lager-Seite aktualisieren
+        // 4. Berechnung der restlichen freien Gläser im Regal
+        const frei250 = total250 - gefuellt250 - kunden250;
+        const frei400 = total400 - gefuellt400 - kunden400;
+
+        // --- DASHBOARD (index.html) AKTUALISIEREN ---
+        if(document.getElementById('stat-wert')) document.getElementById('stat-wert').innerText = wert.toFixed(2);
+        if(document.getElementById('stat-wurst-anzahl')) document.getElementById('stat-wurst-anzahl').innerText = fertigeWurstArtikel;
+
+        if(document.getElementById('stat-g250-total')) {
+            document.getElementById('stat-g250-total').innerText = total250;
+            document.getElementById('stat-g400-total').innerText = total400;
+            
+            document.getElementById('stat-g250-gefuellt').innerText = Math.floor(gefuellt250);
+            document.getElementById('stat-g400-gefuellt').innerText = Math.floor(gefuellt400);
+            
+            document.getElementById('stat-g250-kunden').innerText = kunden250;
+            document.getElementById('stat-g400-kunden').innerText = kunden400;
+            
+            // Rote Warnfarbe, falls man ins Minus rutscht (weil z.B. Gläser im Lager nicht eingebucht wurden)
+            const frei250El = document.getElementById('stat-g250-frei');
+            frei250El.innerText = Math.floor(frei250);
+            frei250El.style.color = frei250 < 0 ? 'var(--accent-danger)' : '#4caf50';
+
+            const frei400El = document.getElementById('stat-g400-frei');
+            frei400El.innerText = Math.floor(frei400);
+            frei400El.style.color = frei400 < 0 ? 'var(--accent-danger)' : '#4caf50';
+        }
+
+        // --- LAGER (lager.html) KOMPATIBILITÄT ---
+        // Auf der Lager-Seite zeigen wir bei "Im Regal" auch die komplett freien an
         if(document.getElementById('stat-warenwert')) document.getElementById('stat-warenwert').innerText = wert.toFixed(2);
+        if(document.getElementById('glass-250-stock')) document.getElementById('glass-250-stock').innerText = Math.floor(frei250);
+        if(document.getElementById('glass-400-stock')) document.getElementById('glass-400-stock').innerText = Math.floor(frei400);
+        if(document.getElementById('glass-250-kunden')) document.getElementById('glass-250-kunden').innerText = kunden250 + gefuellt250; // Lager zeigt Kunden + Gefüllte als "weg" an
+        if(document.getElementById('glass-400-kunden')) document.getElementById('glass-400-kunden').innerText = kunden400 + gefuellt400;
     },
 
     loadActiveProcesses: async function() {
