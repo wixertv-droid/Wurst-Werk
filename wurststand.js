@@ -47,12 +47,12 @@ window.wurstManager = {
             this.bestandData.forEach(item => {
                 const safeData = encodeURIComponent(JSON.stringify(item));
                 
-                let dispUnit = item.unit;
+                let dispUnit = item.unit || '';
                 if (dispUnit.includes('Glas') && Number(item.amount) !== 1) {
                     dispUnit = dispUnit.replace('Glas', 'Gläser');
                 }
 
-                const amountText = Number(item.amount) === 0 ? 
+                const amountText = Number(item.amount) <= 0 ? 
                     `<span style="color: var(--accent-danger);">Ausverkauft! (0 ${dispUnit})</span>` : 
                     `${item.amount} ${dispUnit}`;
 
@@ -117,7 +117,9 @@ window.wurstManager = {
             document.getElementById('editor-title').innerText = "Bestand bearbeiten";
             document.getElementById('edit-id').value = item.id;
             document.getElementById('edit-amount').value = item.amount;
-            document.getElementById('edit-unit').value = item.unit;
+            
+            // Falls das Item noch eine alte Einheit hat, Fallback auf Stück, damit es nicht leer bleibt
+            document.getElementById('edit-unit').value = item.unit || 'Stück';
             
             const recipeExists = this.recipesData.some(r => r.name === item.name);
             if (recipeExists) {
@@ -172,7 +174,7 @@ window.wurstManager = {
                 method = 'PATCH';
             } else {
                 payload.id = crypto.randomUUID();
-                payload.revenue = 0; // Bei neuen Artikeln Umsatz auf 0 setzen
+                payload.revenue = 0; 
             }
 
             const res = await fetch(url, {
@@ -191,7 +193,7 @@ window.wurstManager = {
     },
 
     // ==========================================
-    // DIE DIREKTVERKAUFS-LOGIK (Ohne Vorbestellung!)
+    // DIE DIREKTVERKAUFS-LOGIK
     // ==========================================
     openSellView: function(encodedData) {
         document.getElementById('wurststand-list-view').style.display = 'none';
@@ -199,13 +201,13 @@ window.wurstManager = {
 
         const item = JSON.parse(decodeURIComponent(encodedData));
         
-        let dispUnit = item.unit;
+        let dispUnit = item.unit || '';
         if (dispUnit.includes('Glas') && Number(item.amount) !== 1) dispUnit = dispUnit.replace('Glas', 'Gläser');
 
         document.getElementById('sell-item-name').innerText = item.name;
         document.getElementById('sell-item-available').innerText = `${item.amount} ${dispUnit}`;
         document.getElementById('sell-item-id').value = item.id;
-        document.getElementById('sell-item-unit').value = item.unit; 
+        document.getElementById('sell-item-unit').value = item.unit || ''; 
         
         document.getElementById('sell-amount').value = '';
         document.getElementById('sell-price').value = '';
@@ -243,41 +245,61 @@ window.wurstManager = {
 
         if (!item || !customer) return;
 
-        // 1. Wurststand aktualisieren: Menge abziehen & Umsatz hochzählen!
+        // 1. Wurststand aktualisieren (Abziehen und Geld verbuchen)
         let newStockAmount = Number(item.amount) - sellAmount;
         if (newStockAmount < 0) newStockAmount = 0;
         
         let currentRevenue = Number(item.revenue) || 0;
         let newRevenue = currentRevenue + sellPrice;
 
-        // 2. Pfandkonto automatisch anpassen (Keine Vorbestellung, direkter Abzug!)
+        // 2. Pfandkonto anpassen (kugelsicher)
         let pfand250 = Number(customer.pfand_250) || 0;
         let pfand400 = Number(customer.pfand_400) || 0;
+        let addedPfandMsg = "";
 
-        if (itemUnit.includes('250ml')) pfand250 += sellAmount;
-        if (itemUnit.includes('400ml')) pfand400 += sellAmount;
+        const unitLower = itemUnit.toLowerCase();
+        const cleanAmount = Math.round(sellAmount); // Falls jemand 1,5 Gläser eintippt...
+
+        // Sehr tolerante Prüfung, welche Glasgröße es war:
+        if (unitLower.includes('250')) {
+            pfand250 += cleanAmount;
+            addedPfandMsg = `\nPlus ${cleanAmount}x 250ml Glas auf sein Pfandkonto gebucht!`;
+        } else if (unitLower.includes('400')) {
+            pfand400 += cleanAmount;
+            addedPfandMsg = `\nPlus ${cleanAmount}x 400ml Glas auf sein Pfandkonto gebucht!`;
+        } else if (unitLower.includes('glas')) {
+            // FALLBACK: Wenn es ein altes Item ist, bei dem nur "Glas" stand
+            pfand250 += cleanAmount;
+            addedPfandMsg = `\nPlus ${cleanAmount}x 250ml Glas auf sein Pfandkonto gebucht! (Standard)`;
+        }
+
         let pfandSchulden = pfand250 + pfand400;
 
         try {
-            // Wurststand updaten
-            await fetch(`${supabaseUrl}/rest/v1/wurst_bestand?id=eq.${itemId}`, {
-                method: 'PATCH',
-                headers: { 'apikey': supabaseKey, 'Authorization': `Bearer ${supabaseKey}`, 'Content-Type': 'application/json' },
-                body: JSON.stringify({ amount: newStockAmount, revenue: newRevenue })
-            });
-
-            // Kundenakte updaten (NUR PFAND, wir lassen das 'orders' Array in Ruhe!)
-            await fetch(`${supabaseUrl}/rest/v1/customers?id=eq.${customerId}`, {
-                method: 'PATCH',
-                headers: { 'apikey': supabaseKey, 'Authorization': `Bearer ${supabaseKey}`, 'Content-Type': 'application/json' },
-                body: JSON.stringify({ 
-                    pfand_250: pfand250,
-                    pfand_400: pfand400,
-                    pfand_schulden: pfandSchulden
+            // Zwei Datenbank-Requests parallel feuern
+            const [resWurst, resCustomer] = await Promise.all([
+                fetch(`${supabaseUrl}/rest/v1/wurst_bestand?id=eq.${itemId}`, {
+                    method: 'PATCH',
+                    headers: { 'apikey': supabaseKey, 'Authorization': `Bearer ${supabaseKey}`, 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ amount: newStockAmount, revenue: newRevenue })
+                }),
+                fetch(`${supabaseUrl}/rest/v1/customers?id=eq.${customerId}`, {
+                    method: 'PATCH',
+                    headers: { 'apikey': supabaseKey, 'Authorization': `Bearer ${supabaseKey}`, 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ 
+                        pfand_250: pfand250,
+                        pfand_400: pfand400,
+                        pfand_schulden: pfandSchulden
+                    })
                 })
-            });
+            ]);
 
-            alert(`✅ Direktverkauf erledigt!\n\nUmsatz gebucht: ${sellPrice.toFixed(2)} €\nNeuer Bestand: ${newStockAmount} ${itemUnit}`);
+            if (!resWurst.ok || !resCustomer.ok) {
+                alert("Es gab einen Fehler beim Speichern der Datenbank.");
+                return;
+            }
+
+            alert(`✅ Direktverkauf erledigt!\n\nUmsatz gebucht: ${sellPrice.toFixed(2)} €\nNeuer Bestand: ${newStockAmount} ${itemUnit}${addedPfandMsg}`);
             this.closeSellView();
             
             await this.loadDependencies();
