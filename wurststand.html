@@ -37,7 +37,7 @@
                 <span class="material-symbols-outlined">add_circle</span> Fertige Wurst einbuchen
             </button>
 
-            <div style="color: var(--text-muted); text-transform: uppercase; font-size: 0.85rem; letter-spacing: 1px; margin-bottom: 10px;">Aktueller Bestand</div>
+            <div style="color: var(--text-muted); text-transform: uppercase; font-size: 0.85rem; letter-spacing: 1px; margin-bottom: 10px;">Aktueller Bestand & Umsatz</div>
             <div id="wurst-list-container">
                 <p class="text-muted" style="text-align: center;">Lade Wurststand...</p>
             </div>
@@ -83,14 +83,14 @@
         <div id="wurststand-sell-view" style="display: none;">
             <div class="sub-header" style="padding: 0 0 15px 0; margin-bottom: 20px; border-bottom: 1px solid #333;">
                 <div class="back-btn" onclick="window.wurstManager.closeSellView()"><span class="material-symbols-outlined">arrow_back_ios</span> Abbrechen</div>
-                <div class="header-title" style="color: white;">Verkauf buchen</div>
+                <div class="header-title" style="color: white;">Direktverkauf</div>
             </div>
 
             <div style="background: #1a1a1a; padding: 20px; border-radius: 12px; margin-bottom: 30px; border: 1px solid #222;">
                 <div style="text-align: center; margin-bottom: 25px;">
                     <span class="material-symbols-outlined" style="font-size: 3rem; color: #4caf50;">shopping_cart_checkout</span>
                     <h2 id="sell-item-name" style="margin: 10px 0 5px 0; color: white;">Produkt</h2>
-                    <p style="color: var(--text-muted); margin: 0; font-size: 0.95rem;">Aktuell im Stand: <b id="sell-item-available" style="color: var(--accent-amber);">0</b></p>
+                    <p style="color: var(--text-muted); margin: 0; font-size: 0.95rem;">Aktuell im Stand: <b id="sell-item-available" style="color: white;">0</b></p>
                 </div>
 
                 <input type="hidden" id="sell-item-id">
@@ -113,13 +113,13 @@
                 </div>
                 
                 <div style="background: rgba(255,140,0,0.1); border-left: 3px solid var(--accent-amber); padding: 10px; border-radius: 6px; font-size: 0.85rem; color: #ccc;">
-                    <span class="material-symbols-outlined" style="font-size: 1rem; vertical-align: middle; color: var(--accent-amber);">info</span>
-                    Menge wird vom Bestand abgezogen. <br>Gläser werden <b>automatisch als Pfand</b> beim Kunden verbucht!
+                    <span class="material-symbols-outlined" style="font-size: 1rem; vertical-align: middle; color: var(--accent-amber);">bolt</span>
+                    <b>Direktverkauf!</b><br>Menge wird vom Bestand abgezogen. Umsatz wird gezählt. Gläser gehen sofort ins Pfandkonto.
                 </div>
             </div>
 
             <button class="action-btn" style="background-color: #4caf50; color: white; height: 60px; font-size: 1.1rem;" onclick="window.wurstManager.confirmSale()">
-                <span class="material-symbols-outlined">done_all</span> Verkauf abschließen
+                <span class="material-symbols-outlined">done_all</span> Verkauf sofort abschließen
             </button>
         </div>
 
@@ -133,8 +133,8 @@
         <div class="nav-item" onclick="window.location.href='kunden.html'"><span class="material-symbols-outlined">group</span><span>Kunden</span></div>
     </nav>
 
-    <script src="db.js?v=20"></script>
-    <script src="app.js?v=20"></script>
-    <script src="wurststand.js?v=20"></script>
+    <script src="db.js?v=21"></script>
+    <script src="app.js?v=21"></script>
+    <script src="wurststand.js?v=21"></script>
 </body>
 </html>
