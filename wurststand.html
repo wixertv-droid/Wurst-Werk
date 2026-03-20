@@ -94,37 +94,35 @@
                 </div>
 
                 <input type="hidden" id="sell-item-id">
-                <input type="hidden" id="sell-item-unit">
+                <input type="hidden" id="sell-item-original-unit">
 
                 <label class="editor-label">Kunde auswählen</label>
                 <select id="sell-customer" class="wurst-select">
                     <option value="">Lade Kunden...</option>
                 </select>
 
-                <div style="display: flex; gap: 15px;">
+                <div style="display: flex; gap: 15px; margin-bottom: 15px;">
                     <div style="flex: 1;">
                         <label class="editor-label">Verkaufsmenge</label>
-                        <input type="number" id="sell-amount" step="0.1" class="wurst-input" placeholder="z.B. 2" oninput="window.wurstManager.autoFillPfand()">
+                        <input type="number" id="sell-amount" step="0.1" class="wurst-input" placeholder="z.B. 2" style="margin-bottom: 0;">
                     </div>
                     <div style="flex: 1;">
-                        <label class="editor-label">Preis (€)</label>
-                        <input type="number" id="sell-price" step="0.01" class="wurst-input" placeholder="0.00">
+                        <label class="editor-label">Einheit</label>
+                        <select id="sell-unit-select" class="wurst-select" style="margin-bottom: 0;">
+                            <option value="Stück">Stück</option>
+                            <option value="g">Gramm (g)</option>
+                            <option value="Glas (250ml)">Glas (250ml)</option>
+                            <option value="Glas (400ml)">Glas (400ml)</option>
+                        </select>
                     </div>
                 </div>
                 
-                <div style="background: rgba(255,140,0,0.1); border-left: 3px solid var(--accent-amber); padding: 15px; border-radius: 6px; margin-top: 15px;">
-                    <label class="editor-label" style="color: var(--accent-amber);"><span class="material-symbols-outlined" style="font-size: 1.2rem; vertical-align: middle;">kitchen</span> Gehen Gläser ans Kunden-Pfandkonto?</label>
-                    <div style="display: flex; gap: 10px; margin-top: 10px;">
-                        <div style="flex: 1;">
-                            <label style="font-size: 0.8rem; color: #ccc;">250ml Gläser</label>
-                            <input type="number" id="sell-pfand-250" class="wurst-input" value="0" style="margin-bottom: 0; padding: 10px;">
-                        </div>
-                        <div style="flex: 1;">
-                            <label style="font-size: 0.8rem; color: #ccc;">400ml Gläser</label>
-                            <input type="number" id="sell-pfand-400" class="wurst-input" value="0" style="margin-bottom: 0; padding: 10px;">
-                        </div>
-                    </div>
-                    <p style="font-size: 0.75rem; color: #aaa; margin: 8px 0 0 0;">Wird automatisch ausgefüllt. Korrigiere die Zahl bei Bedarf einfach manuell.</p>
+                <label class="editor-label">Gesamtpreis (€)</label>
+                <input type="number" id="sell-price" step="0.01" class="wurst-input" placeholder="0.00">
+                
+                <div style="background: rgba(255,140,0,0.1); border-left: 3px solid var(--accent-amber); padding: 10px; border-radius: 6px; font-size: 0.85rem; color: #ccc;">
+                    <span class="material-symbols-outlined" style="font-size: 1rem; vertical-align: middle; color: var(--accent-amber);">bolt</span>
+                    Wählst du <b>Glas</b> als Einheit, wandern diese vollautomatisch ins Pfandkonto des Kunden!
                 </div>
             </div>
 
@@ -143,8 +141,8 @@
         <div class="nav-item" onclick="window.location.href='kunden.html'"><span class="material-symbols-outlined">group</span><span>Kunden</span></div>
     </nav>
 
-    <script src="db.js?v=24"></script>
-    <script src="app.js?v=24"></script>
-    <script src="wurststand.js?v=24"></script>
+    <script src="db.js?v=25"></script>
+    <script src="app.js?v=25"></script>
+    <script src="wurststand.js?v=25"></script>
 </body>
 </html>
