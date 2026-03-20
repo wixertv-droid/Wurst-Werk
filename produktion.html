@@ -7,7 +7,18 @@
     <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined" rel="stylesheet" />
     <link rel="stylesheet" href="style.css">
     <style>
-        body { padding-bottom: 90px; } /* Für die Navi-Leiste */
+        /* HIER IST DER ABSOLUTE SCROLL-FIX FÜR IOS/MOBILE */
+        body { 
+            padding-bottom: 0 !important; 
+            height: 100dvh; /* Nutzt exakt die Displayhöhe */
+            overflow: hidden; /* Der Hintergrund bleibt starr */
+        }
+        main#main-content { 
+            height: 100%; 
+            overflow-y: auto; /* Nur der Mittelteil darf scrollen */
+            padding-bottom: 120px !important; /* Platzhalter, damit der letzte Button über der Navi-Leiste stoppt */
+            box-sizing: border-box;
+        }
         
         .prod-card { background: var(--surface-color); border: 1px solid #333; border-radius: 12px; padding: 20px; margin-bottom: 20px; }
         
@@ -21,18 +32,17 @@
         .match-select.unmatched { border-color: var(--accent-danger); }
         
         .check-step { padding: 15px; background: #111; border-radius: 8px; margin-bottom: 12px; border-left: 4px solid #444; transition: all 0.3s ease; }
-        .check-step.done { border-left-color: #4caf50; opacity: 0.7; }
+        .check-step.done { border-left-color: #4caf50 !important; opacity: 0.6; }
         .check-step.running { border-left-color: #4d4dff; background: rgba(77, 77, 255, 0.05); }
         
-        .step-header { display: flex; gap: 15px; align-items: center; cursor: pointer; }
-        .check-btn { background: #222; border: 2px solid #444; border-radius: 50%; min-width: 35px; height: 35px; display: flex; align-items: center; justify-content: center; color: transparent; }
+        .step-header { display: flex; gap: 15px; align-items: center; cursor: pointer; user-select: none; -webkit-user-select: none; }
+        .check-btn { background: #222; border: 2px solid #444; border-radius: 50%; min-width: 35px; height: 35px; display: flex; align-items: center; justify-content: center; color: transparent; transition: 0.2s; }
         .check-step.done .check-btn { background: #4caf50; border-color: #4caf50; color: white; }
         
         .timer-controls { display: flex; gap: 10px; margin-top: 15px; padding-left: 50px; }
         .btn-start { background: #4d4dff; color: white; border: none; padding: 10px; border-radius: 8px; flex: 1; font-weight: bold; cursor: pointer; }
         .btn-skip { background: #333; color: white; border: 1px solid #555; padding: 10px; border-radius: 8px; flex: 1; cursor: pointer; }
 
-        /* Navi Leiste unten */
         nav { 
             position: fixed; bottom: 0; left: 0; width: 100%; z-index: 1000;
             background-color: var(--nav-bg); display: flex; justify-content: space-around; 
@@ -51,8 +61,7 @@
         
         <div id="active-processes-container" style="display: none; margin-bottom: 20px;">
             <div class="section-title" style="margin-top: 0; color: #4d4dff;"><span class="material-symbols-outlined" style="vertical-align: middle; font-size: 1.2rem;">hourglass_empty</span> Laufende Timer</div>
-            <div id="active-processes-list">
-                </div>
+            <div id="active-processes-list"></div>
         </div>
 
         <div id="step-1-setup">
@@ -72,7 +81,7 @@
                 <p class="text-muted" style="text-align: center;">Lade Lagerbestand...</p>
             </div>
 
-            <button class="action-btn" style="background-color: var(--accent-amber); color: #000; height: 60px; font-size: 1.1rem; margin-bottom: 40px;" onclick="window.produktionManager.deductAndStart()">
+            <button class="action-btn" style="background-color: var(--accent-amber); color: #000; height: 60px; font-size: 1.1rem; margin-bottom: 20px;" onclick="window.produktionManager.deductAndStart()">
                 <span class="material-symbols-outlined">inventory_2</span> Aus Lager abbuchen & Starten
             </button>
         </div>
@@ -92,7 +101,7 @@
                 <div id="checklist-container"></div>
             </div>
 
-            <button class="action-btn" style="background-color: #4caf50; color: white; height: 60px; font-size: 1.1rem; margin-bottom: 40px;" onclick="window.produktionManager.finishProduction()">
+            <button class="action-btn" style="background-color: #4caf50; color: white; height: 60px; font-size: 1.1rem; margin-bottom: 20px;" onclick="window.produktionManager.finishProduction()">
                 <span class="material-symbols-outlined">done_all</span> Produktion abschließen
             </button>
         </div>
@@ -107,8 +116,8 @@
         <div class="nav-item" onclick="window.location.href='kunden.html'"><span class="material-symbols-outlined">group</span><span>Kunden</span></div>
     </nav>
 
-    <script src="db.js?v=29"></script>
-    <script src="app.js?v=29"></script>
-    <script src="produktion.js?v=29"></script>
+    <script src="db.js?v=30"></script>
+    <script src="app.js?v=30"></script>
+    <script src="produktion.js?v=30"></script>
 </body>
 </html>
