@@ -31,19 +31,19 @@ html, body {
    2. FESTER HEADER OBEN 
    ======================================================= */
 header {
-    flex-shrink: 0; /* Darf beim Scrollen nicht wegschrumpfen */
+    flex-shrink: 0;
     padding: 20px; 
-    padding-top: max(20px, env(safe-area-inset-top)); /* Platz für die iPhone Notch */
+    padding-top: max(20px, env(safe-area-inset-top)); 
     text-align: center; background-color: var(--nav-bg);
     font-size: 1.2rem; font-weight: 600; letter-spacing: 2px;
     border-bottom: 1px solid #333; text-transform: uppercase;
     z-index: 1000;
 }
 
-/* Spezieller Unterseiten-Header (Klebt oben am Rand der scrollenden Mitte!) */
+/* Spezieller Unterseiten-Header */
 .sub-header {
     position: sticky; 
-    top: -20px; /* Gleicht das Padding von main aus, damit er perfekt oben anstößt */
+    top: -20px; 
     display: flex; align-items: center; 
     margin: -20px -20px 20px -20px; 
     padding: 20px; 
@@ -59,22 +59,22 @@ header {
    3. SCROLLBARER BEREICH IN DER MITTE 
    ======================================================= */
 main { 
-    flex-grow: 1; /* Nimmt automatisch den gesamten restlichen Platz ein */
-    overflow-y: auto; /* NUR HIER darf gescrollt werden */
-    -webkit-overflow-scrolling: touch; /* Sagt dem iPhone: "Weiches Scrollen bitte" */
+    flex-grow: 1; 
+    overflow-y: auto; 
+    -webkit-overflow-scrolling: touch; 
     padding: 20px; 
-    padding-bottom: 40px; /* Ein bisschen Extra-Luft nach unten */
+    padding-bottom: 40px; 
 }
 
 /* =======================================================
    4. FESTE LEISTE UNTEN 
    ======================================================= */
 nav { 
-    flex-shrink: 0; /* Bleibt starr */
+    flex-shrink: 0; 
     background-color: var(--nav-bg); 
     display: flex; justify-content: space-around; 
     padding: 12px 0; 
-    padding-bottom: calc(12px + env(safe-area-inset-bottom, 20px)); /* Platz für den iPhone Wisch-Balken */
+    padding-bottom: calc(12px + env(safe-area-inset-bottom, 20px)); 
     border-top: 1px solid #222; 
     z-index: 1000;
 }
@@ -85,7 +85,7 @@ nav {
 
 
 /* =======================================================
-   --- AB HIER: GLOBALE UI ELEMENTE & KARTEN --- 
+   --- GLOBALE UI ELEMENTE & KARTEN --- 
    ======================================================= */
 .view { display: none; width: 100%; animation: fadeIn 0.3s ease; }
 .view.active { display: block; }
@@ -105,14 +105,44 @@ nav {
 .col-250 { color: #4caf50; }
 .col-400 { color: var(--accent-amber); }
 
-/* Wurststand */
+/* =======================================================
+   5. REZEPTBUCH (Auf- und Zuklappen)
+   ======================================================= */
+.recipe-card { background: var(--surface-color); border: 1px solid #222; border-radius: 12px; margin-bottom: 15px; overflow: hidden; }
+.recipe-header { padding: 15px; display: flex; justify-content: space-between; align-items: center; cursor: pointer; background: #1a1a1a; transition: background 0.2s; border-left: 4px solid var(--accent-amber); }
+.recipe-header:active { background: #222; }
+.recipe-title { font-size: 1.1rem; font-weight: bold; color: white; margin: 0; }
+.recipe-category { font-size: 0.8rem; color: var(--text-muted); text-transform: uppercase; margin-top: 4px; }
+.recipe-body { padding: 15px; border-top: 1px solid #222; display: none; background: #111; }
+.recipe-body.active { display: block; animation: fadeIn 0.3s ease; }
+
+.ingredient-list { margin-bottom: 20px; }
+.ingredient-row { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px dashed #333; font-size: 0.95rem; }
+.ingredient-row:last-child { border-bottom: none; }
+
+.step-list { margin-bottom: 15px; }
+.step-row { margin-bottom: 12px; padding: 12px; background: #1a1a1a; border-left: 3px solid #4d4dff; border-radius: 6px; font-size: 0.95rem; line-height: 1.4; }
+
+.action-row { display: flex; gap: 10px; margin-top: 20px; }
+.action-row button { flex: 1; padding: 12px; border-radius: 8px; border: none; font-weight: bold; cursor: pointer; display: flex; justify-content: center; align-items: center; gap: 5px; }
+.btn-edit { background: #333; color: white; border: 1px solid #555; }
+.btn-produce { background: #4caf50; color: white; }
+
+/* Allgemeine Formulare (für Editor) */
+.input-group { margin-bottom: 15px; }
+.input-group label { display: block; color: var(--text-muted); font-size: 0.8rem; margin-bottom: 5px; text-transform: uppercase; }
+.input-group input, .input-group select, .input-group textarea { width: 100%; padding: 15px; background: #222; border: 1px solid #444; color: white; border-radius: 8px; font-size: 1rem; box-sizing: border-box; outline: none; }
+.input-group input:focus, .input-group select:focus, .input-group textarea:focus { border-color: var(--accent-amber); }
+
+/* =======================================================
+   6. WURSTSTAND & PRODUKTION
+   ======================================================= */
 .wurst-card { background: #1a1a1a; border-radius: 12px; padding: 15px; margin-bottom: 12px; border: 1px solid #222; border-left: 3px solid #4caf50; display: flex; flex-direction: column; align-items: stretch; }
 .wurst-input, .wurst-select { width: 100%; box-sizing: border-box; padding: 15px; background: #222; border: 1px solid #444; color: white; border-radius: 12px; font-size: 1.1rem; margin-bottom: 15px; outline: none; }
 .wurst-input:focus, .wurst-select:focus { border-color: #4caf50; }
 .editor-label { display: block; color: var(--text-muted); font-size: 0.85rem; margin-bottom: 5px; text-transform: uppercase; }
 .sell-btn { width: 100%; background: rgba(76, 175, 80, 0.1); border: 1px solid #4caf50; color: #4caf50; padding: 12px; border-radius: 8px; font-weight: bold; cursor: pointer; display: flex; justify-content: center; align-items: center; gap: 5px; margin-top: 10px; font-size: 1rem; }
 
-/* Produktion */
 .prod-card { background: var(--surface-color); border: 1px solid #333; border-radius: 12px; padding: 20px; margin-bottom: 20px; }
 .calc-input, .finish-input, .finish-select { width: 100%; box-sizing: border-box; padding: 15px; background: #222; border: 2px solid #4caf50; color: white; border-radius: 8px; font-size: 1.5rem; text-align: center; margin-bottom: 20px; font-weight: bold; outline: none; }
 .calc-input:focus, .finish-input:focus, .finish-select:focus { border-color: #66bb6a; }
@@ -136,8 +166,3 @@ nav {
 
 .timer-controls { display: flex; gap: 10px; margin-top: 15px; padding-left: 50px; }
 .btn-start { background: #4d4dff; color: white; border: none; padding: 10px; border-radius: 8px; flex: 1; font-weight: bold; cursor: pointer; }
-
-/* Allgemeine Formulare */
-.input-group { margin-bottom: 15px; }
-.input-group label { display: block; color: var(--text-muted); font-size: 0.8rem; margin-bottom: 5px; }
-.input-group input, .input-group select { width: 100%; padding: 12px; background: #222; border: 1px solid #444; color: white; border-radius: 8px; font-size: 1rem; box-sizing: border-box; }
