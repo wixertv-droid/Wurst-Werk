@@ -10,13 +10,11 @@ window.wurstManager = {
 
     loadDependencies: async function() {
         try {
-            // Lade Rezepte für das Dropdown
             const resRecipes = await fetch(`${supabaseUrl}/rest/v1/recipes?select=id,name&order=name.asc`, {
                 headers: { 'apikey': supabaseKey, 'Authorization': `Bearer ${supabaseKey}` }
             });
             if (resRecipes.ok) this.recipesData = await resRecipes.json();
 
-            // Lade Kunden für den Verkauf
             this.customersData = await db.getCustomers();
         } catch (e) {
             console.error("Fehler beim Laden von Rezepten/Kunden", e);
@@ -54,7 +52,12 @@ window.wurstManager = {
                     dispUnit = dispUnit.replace('Glas', 'Gläser');
                 }
 
-                // NEU: Die Karte hat jetzt unten den Verkaufen-Button integriert!
+                const amountText = Number(item.amount) === 0 ? 
+                    `<span style="color: var(--accent-danger);">Ausverkauft! (0 ${dispUnit})</span>` : 
+                    `${item.amount} ${dispUnit}`;
+
+                const revenue = Number(item.revenue) || 0;
+
                 container.innerHTML += `
                     <div class="wurst-card" onclick="window.wurstManager.openEditor('${safeData}')">
                         <div style="display: flex; align-items: center; gap: 15px;">
@@ -63,14 +66,15 @@ window.wurstManager = {
                             </div>
                             <div style="flex: 1;">
                                 <h3 style="margin: 0; font-size: 1.1rem; color: white;">${item.name}</h3>
-                                <p style="margin: 3px 0 0 0; color: #aaa; font-size: 0.95rem; font-weight: bold;">${item.amount} ${dispUnit}</p>
+                                <p style="margin: 3px 0 0 0; color: #aaa; font-size: 0.95rem; font-weight: bold;">Bestand: ${amountText}</p>
+                                <p style="margin: 3px 0 0 0; color: var(--accent-amber); font-size: 0.85rem; font-weight: bold;">💰 Umsatz: ${revenue.toFixed(2)} €</p>
                             </div>
                             <div onclick="event.stopPropagation(); window.wurstManager.deleteItem('${item.id}', '${item.name}')" style="background: #331111; padding: 10px; border-radius: 8px; display: flex; align-items: center; justify-content: center;">
                                 <span class="material-symbols-outlined" style="color: var(--accent-danger);">delete</span>
                             </div>
                         </div>
                         <div style="border-top: 1px dashed #333; margin-top: 10px; padding-top: 5px;">
-                            <button class="sell-btn" onclick="event.stopPropagation(); window.wurstManager.openSellView('${safeData}')">
+                            <button class="sell-btn" onclick="event.stopPropagation(); window.wurstManager.openSellView('${safeData}')" ${Number(item.amount) <= 0 ? 'disabled style="opacity:0.5; cursor:not-allowed;"' : ''}>
                                 <span class="material-symbols-outlined" style="font-size: 1.2rem;">shopping_cart</span> An Kunde verkaufen
                             </button>
                         </div>
@@ -115,7 +119,6 @@ window.wurstManager = {
             document.getElementById('edit-amount').value = item.amount;
             document.getElementById('edit-unit').value = item.unit;
             
-            // Schauen, ob der Name in den Rezepten steht
             const recipeExists = this.recipesData.some(r => r.name === item.name);
             if (recipeExists) {
                 document.getElementById('edit-name-select').value = item.name;
@@ -169,6 +172,7 @@ window.wurstManager = {
                 method = 'PATCH';
             } else {
                 payload.id = crypto.randomUUID();
+                payload.revenue = 0; // Bei neuen Artikeln Umsatz auf 0 setzen
             }
 
             const res = await fetch(url, {
@@ -187,7 +191,7 @@ window.wurstManager = {
     },
 
     // ==========================================
-    // DIE NEUE VERKAUFS-LOGIK (Wurst -> Kunde)
+    // DIE DIREKTVERKAUFS-LOGIK (Ohne Vorbestellung!)
     // ==========================================
     openSellView: function(encodedData) {
         document.getElementById('wurststand-list-view').style.display = 'none';
@@ -201,12 +205,11 @@ window.wurstManager = {
         document.getElementById('sell-item-name').innerText = item.name;
         document.getElementById('sell-item-available').innerText = `${item.amount} ${dispUnit}`;
         document.getElementById('sell-item-id').value = item.id;
-        document.getElementById('sell-item-unit').value = item.unit; // Wichtig für die Gläser-Berechnung!
+        document.getElementById('sell-item-unit').value = item.unit; 
         
         document.getElementById('sell-amount').value = '';
         document.getElementById('sell-price').value = '';
 
-        // Kunden-Dropdown befüllen
         const customerSelect = document.getElementById('sell-customer');
         customerSelect.innerHTML = '<option value="">-- Kunde wählen --</option>';
         
@@ -240,22 +243,14 @@ window.wurstManager = {
 
         if (!item || !customer) return;
 
-        // 1. Wurststand aktualisieren (Menge abziehen)
+        // 1. Wurststand aktualisieren: Menge abziehen & Umsatz hochzählen!
         let newStockAmount = Number(item.amount) - sellAmount;
         if (newStockAmount < 0) newStockAmount = 0;
+        
+        let currentRevenue = Number(item.revenue) || 0;
+        let newRevenue = currentRevenue + sellPrice;
 
-        // 2. Bestellung für die Kundenakte vorbereiten
-        let orders = Array.isArray(customer.orders) ? customer.orders : [];
-        orders.unshift({
-            id: crypto.randomUUID(),
-            date: new Date().toLocaleDateString('de-DE'),
-            recipe: itemName,
-            amount: sellAmount,
-            unit: itemUnit,
-            price: sellPrice
-        });
-
-        // 3. Pfandkonto automatisch anpassen (Der absolute Clou!)
+        // 2. Pfandkonto automatisch anpassen (Keine Vorbestellung, direkter Abzug!)
         let pfand250 = Number(customer.pfand_250) || 0;
         let pfand400 = Number(customer.pfand_400) || 0;
 
@@ -263,32 +258,28 @@ window.wurstManager = {
         if (itemUnit.includes('400ml')) pfand400 += sellAmount;
         let pfandSchulden = pfand250 + pfand400;
 
-        // Ab in die Datenbank mit beiden Änderungen gleichzeitig
         try {
             // Wurststand updaten
             await fetch(`${supabaseUrl}/rest/v1/wurst_bestand?id=eq.${itemId}`, {
                 method: 'PATCH',
                 headers: { 'apikey': supabaseKey, 'Authorization': `Bearer ${supabaseKey}`, 'Content-Type': 'application/json' },
-                body: JSON.stringify({ amount: newStockAmount })
+                body: JSON.stringify({ amount: newStockAmount, revenue: newRevenue })
             });
 
-            // Kundenakte updaten
+            // Kundenakte updaten (NUR PFAND, wir lassen das 'orders' Array in Ruhe!)
             await fetch(`${supabaseUrl}/rest/v1/customers?id=eq.${customerId}`, {
                 method: 'PATCH',
                 headers: { 'apikey': supabaseKey, 'Authorization': `Bearer ${supabaseKey}`, 'Content-Type': 'application/json' },
                 body: JSON.stringify({ 
-                    orders: orders,
                     pfand_250: pfand250,
                     pfand_400: pfand400,
                     pfand_schulden: pfandSchulden
                 })
             });
 
-            // Alles erfolgreich!
-            alert(`✅ ${sellAmount}x ${itemName} an ${customer.name} verkauft!`);
+            alert(`✅ Direktverkauf erledigt!\n\nUmsatz gebucht: ${sellPrice.toFixed(2)} €\nNeuer Bestand: ${newStockAmount} ${itemUnit}`);
             this.closeSellView();
             
-            // Daten neu laden, damit die Zahlen sofort stimmen
             await this.loadDependencies();
             await this.loadList();
             if(window.app && window.app.refreshData) window.app.refreshData();
@@ -299,7 +290,7 @@ window.wurstManager = {
     },
 
     deleteItem: async function(id, name) {
-        if (!confirm(`"${name}" komplett aus dem Bestand löschen?`)) return;
+        if (!confirm(`"${name}" komplett aus dem Bestand löschen? (Umsatz-Historie geht dabei auch verloren!)`)) return;
         try {
             const res = await fetch(`${supabaseUrl}/rest/v1/wurst_bestand?id=eq.${id}`, {
                 method: 'DELETE',
