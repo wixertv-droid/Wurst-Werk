@@ -35,8 +35,7 @@ window.wurstManager = {
                 return;
             }
 
-            const data = await res.json();
-            this.bestandData = Array.isArray(data) ? data : [];
+            this.bestandData = await res.json();
             
             if (this.bestandData.length === 0) {
                 container.innerHTML = '<p class="text-muted" style="text-align: center;">Der Wurststand ist aktuell leer.</p>';
@@ -204,21 +203,135 @@ window.wurstManager = {
         document.getElementById('sell-item-name').innerText = item.name || 'Unbenannt';
         document.getElementById('sell-item-available').innerText = `${item.amount} ${dispUnit}`;
         document.getElementById('sell-item-id').value = item.id;
-        
-        // NEU: Setzt das Dropdown automatisch auf die Einheit, die beim Produkt gespeichert ist!
-        const unitSelect = document.getElementById('sell-unit');
-        if (item.unit) {
-            unitSelect.value = item.unit;
-            if (!unitSelect.value) unitSelect.value = 'Stück'; // Fallback
-        } else {
-            unitSelect.value = 'Stück';
-        }
+        document.getElementById('sell-item-unit').value = item.unit || ''; 
         
         document.getElementById('sell-amount').value = '';
         document.getElementById('sell-price').value = '';
+        
+        document.getElementById('sell-pfand-250').value = 0;
+        document.getElementById('sell-pfand-400').value = 0;
 
         const customerSelect = document.getElementById('sell-customer');
         customerSelect.innerHTML = '<option value="">-- Kunde wählen --</option>';
         
         const safeCustomers = Array.isArray(this.customersData) ? this.customersData : [];
-        const sortedKunden = [...safeCustomers].sort((a, b) => (a.name || '').
+        const sortedKunden = [...safeCustomers].sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+        
+        sortedKunden.forEach(c => {
+            if(c.name) {
+                customerSelect.innerHTML += `<option value="${c.id}">${c.name}</option>`;
+            }
+        });
+    },
+
+    closeSellView: function() {
+        document.getElementById('wurststand-list-view').style.display = 'block';
+        document.getElementById('wurststand-sell-view').style.display = 'none';
+    },
+
+    autoFillPfand: function() {
+        const unit = (document.getElementById('sell-item-unit').value || '').toLowerCase();
+        const name = (document.getElementById('sell-item-name').innerText || '').toLowerCase();
+        const amount = Math.floor(Number(document.getElementById('sell-amount').value) || 0);
+
+        let p250 = 0;
+        let p400 = 0;
+
+        if (unit.includes('250') || name.includes('250')) {
+            p250 = amount;
+        } else if (unit.includes('400') || name.includes('400')) {
+            p400 = amount;
+        } else if (unit.includes('glas') || name.includes('glas')) {
+            p250 = amount; 
+        }
+
+        // Füllt die Felder automatisch aus (Die App stolpert hier, wenn die HTML Felder fehlen!)
+        document.getElementById('sell-pfand-250').value = p250;
+        document.getElementById('sell-pfand-400').value = p400;
+    },
+
+    confirmSale: async function() {
+        const itemId = document.getElementById('sell-item-id').value;
+        const itemUnit = document.getElementById('sell-item-unit').value;
+        const itemName = document.getElementById('sell-item-name').innerText;
+        
+        const customerId = document.getElementById('sell-customer').value;
+        const sellAmount = Number(document.getElementById('sell-amount').value);
+        const sellPrice = Number(document.getElementById('sell-price').value) || 0;
+
+        if (!customerId || sellAmount <= 0) {
+            alert("Bitte wähle einen Kunden und gib eine Menge ein (größer als 0)!");
+            return;
+        }
+
+        const item = this.bestandData.find(i => i.id === itemId);
+        const customer = this.customersData.find(c => c.id === customerId);
+
+        if (!item || !customer) return;
+
+        let newStockAmount = Number(item.amount) - sellAmount;
+        if (newStockAmount < 0) newStockAmount = 0;
+        
+        let currentRevenue = Number(item.revenue) || 0;
+        let newRevenue = currentRevenue + sellPrice;
+
+        const add250 = Number(document.getElementById('sell-pfand-250').value) || 0;
+        const add400 = Number(document.getElementById('sell-pfand-400').value) || 0;
+
+        let pfand250 = (Number(customer.pfand_250) || 0) + add250;
+        let pfand400 = (Number(customer.pfand_400) || 0) + add400;
+        let pfandSchulden = pfand250 + pfand400;
+
+        let pfandInfo = "";
+        if (add250 > 0 || add400 > 0) {
+            pfandInfo = `\nEs wurden ${add250 + add400} Gläser in sein Pfandkonto gebucht!`;
+        }
+
+        try {
+            const [resWurst, resCustomer] = await Promise.all([
+                fetch(`${supabaseUrl}/rest/v1/wurst_bestand?id=eq.${itemId}`, {
+                    method: 'PATCH',
+                    headers: { 'apikey': supabaseKey, 'Authorization': `Bearer ${supabaseKey}`, 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ amount: newStockAmount, revenue: newRevenue })
+                }),
+                fetch(`${supabaseUrl}/rest/v1/customers?id=eq.${customerId}`, {
+                    method: 'PATCH',
+                    headers: { 'apikey': supabaseKey, 'Authorization': `Bearer ${supabaseKey}`, 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ 
+                        pfand_250: pfand250,
+                        pfand_400: pfand400,
+                        pfand_schulden: pfandSchulden
+                    })
+                })
+            ]);
+
+            if (!resWurst.ok || !resCustomer.ok) {
+                alert("Es gab einen Fehler beim Speichern der Datenbank.");
+                return;
+            }
+
+            alert(`✅ Direktverkauf erledigt!\n\nUmsatz gebucht: ${sellPrice.toFixed(2)} €\nNeuer Bestand: ${newStockAmount} ${itemUnit}${pfandInfo}`);
+            this.closeSellView();
+            
+            await this.loadDependencies();
+            await this.loadList();
+            if(window.app && window.app.refreshData) window.app.refreshData();
+
+        } catch (e) {
+            alert("Fehler bei der Verbindung zur Datenbank.");
+        }
+    },
+
+    deleteItem: async function(id, name) {
+        if (!confirm(`"${name}" komplett aus dem Bestand löschen? (Umsatz-Historie geht dabei auch verloren!)`)) return;
+        try {
+            const res = await fetch(`${supabaseUrl}/rest/v1/wurst_bestand?id=eq.${id}`, {
+                method: 'DELETE',
+                headers: { 'apikey': supabaseKey, 'Authorization': `Bearer ${supabaseKey}` }
+            });
+            if (res.ok) await this.loadList();
+        } catch (e) { alert("Fehler beim Löschen."); }
+    }
+};
+
+document.addEventListener('DOMContentLoaded', () => window.wurstManager.init());
