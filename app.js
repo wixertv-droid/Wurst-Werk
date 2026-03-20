@@ -13,7 +13,7 @@ window.app = {
         if (document.getElementById('active-processes-list')) {
             try {
                 await this.loadActiveProcesses();
-                setInterval(() => this.loadActiveProcesses(), 30000); 
+                setInterval(() => this.loadActiveProcesses(), 10000); // Lädt das Dashboard alle 10 Sek neu
             } catch (e) {
                 console.error("Fehler bei den Timern", e);
             }
@@ -37,18 +37,15 @@ window.app = {
     },
 
     render: function() {
-        // Finanzen
-        let ausgaben = 0; // Wert der Rohware
-        let einnahmen = 0; // Umsatz der verkauften Wurst
+        let ausgaben = 0; 
+        let einnahmen = 0; 
         
-        // Glas-Zähler
         let total250 = 0, total400 = 0; 
         let gefuellt250 = 0, gefuellt400 = 0; 
         let kunden250 = 0, kunden400 = 0; 
         
         let fertigeWurstArtikel = 0;
 
-        // 1. Roh-Lager durchsuchen (Gesamtzahl der Gläser & Ausgaben/Warenwert)
         this.inventoryData.forEach(i => {
             const nameStr = (i.name || '').toLowerCase();
             const catStr = (i.category || '').toLowerCase();
@@ -61,13 +58,12 @@ window.app = {
             }
         });
 
-        // 2. Wurststand durchsuchen (Gefüllte Gläser & Einnahmen/Umsatz)
         this.wurstData.forEach(w => {
             const unit = (w.unit || '').toLowerCase();
             const name = (w.name || '').toLowerCase();
             const amount = Number(w.amount) || 0;
             
-            einnahmen += Number(w.revenue) || 0; // Umsatz summieren!
+            einnahmen += Number(w.revenue) || 0; 
 
             if (amount > 0) fertigeWurstArtikel += amount;
 
@@ -80,23 +76,19 @@ window.app = {
             }
         });
 
-        // 3. Kunden durchsuchen (Pfand)
         this.kundenData.forEach(k => {
             kunden250 += Number(k.pfand_250) || 0;
             kunden400 += Number(k.pfand_400) || 0;
         });
 
-        // 4. Gewinn & Verlust berechnen
         const frei250 = total250 - gefuellt250 - kunden250;
         const frei400 = total400 - gefuellt400 - kunden400;
         const gewinn = einnahmen - ausgaben;
 
-        // --- DASHBOARD (index.html) AKTUALISIEREN ---
         if(document.getElementById('stat-wert')) document.getElementById('stat-wert').innerText = ausgaben.toFixed(2);
         if(document.getElementById('stat-einnahmen')) document.getElementById('stat-einnahmen').innerText = einnahmen.toFixed(2);
         if(document.getElementById('stat-wurst-anzahl')) document.getElementById('stat-wurst-anzahl').innerText = fertigeWurstArtikel;
 
-        // Gewinn / Verlust Styling (Grün = Plus, Rot = Minus)
         if(document.getElementById('stat-gewinn')) {
             const gewinnEl = document.getElementById('stat-gewinn');
             const cardGewinn = document.getElementById('card-gewinn');
@@ -108,16 +100,15 @@ window.app = {
                 gewinnEl.style.color = '#4caf50';
                 cardGewinn.style.borderTop = '3px solid #4caf50';
                 iconGewinn.style.color = '#4caf50';
-                iconGewinn.innerText = 'trending_up'; // Pfeil hoch
+                iconGewinn.innerText = 'trending_up'; 
             } else {
                 gewinnEl.style.color = '#ff4444';
                 cardGewinn.style.borderTop = '3px solid #ff4444';
                 iconGewinn.style.color = '#ff4444';
-                iconGewinn.innerText = 'trending_down'; // Pfeil runter
+                iconGewinn.innerText = 'trending_down'; 
             }
         }
 
-        // Gläser Tabelle
         if(document.getElementById('stat-g250-total')) {
             document.getElementById('stat-g250-total').innerText = total250;
             document.getElementById('stat-g400-total').innerText = total400;
@@ -137,7 +128,6 @@ window.app = {
             frei400El.style.color = frei400 < 0 ? 'var(--accent-danger)' : '#4caf50';
         }
 
-        // --- LAGER (lager.html) KOMPATIBILITÄT ---
         if(document.getElementById('stat-warenwert')) document.getElementById('stat-warenwert').innerText = ausgaben.toFixed(2);
         if(document.getElementById('glass-250-stock')) document.getElementById('glass-250-stock').innerText = Math.floor(frei250);
         if(document.getElementById('glass-400-stock')) document.getElementById('glass-400-stock').innerText = Math.floor(frei400);
@@ -150,50 +140,56 @@ window.app = {
         if (!container) return; 
 
         try {
-            const res = await fetch(`${supabaseUrl}/rest/v1/active_processes?status=eq.running&order=end_time.asc`, {
+            // Liest jetzt die komplette Produktions-Sitzung aus
+            const res = await fetch(`${supabaseUrl}/rest/v1/production_runs`, {
                 headers: { 'apikey': supabaseKey, 'Authorization': `Bearer ${supabaseKey}` }
             });
             
-            if (!res.ok) {
-                container.innerHTML = '<p class="text-muted" style="color: var(--accent-danger);">Fehlt die Tabelle "active_processes" in Supabase?</p>';
-                return;
-            }
+            if (!res.ok) return;
 
-            const processes = await res.json();
+            const runs = await res.json();
             
-            if (!Array.isArray(processes) || processes.length === 0) {
+            if (!Array.isArray(runs) || runs.length === 0) {
                 container.innerHTML = '<p class="text-muted" style="text-align: center;">Aktuell keine Prozesse in Arbeit.</p>';
                 return;
             }
 
             container.innerHTML = '';
-            processes.forEach(p => {
+            runs.forEach(run => {
+                const state = run.state || {};
+                const timers = state.timers || {};
+                let timerHtml = '';
+                
+                // Prüft, ob in dieser Produktion Timer laufen
+                for (const [stepIdx, endTime] of Object.entries(timers)) {
+                    if (new Date(endTime).getTime() > Date.now() || new Date(endTime).getTime() <= Date.now()) {
+                        timerHtml += `<div id="dash-timer-${run.id}-${stepIdx}" style="color:var(--accent-amber); font-weight:bold; font-size:1.1rem; margin-top:8px;">Berechne...</div>`;
+                        this.startCountdown(`dash-timer-${run.id}-${stepIdx}`, endTime);
+                    }
+                }
+
                 container.innerHTML += `
-                    <div class="prod-card" style="border-left:4px solid #4d4dff; margin-bottom:10px; background:#1a1a1a; padding:15px; border-radius:10px;">
+                    <div class="prod-card" style="border-left:4px solid #4d4dff; margin-bottom:10px; background:#1a1a1a; padding:15px; border-radius:10px; cursor:pointer;" onclick="window.location.href='produktion.html?id=${run.recipe_id}'">
                         <div style="display:flex; justify-content:space-between; align-items: flex-start;">
                             <div style="flex: 1; padding-right: 10px;">
-                                <b style="color:#4d4dff; font-size:0.8rem; text-transform:uppercase;">${p.recipe_name}</b>
-                                <p style="margin:5px 0; font-size:0.95rem; color: #eee; line-height: 1.3;">${p.step_text}</p>
+                                <b style="color:#4d4dff; font-size:0.85rem; text-transform:uppercase;">${run.recipe_name}</b>
+                                <p style="margin:5px 0 0 0; font-size:0.95rem; color: #eee; line-height: 1.3;">Produktion läuft (Klicke zum Öffnen)</p>
+                                ${timerHtml}
                             </div>
-                            <span class="material-symbols-outlined" style="color:var(--accent-danger); cursor:pointer; padding: 5px;" onclick="window.app.stopProcess('${p.id}')">delete</span>
-                        </div>
-                        <div id="timer-${p.id}" style="color:var(--accent-amber); font-weight:bold; font-size:1.3rem; margin-top:8px; text-align: right;">
-                            Berechne...
+                            <span class="material-symbols-outlined" style="color:var(--accent-danger); cursor:pointer; padding: 5px;" onclick="event.stopPropagation(); window.app.stopProcess('${run.id}')">delete</span>
                         </div>
                     </div>`;
-                
-                this.startCountdown(p.id, p.end_time);
             });
         } catch (e) {
-            container.innerHTML = '<p class="text-muted" style="color: var(--accent-danger);">Fehler beim Laden der Timer.</p>';
+            console.error(e);
         }
     },
 
-    startCountdown: function(id, endStr) {
+    startCountdown: function(elId, endStr) {
         const end = new Date(endStr).getTime();
         
         const update = () => {
-            const el = document.getElementById(`timer-${id}`);
+            const el = document.getElementById(elId);
             if (!el) return; 
             
             const dist = end - Date.now();
@@ -212,7 +208,7 @@ window.app = {
             let timeStr = "";
             if (d > 0) timeStr += d + " Tage ";
             timeStr += (h < 10 ? "0" : "") + h + ":" + (m < 10 ? "0" : "") + m + ":" + (s < 10 ? "0" : "") + s;
-            el.innerText = timeStr;
+            el.innerText = "⏳ " + timeStr;
             
             setTimeout(update, 1000);
         };
@@ -222,7 +218,7 @@ window.app = {
     stopProcess: async function(id) {
         if(!confirm("Diesen Prozess wirklich abbrechen und vom Dashboard löschen?")) return;
         try {
-            await fetch(`${supabaseUrl}/rest/v1/active_processes?id=eq.${id}`, {
+            await fetch(`${supabaseUrl}/rest/v1/production_runs?id=eq.${id}`, {
                 method: 'DELETE',
                 headers: { 'apikey': supabaseKey, 'Authorization': `Bearer ${supabaseKey}` }
             });
