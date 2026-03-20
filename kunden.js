@@ -28,6 +28,14 @@ window.kundenManager = {
         }
     },
 
+    // Kleine Hilfsfunktion für Plural ("Glas" -> "Gläser")
+    formatUnit: function(amount, unit) {
+        if (unit.includes('Glas') && Number(amount) !== 1) {
+            return unit.replace('Glas', 'Gläser');
+        }
+        return unit;
+    },
+
     loadList: async function() {
         const container = document.getElementById('kunden-list-container');
         if (!container) return;
@@ -50,12 +58,12 @@ window.kundenManager = {
                 const pfandColor = pfandSumme > 0 ? 'var(--accent-danger)' : '#aaa';
                 const pfandText = pfandSumme > 0 ? `${pfandSumme} Gläser im Rückstand` : `Keine Pfandschulden`;
 
-                // NEU: Zeigt die Bestellungen direkt auf der Kundenkarte an!
                 let ordersHtml = '';
                 if (Array.isArray(k.orders) && k.orders.length > 0) {
                     ordersHtml = `<div style="margin-top: 10px; padding-top: 10px; border-top: 1px dashed #333;">`;
                     k.orders.forEach(o => {
-                        ordersHtml += `<div style="color: #4caf50; font-size: 0.85rem; margin-bottom: 2px;">🛒 ${o.amount} ${o.unit} ${o.recipe}</div>`;
+                        const dispUnit = this.formatUnit(o.amount, o.unit);
+                        ordersHtml += `<div style="color: #4caf50; font-size: 0.85rem; margin-bottom: 2px;">🛒 ${o.amount} ${dispUnit} ${o.recipe}</div>`;
                     });
                     ordersHtml += `</div>`;
                 }
@@ -99,9 +107,10 @@ window.kundenManager = {
                 hasOrders = true;
                 let orderListHTML = '';
                 k.orders.forEach(o => {
+                    const dispUnit = this.formatUnit(o.amount, o.unit);
                     orderListHTML += `
                         <div style="display: flex; justify-content: space-between; margin-bottom: 5px; color: #eee;">
-                            <span>${o.amount} ${o.unit} ${o.recipe}</span>
+                            <span>${o.amount} ${dispUnit} ${o.recipe}</span>
                             <span style="color: #4caf50;">${Number(o.price).toFixed(2)} €</span>
                         </div>`;
                 });
@@ -118,7 +127,7 @@ window.kundenManager = {
         });
 
         if (!hasOrders) {
-            container.innerHTML = '<p class="text-muted" style="text-align: center;">Aktuell keine Bestellungen vorhanden.</p>';
+            container.innerHTML = '<p class="text-muted" style="text-align: center;">Aktuell keine Vorbestellungen vorhanden.</p>';
         }
     },
 
@@ -155,7 +164,6 @@ window.kundenManager = {
         this.renderOrders();
     },
 
-    // Wird aufgerufen, wenn man auf "Zurück" drückt – speichert und schließt!
     saveAndClose: async function() {
         await this.silentSave();
         document.getElementById('kunden-list-view').style.display = 'block';
@@ -190,15 +198,39 @@ window.kundenManager = {
         document.getElementById('order-amount').value = '';
         document.getElementById('order-price').value = '';
 
-        // FIX: Automatisches Speichern sofort nach dem Hinzufügen!
         await this.silentSave(); 
     },
 
+    // NEU: Bestellung als Erledigt markieren & Gläser zubuchen
+    fulfillOrder: async function(orderId) {
+        if (!confirm("Bestellung an den Kunden übergeben?\n\n(Falls Gläser in der Bestellung sind, werden diese automatisch auf sein Pfand-Konto gebucht!)")) return;
+        
+        const orderIndex = this.currentOrders.findIndex(o => o.id === orderId);
+        if (orderIndex === -1) return;
+        
+        const order = this.currentOrders[orderIndex];
+
+        // Wenn es Gläser waren, auf das Pfandkonto draufschlagen!
+        if (order.unit === 'Glas (250ml)') {
+            const current250 = parseInt(document.getElementById('edit-pfand-250').innerText) || 0;
+            document.getElementById('edit-pfand-250').innerText = current250 + order.amount;
+        } else if (order.unit === 'Glas (400ml)') {
+            const current400 = parseInt(document.getElementById('edit-pfand-400').innerText) || 0;
+            document.getElementById('edit-pfand-400').innerText = current400 + order.amount;
+        }
+
+        // Bestellung aus der Liste werfen (da erledigt)
+        this.currentOrders.splice(orderIndex, 1);
+        
+        this.renderOrders();
+        await this.silentSave(); // Speichert alles sofort in die DB
+    },
+
     removeOrder: async function(orderId) {
-        if (!confirm("Diesen Kauf wirklich löschen?")) return;
+        if (!confirm("Diese Vorbestellung wirklich löschen?")) return;
         this.currentOrders = this.currentOrders.filter(o => o.id !== orderId);
         this.renderOrders();
-        await this.silentSave(); // Sofortiges Update in der DB
+        await this.silentSave(); 
     },
 
     renderOrders: function() {
@@ -206,7 +238,7 @@ window.kundenManager = {
         container.innerHTML = '';
 
         if (this.currentOrders.length === 0) {
-            container.innerHTML = '<p class="text-muted" style="font-size: 0.85rem;">Noch keine Käufe hinterlegt.</p>';
+            container.innerHTML = '<p class="text-muted" style="font-size: 0.85rem;">Keine offenen Vorbestellungen.</p>';
             return;
         }
 
@@ -214,15 +246,22 @@ window.kundenManager = {
 
         this.currentOrders.forEach(o => {
             totalRevenue += o.price;
+            const dispUnit = this.formatUnit(o.amount, o.unit);
+            
             container.innerHTML += `
                 <div class="order-card">
-                    <div>
-                        <b style="color: white; font-size: 1rem;">${o.amount} ${o.unit} ${o.recipe}</b>
-                        <p style="margin: 3px 0 0 0; font-size: 0.8rem; color: #888;">Gekauft am: ${o.date}</p>
+                    <div style="flex: 1;">
+                        <b style="color: white; font-size: 1rem;">${o.amount} ${dispUnit} ${o.recipe}</b>
+                        <p style="margin: 3px 0 0 0; font-size: 0.8rem; color: #888;">Vorbestellt am: ${o.date}</p>
                     </div>
-                    <div style="text-align: right;">
-                        <b style="color: #4caf50; font-size: 1.1rem;">${o.price.toFixed(2)} €</b><br>
-                        <span class="material-symbols-outlined" style="color: var(--accent-danger); font-size: 1.2rem; cursor: pointer; margin-top: 5px;" onclick="window.kundenManager.removeOrder('${o.id}')">delete</span>
+                    <div style="text-align: right; display: flex; flex-direction: column; align-items: flex-end; gap: 8px;">
+                        <b style="color: #4caf50; font-size: 1.1rem;">${o.price.toFixed(2)} €</b>
+                        <div style="display: flex; gap: 10px; align-items: center;">
+                            <button class="outline-btn green" style="padding: 6px 10px; font-size: 0.85rem;" onclick="window.kundenManager.fulfillOrder('${o.id}')">
+                                <span class="material-symbols-outlined" style="font-size: 1rem;">done</span> Abgegeben
+                            </button>
+                            <span class="material-symbols-outlined" style="color: var(--accent-danger); font-size: 1.2rem; cursor: pointer;" onclick="window.kundenManager.removeOrder('${o.id}')">delete</span>
+                        </div>
                     </div>
                 </div>
             `;
@@ -230,7 +269,7 @@ window.kundenManager = {
 
         container.innerHTML += `
             <div style="text-align: right; padding-top: 10px; margin-top: 10px; border-top: 1px solid #333;">
-                <span style="color: var(--text-muted); font-size: 0.9rem;">Gesamtumsatz: </span>
+                <span style="color: var(--text-muted); font-size: 0.9rem;">Erwarteter Umsatz: </span>
                 <b style="color: var(--accent-amber); font-size: 1.2rem;">${totalRevenue.toFixed(2)} €</b>
             </div>
         `;
@@ -251,19 +290,16 @@ window.kundenManager = {
         if (newVal < 0) newVal = 0; 
         
         document.getElementById(spanId).innerText = newVal;
-        
-        // FIX: Auch Pfandänderungen werden sofort in der DB gesichert
         await this.silentSave(); 
     },
 
-    // DIE NEUE SPEICHER-FUNKTION (läuft lautlos im Hintergrund)
     silentSave: async function() {
         let id = document.getElementById('edit-id').value;
         const nameVal = document.getElementById('edit-name').value.trim();
         const pfand250 = parseInt(document.getElementById('edit-pfand-250').innerText) || 0;
         const pfand400 = parseInt(document.getElementById('edit-pfand-400').innerText) || 0;
 
-        if (!nameVal) return; // Ohne Namen wird nicht gespeichert
+        if (!nameVal) return; 
 
         const payload = {
             name: nameVal,
@@ -273,25 +309,17 @@ window.kundenManager = {
             orders: this.currentOrders
         };
 
-        if (!id) {
-            id = crypto.randomUUID();
-            payload.id = id;
-            document.getElementById('edit-id').value = id; // Setzt die ID, damit er ab jetzt updatet!
-        }
-
         try {
             let url = `${supabaseUrl}/rest/v1/customers`;
             let method = 'POST';
-            // Wir prüfen, ob wir updaten oder neu erstellen
-            if (document.getElementById('edit-id').value && method !== 'POST') {
+
+            if (id) {
                 url += `?id=eq.${id}`;
                 method = 'PATCH';
-            } else if (id && payload.id) {
-                // Das ist ein neuer Kunde, der gerade im Hintergrund erstellt wird
-                 method = 'POST';
             } else {
-                 url += `?id=eq.${id}`;
-                 method = 'PATCH';
+                id = crypto.randomUUID();
+                payload.id = id;
+                document.getElementById('edit-id').value = id; 
             }
 
             await fetch(url, {
@@ -309,13 +337,6 @@ window.kundenManager = {
         } catch (e) {
             console.error("Auto-Save Fehler:", e);
         }
-    },
-
-    // Die manuelle "Profil Speichern" Funktion ruft jetzt einfach den Auto-Save auf und schließt
-    saveCustomer: async function() {
-        await this.silentSave();
-        this.closeEditor();
-        await this.loadList();
     },
 
     deleteCustomer: async function(id, name) {
