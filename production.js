@@ -348,12 +348,12 @@ window.produktionManager = {
         });
     },
 
+    // Hier ist der 100% kugelsichere Block
     showFinalStep: function() {
         document.getElementById('step-2-checklist').style.display = 'none';
         document.getElementById('step-3-finish').style.display = 'block';
         
-        // KUGELSICHER: Sucht die erste <h3> im Abschluss-Fenster und ändert den Text
-        const titleEl = document.querySelector('#step-3-finish h3');
+        const titleEl = document.getElementById('finish-title');
         if (titleEl && this.recipe && this.recipe.name) {
             titleEl.innerHTML = `<span style="color: var(--accent-amber); font-size: 1.4rem;">${this.recipe.name}</span><br><span style="font-size: 1.1rem; color: #fff;">erfolgreich produziert!</span>`;
         }
