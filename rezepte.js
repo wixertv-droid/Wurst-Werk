@@ -35,6 +35,8 @@ window.rezeptManager = {
 
             recipes.forEach(r => {
                 const safeData = encodeURIComponent(JSON.stringify(r));
+                
+                // HIER: Der Lösch-Button wurde durch den Slider ersetzt
                 listEl.innerHTML += `
                     <div class="list-card" style="border-left: 3px solid var(--accent-amber); cursor: pointer;" onclick="window.rezeptManager.openDetail('${safeData}')">
                         <div class="icon-box" style="background: #222;">
@@ -44,15 +46,92 @@ window.rezeptManager = {
                             <h3 style="font-size: 1.1rem; margin-bottom: 4px;">${r.name}</h3>
                             <p style="color: #aaa; font-size: 0.85rem; margin: 0;">Auf 1kg genormt</p>
                         </div>
-                        <button onclick="event.stopPropagation(); window.rezeptManager.deleteRecipe('${r.id}', '${r.name}')" style="background:none; border:none; color:var(--accent-danger); cursor:pointer; padding: 10px;">
-                            <span class="material-symbols-outlined">delete</span>
-                        </button>
+                        
+                        <div class="recipe-delete-slider" id="delete-slider-${r.id}" onclick="event.stopPropagation()">
+                            <div class="delete-slider-track">
+                                <div class="delete-slider-handle"></div>
+                            </div>
+                        </div>
                     </div>
                 `;
+                
+                // Slider sofort initialisieren, wenn das Element geladen ist
+                setTimeout(() => this.initDeleteSlider(r.id, r.name), 50);
             });
         } catch (e) {
             listEl.innerHTML = '<p class="text-muted" style="color: red;">Netzwerk-Fehler beim Laden.</p>';
         }
+    },
+
+    // NEU: Die Logik für den Schieberegler
+    initDeleteSlider: function(recipeId, recipeName) {
+        const slider = document.getElementById(`delete-slider-${recipeId}`);
+        if (!slider) return;
+        
+        const handle = slider.querySelector('.delete-slider-handle');
+        const track = slider.querySelector('.delete-slider-track');
+        let isDragging = false;
+        let startX, handleLeft;
+
+        const onStart = (e) => {
+            isDragging = true;
+            slider.classList.add('dragging');
+            startX = (e.type === 'touchstart') ? e.touches[0].clientX : e.clientX;
+            handleLeft = handle.offsetLeft;
+            track.style.transition = 'none'; 
+        };
+
+        const onMove = (e) => {
+            if (!isDragging) return;
+            const currentX = (e.type === 'touchmove') ? e.touches[0].clientX : e.clientX;
+            let moveX = currentX - startX + handleLeft;
+            
+            // Grenzen des Sliders
+            if (moveX < 4) moveX = 4;
+            if (moveX > 30) moveX = 30;
+            
+            handle.style.left = `${moveX}px`;
+        };
+
+        const onEnd = (e) => {
+            if (!isDragging) return;
+            isDragging = false;
+            slider.classList.remove('dragging');
+            track.style.transition = '0.4s'; 
+
+            const threshold = track.offsetWidth - handle.offsetWidth - 5; 
+
+            if (handle.offsetLeft >= threshold) {
+                // Richtig weit gezogen! 
+                slider.classList.add('active'); 
+                handle.style.left = '30px'; 
+
+                setTimeout(() => {
+                    if (confirm(`⚠️ VORSICHT!\n\nMöchtest du das Rezept '${recipeName}' wirklich unwiderruflich löschen?`)) {
+                        this.deleteRecipe(recipeId, recipeName, true); // Wahres Löschen aufrufen
+                    } else {
+                        // Abgebrochen
+                        this.resetSlider(slider, handle);
+                    }
+                }, 100);
+
+            } else {
+                // Nicht weit genug gezogen
+                this.resetSlider(slider, handle);
+            }
+        };
+
+        handle.addEventListener('mousedown', onStart);
+        handle.addEventListener('touchstart', onStart, {passive: true});
+        window.addEventListener('mousemove', onMove);
+        window.addEventListener('touchmove', onMove, {passive: true});
+        window.addEventListener('mouseup', onEnd);
+        window.addEventListener('touchend', onEnd);
+    },
+
+    resetSlider: function(slider, handle) {
+        slider.classList.remove('active');
+        handle.style.left = '4px'; 
     },
 
     openDetail: function(encodedData) {
@@ -266,8 +345,11 @@ window.rezeptManager = {
         } catch (e) { alert("Netzwerkfehler"); }
     },
 
-    deleteRecipe: async function(id, name) {
-        if (!confirm(`Rezept "${name}" wirklich löschen?`)) return;
+    // Die Löschfunktion wurde etwas angepasst, da das Confirm jetzt im Slider passiert
+    deleteRecipe: async function(id, name, confirmed = false) {
+        // Fallback, falls die Funktion doch mal direkt aufgerufen wird
+        if (!confirmed && !confirm(`Rezept "${name}" wirklich löschen?`)) return;
+        
         try {
             const res = await fetch(`${supabaseUrl}/rest/v1/recipes?id=eq.${id}`, {
                 method: 'DELETE',
