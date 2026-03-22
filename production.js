@@ -352,9 +352,10 @@ window.produktionManager = {
         document.getElementById('step-2-checklist').style.display = 'none';
         document.getElementById('step-3-finish').style.display = 'block';
         
-        // HIER WIRD DER REZEPT-NAME EINGEFÜGT!
-        if (this.recipe && this.recipe.name) {
-            document.getElementById('finish-title').innerHTML = `<span style="color: var(--accent-amber);">${this.recipe.name}</span><br>erfolgreich produziert!`;
+        // KUGELSICHER: Sucht die erste <h3> im Abschluss-Fenster und ändert den Text
+        const titleEl = document.querySelector('#step-3-finish h3');
+        if (titleEl && this.recipe && this.recipe.name) {
+            titleEl.innerHTML = `<span style="color: var(--accent-amber); font-size: 1.4rem;">${this.recipe.name}</span><br><span style="font-size: 1.1rem; color: #fff;">erfolgreich produziert!</span>`;
         }
     },
 
