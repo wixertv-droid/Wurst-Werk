@@ -9,7 +9,8 @@ window.produktionManager = {
         const params = new URLSearchParams(window.location.search);
         const id = params.get('id');
 
-        setInterval(() => this.updateLocalTimers(), 1000);
+        // Globaler Herzschlag auch hier in der Produktion
+        setInterval(() => this.tickTimers(), 1000);
 
         if (!id) {
             window.location.href = 'rezepte.html';
@@ -44,7 +45,7 @@ window.produktionManager = {
                 }
 
                 this.buildChecklist();
-                this.checkFinishCondition(); // Prüfen, ob der Button schon gezeigt werden darf
+                this.checkFinishCondition(); 
             } else {
                 document.getElementById('step-1-setup').style.display = 'block';
                 document.getElementById('step-2-checklist').style.display = 'none';
@@ -210,11 +211,15 @@ window.produktionManager = {
 
     syncState: async function() {
         if (!this.currentRun) return;
-        await fetch(`${supabaseUrl}/rest/v1/production_runs?id=eq.${this.currentRun.id}`, {
-            method: 'PATCH',
-            headers: { 'apikey': supabaseKey, 'Authorization': `Bearer ${supabaseKey}`, 'Content-Type': 'application/json' },
-            body: JSON.stringify({ state: this.currentRun.state })
-        });
+        try {
+            await fetch(`${supabaseUrl}/rest/v1/production_runs?id=eq.${this.currentRun.id}`, {
+                method: 'PATCH',
+                headers: { 'apikey': supabaseKey, 'Authorization': `Bearer ${supabaseKey}`, 'Content-Type': 'application/json', 'Prefer': 'return=minimal' },
+                body: JSON.stringify({ state: this.currentRun.state })
+            });
+        } catch(e) {
+            console.error("Fehler beim Speichern des Hakens:", e);
+        }
     },
 
     buildChecklist: function() {
@@ -227,7 +232,6 @@ window.produktionManager = {
         steps.forEach((step, i) => {
             let timerBtn = '';
             let extra = '';
-            // WICHTIG: Stellt sicher, dass das Array durchsucht wird, egal ob String oder Number gespeichert wurde
             const isChecked = state.checked.some(val => Number(val) === Number(i));
             const activeTimerEnd = state.timers[i]; 
 
@@ -236,10 +240,11 @@ window.produktionManager = {
                 if (step.type === 'interval') extra = `<br><b style="color:var(--accent-amber);">🔁 ${step.cycles}x ${step.duration} ${step.unit} (Pause: ${step.pauses}h)</b>`;
                 
                 if (activeTimerEnd) {
+                    // HIER IST DER MAGISCHE STEMPEL AUCH FÜR DIE PRODUKTIONS-SEITE!
                     timerBtn = `
                         <div style="padding-left:50px; margin-top: 10px; color:#4caf50; font-weight: bold;">
                             <span class="material-symbols-outlined" style="vertical-align: middle;">hourglass_bottom</span> Läuft: 
-                            <span id="prod-timer-${i}" style="color:var(--accent-amber); font-size:1.2rem; margin-left: 5px;">Berechne...</span>
+                            <span class="live-timer" data-endtime="${activeTimerEnd}" style="color:var(--accent-amber); font-size:1.2rem; margin-left: 5px;">Berechne...</span>
                         </div>
                     `;
                 } else if (!isChecked) {
@@ -255,31 +260,33 @@ window.produktionManager = {
                 <div class="check-step ${isChecked ? 'done' : ''} ${activeTimerEnd && !isChecked ? 'running' : ''}" id="step-row-${i}">
                     <div class="step-header" onclick="window.produktionManager.toggleStep(${i})">
                         <div class="check-btn"><span class="material-symbols-outlined">check</span></div>
-                        <div style="flex:1;"><b style="font-size:0.8rem; color:#888;">SCHRITT ${i+1}</b><p style="margin: 3px 0 0 0; line-height: 1.4;">${step.text} ${extra}</p></div>
+                        <div style="flex:1;">
+                            <b style="font-size:0.8rem; color:#888;">SCHRITT ${i+1}</b>
+                            <p class="step-desc" style="margin: 3px 0 0 0; line-height: 1.4;">${step.text} ${extra}</p>
+                        </div>
                     </div>
-                    ${timerBtn}
+                    <div class="step-body">
+                        ${timerBtn}
+                    </div>
                 </div>`;
         });
     },
 
-    toggleStep: function(i) { 
-        const row = document.getElementById(`step-row-${i}`);
-        if(!row) return;
-
-        row.classList.toggle('done');
+    toggleStep: async function(i) { 
         let checked = this.currentRun.state.checked || [];
-        
-        if (row.classList.contains('done')) {
-            if (!checked.includes(Number(i))) checked.push(Number(i));
-            const ctrl = document.getElementById(`timer-ctrl-${i}`);
-            if (ctrl) ctrl.style.display = 'none';
+        const isCurrentlyDone = checked.includes(Number(i));
+
+        if (!isCurrentlyDone) {
+            checked.push(Number(i));
         } else {
             checked = checked.filter(val => Number(val) !== Number(i));
         }
         
         this.currentRun.state.checked = checked;
-        this.syncState(); 
-        this.checkFinishCondition(); // Prüft nach jedem Klick, ob der "Abschließen" Button erscheinen soll
+        
+        this.buildChecklist();
+        await this.syncState(); 
+        this.checkFinishCondition(); 
     },
 
     checkFinishCondition: function() {
@@ -290,7 +297,6 @@ window.produktionManager = {
         const checked = this.currentRun.state.checked || [];
         const btnFinish = document.getElementById('btn-finish-prod');
         
-        // Prüfen, ob der letzte Schritt abgehakt ist
         if (checked.includes(lastIndex)) {
             btnFinish.style.display = 'flex';
         } else {
@@ -313,21 +319,20 @@ window.produktionManager = {
         if (!this.currentRun.state.timers) this.currentRun.state.timers = {};
         this.currentRun.state.timers[index] = end;
 
-        document.getElementById(`step-row-${index}`).classList.add('running');
         await this.syncState();
-        this.buildChecklist();
+        this.buildChecklist(); // Zeichnet die Liste neu -> Erstellt das Stempel-Feld -> Herzschlag übernimmt!
     },
 
-    updateLocalTimers: function() {
-        if (!this.currentRun || !this.currentRun.state || !this.currentRun.state.timers) return;
+    // Der kugelsichere Herzschlag
+    tickTimers: function() {
+        const timerElements = document.querySelectorAll('.live-timer');
         
-        const timers = this.currentRun.state.timers;
-        
-        for (const [idx, endStr] of Object.entries(timers)) {
-            const el = document.getElementById(`prod-timer-${idx}`);
-            if (!el) continue; 
+        timerElements.forEach(el => {
+            const endStr = el.getAttribute('data-endtime');
+            if (!endStr) return;
             
-            const dist = new Date(endStr).getTime() - Date.now();
+            const end = new Date(endStr).getTime();
+            const dist = end - Date.now();
             
             if (dist < 0) { 
                 el.innerText = "✅ FERTIG!"; 
@@ -343,16 +348,14 @@ window.produktionManager = {
                 timeStr += (h < 10 ? "0" : "") + h + ":" + (m < 10 ? "0" : "") + m + ":" + (s < 10 ? "0" : "") + s;
                 el.innerText = timeStr;
             }
-        }
+        });
     },
 
-    // Zeigt den finalen Ertrags-Bildschirm
     showFinalStep: function() {
         document.getElementById('step-2-checklist').style.display = 'none';
         document.getElementById('step-3-finish').style.display = 'block';
     },
 
-    // Bucht den Ertrag in den Wurststand ein und löscht die laufende Akte
     saveToWurststand: async function() {
         const finalAmount = Number(document.getElementById('final-amount').value);
         const finalUnit = document.getElementById('final-unit').value;
@@ -363,14 +366,12 @@ window.produktionManager = {
         }
 
         try {
-            // 1. Prüfen, ob das Rezept schon im Wurststand existiert
             const checkRes = await fetch(`${supabaseUrl}/rest/v1/wurst_bestand?name=eq.${encodeURIComponent(this.recipe.name)}`, {
                 headers: { 'apikey': supabaseKey, 'Authorization': `Bearer ${supabaseKey}` }
             });
             const existing = checkRes.ok ? await checkRes.json() : [];
 
             if (existing.length > 0) {
-                // Update (Menge auf den Bestand addieren)
                 const newAmount = Number(existing[0].amount) + finalAmount;
                 await fetch(`${supabaseUrl}/rest/v1/wurst_bestand?id=eq.${existing[0].id}`, {
                     method: 'PATCH',
@@ -378,7 +379,6 @@ window.produktionManager = {
                     body: JSON.stringify({ amount: newAmount, unit: finalUnit })
                 });
             } else {
-                // Neu anlegen
                 await fetch(`${supabaseUrl}/rest/v1/wurst_bestand`, {
                     method: 'POST',
                     headers: { 'apikey': supabaseKey, 'Authorization': `Bearer ${supabaseKey}`, 'Content-Type': 'application/json' },
@@ -392,7 +392,6 @@ window.produktionManager = {
                 });
             }
 
-            // 2. Laufende Akte (Produktion) löschen
             if(this.currentRun) {
                 await fetch(`${supabaseUrl}/rest/v1/production_runs?id=eq.${this.currentRun.id}`, {
                     method: 'DELETE',
@@ -400,7 +399,7 @@ window.produktionManager = {
                 });
             }
 
-            alert("✅ Produktion erfolgreich beendet und in den Wurststand eingebucht!");
+            alert("✅ Produktion beendet! Ware liegt jetzt im Wurststand.");
             window.location.href = 'wurststand.html';
 
         } catch (e) {
