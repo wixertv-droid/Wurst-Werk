@@ -10,9 +10,13 @@ window.app = {
             console.error("Fehler beim Laden der Basisdaten", e);
         }
 
+        // Globaler Herzschlag für alle Timer auf dem Bildschirm!
+        setInterval(() => this.tickTimers(), 1000);
+
         if (document.getElementById('active-processes-list')) {
             try {
                 await this.loadActiveProcesses();
+                // Lädt das Dashboard alle 10 Sek neu (für Sync zwischen mehreren Geräten)
                 setInterval(() => this.loadActiveProcesses(), 10000); 
             } catch (e) {
                 console.error("Fehler bei den Timern", e);
@@ -154,7 +158,6 @@ window.app = {
             }
 
             let htmlContent = '';
-            let timersToStart = []; // Hier sammeln wir die Timer, um sie SPÄTER zu starten
 
             runs.forEach(run => {
                 const state = run.state || {};
@@ -164,17 +167,16 @@ window.app = {
                 for (const [stepIdx, endTime] of Object.entries(timers)) {
                     if (new Date(endTime).getTime() > Date.now() || new Date(endTime).getTime() <= Date.now()) {
                         const stepNum = Number(stepIdx) + 1;
+                        // HIER IST DER MAGISCHE STEMPEL: class="live-timer" data-endtime="..."
                         timerHtml += `
                             <div style="margin-top: 8px;">
                                 <span style="font-size:0.75rem; color:#aaa; text-transform:uppercase; letter-spacing: 0.5px;">Aktueller Schritt ${stepNum}:</span>
-                                <div id="dash-timer-${run.id}-${stepIdx}" style="color:var(--accent-amber); font-weight:bold; font-size:1.1rem; margin-top:2px;">Berechne...</div>
+                                <div class="live-timer" data-endtime="${endTime}" style="color:var(--accent-amber); font-weight:bold; font-size:1.1rem; margin-top:2px;">Berechne...</div>
                             </div>
                         `;
-                        timersToStart.push({ id: `dash-timer-${run.id}-${stepIdx}`, end: endTime });
                     }
                 }
 
-                // Wenn gerade kein Timer läuft, aber die Produktion offen ist:
                 if (timerHtml === '') {
                     timerHtml = '<p style="margin:8px 0 0 0; font-size:0.85rem; color: #888; font-style: italic;">Wartet auf nächste Eingabe...</p>';
                 }
@@ -191,45 +193,39 @@ window.app = {
                     </div>`;
             });
 
-            // 1. ZUERST den HTML Code ins Dashboard einbauen
             container.innerHTML = htmlContent;
-
-            // 2. DANACH die Timer starten (jetzt existieren sie auf dem Bildschirm!)
-            timersToStart.forEach(t => this.startCountdown(t.id, t.end));
 
         } catch (e) {
             console.error(e);
         }
     },
 
-    startCountdown: function(elId, endStr) {
-        const end = new Date(endStr).getTime();
+    // Der neue, kugelsichere Herzschlag, der alle gestempelten Timer auf der Seite sucht und updatet
+    tickTimers: function() {
+        const timerElements = document.querySelectorAll('.live-timer');
         
-        const update = () => {
-            const el = document.getElementById(elId);
-            if (!el) return; // Bricht ab, falls das Element nicht existiert
+        timerElements.forEach(el => {
+            const endStr = el.getAttribute('data-endtime');
+            if (!endStr) return;
             
+            const end = new Date(endStr).getTime();
             const dist = end - Date.now();
             
             if (dist < 0) { 
                 el.innerText = "✅ FERTIG!"; 
                 el.style.color = "#4caf50"; 
-                return; 
+            } else {
+                const d = Math.floor(dist / 86400000);
+                const h = Math.floor((dist % 86400000) / 3600000);
+                const m = Math.floor((dist % 3600000) / 60000);
+                const s = Math.floor((dist % 60000) / 1000);
+                
+                let timeStr = "";
+                if (d > 0) timeStr += d + " Tage ";
+                timeStr += (h < 10 ? "0" : "") + h + ":" + (m < 10 ? "0" : "") + m + ":" + (s < 10 ? "0" : "") + s;
+                el.innerText = "⏳ " + timeStr;
             }
-            
-            const d = Math.floor(dist / 86400000);
-            const h = Math.floor((dist % 86400000) / 3600000);
-            const m = Math.floor((dist % 3600000) / 60000);
-            const s = Math.floor((dist % 60000) / 1000);
-            
-            let timeStr = "";
-            if (d > 0) timeStr += d + " Tage ";
-            timeStr += (h < 10 ? "0" : "") + h + ":" + (m < 10 ? "0" : "") + m + ":" + (s < 10 ? "0" : "") + s;
-            el.innerText = "⏳ " + timeStr;
-            
-            setTimeout(update, 1000);
-        };
-        update();
+        });
     },
 
     stopProcess: async function(id) {
@@ -266,13 +262,11 @@ window.app = {
             );
 
             await Promise.all([...invUpdates, ...wurstUpdates]);
-
-            alert("✅ Finanzen wurden erfolgreich auf 0,00 € zurückgesetzt! Du bist bereit für den echten Modus.");
+            alert("✅ Finanzen wurden erfolgreich auf 0,00 € zurückgesetzt!");
             await this.refreshData();
 
         } catch (e) {
-            alert("Fehler beim Zurücksetzen der Finanzen.");
-            console.error(e);
+            alert("Fehler beim Zurücksetzen.");
         }
     }
 };
