@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Lager - Wurstwerk</title>
     <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined" rel="stylesheet" />
-    <link rel="stylesheet" href="style.css?v=50">
+    <link rel="stylesheet" href="style.css?v=55">
     <style>
         .glaeser-card { background: #1a1a1a; border-radius: 12px; padding: 15px; margin-bottom: 20px; border: 1px solid #222; }
         .outline-btn { flex: 1; background: transparent; padding: 12px; border-radius: 8px; font-weight: bold; display: flex; justify-content: center; align-items: center; gap: 5px; cursor: pointer; font-size: 1rem; }
@@ -37,61 +37,66 @@
             </div>
             
             <div class="glaeser-card">
-                <div style="margin-bottom: 20px;">
-                    <div style="display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 10px;">
-                        <h3 style="margin: 0; font-size: 1.3rem;">250ml Gläser</h3>
-                        <span style="color: #4caf50; font-size: 1.4rem; font-weight: bold;" id="glass-250-stock">0</span>
-                    </div>
-                    
-                    <div class="glass-stats-row">
-                        <span>Gefüllt (Wurststand):</span>
-                        <span id="glass-250-wurst" style="color: #ddd;">0</span>
-                    </div>
-                    <div class="glass-stats-row">
-                        <span>Beim Kunden (Pfand):</span>
-                        <span id="glass-250-kunden" style="color: var(--accent-danger);">0</span>
-                    </div>
-                    <div class="glass-stats-row highlight">
-                        <span>Leer (Im Regal):</span>
-                        <span id="glass-250-frei" style="color: #4caf50; font-size: 1.1rem;">0</span>
-                    </div>
-
-                    <div style="display: flex; gap: 10px; margin-top: 15px;">
-                        <button class="outline-btn green" onclick="window.lagerManager.changeGlass('250', 1)"><span style="font-size: 1.5rem;">+</span> Bestand ändern</button>
+                <div style="display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 5px;">
+                    <h3 style="margin: 0; font-size: 1.3rem;">250ml Gläser</h3>
+                    <div style="text-align: right;">
+                        <span style="color: #fff; font-size: 1.5rem; font-weight: bold;" id="glass-250-stock">0</span>
+                        <div style="font-size: 0.7rem; color: #888; text-transform: uppercase;">Gesamtbesitz</div>
                     </div>
                 </div>
-
-                <hr style="border: 0; border-top: 1px solid #333; margin: 25px 0;">
-
-                <div style="margin-bottom: 10px;">
-                    <div style="display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 10px;">
-                        <h3 style="margin: 0; font-size: 1.3rem;">400ml Gläser</h3>
-                        <span style="color: var(--accent-amber); font-size: 1.4rem; font-weight: bold;" id="glass-400-stock">0</span>
-                    </div>
-                    
-                    <div class="glass-stats-row">
-                        <span>Gefüllt (Wurststand):</span>
-                        <span id="glass-400-wurst" style="color: #ddd;">0</span>
-                    </div>
-                    <div class="glass-stats-row">
-                        <span>Beim Kunden (Pfand):</span>
-                        <span id="glass-400-kunden" style="color: var(--accent-danger);">0</span>
-                    </div>
-                    <div class="glass-stats-row highlight">
-                        <span>Leer (Im Regal):</span>
-                        <span id="glass-400-frei" style="color: var(--accent-amber); font-size: 1.1rem;">0</span>
-                    </div>
-
-                    <div style="display: flex; gap: 10px; margin-top: 15px;">
-                        <button class="outline-btn green" onclick="window.lagerManager.changeGlass('400', 1)"><span style="font-size: 1.5rem;">+</span> Bestand ändern</button>
-                    </div>
+                
+                <div class="glass-stats-row">
+                    <span>Gefüllt (Wurststand):</span>
+                    <span id="glass-250-wurst" style="color: #ddd;">0</span>
+                </div>
+                <div class="glass-stats-row">
+                    <span>Beim Kunden (Pfand):</span>
+                    <span id="glass-250-kunden" style="color: var(--accent-danger);">0</span>
+                </div>
+                <div class="glass-stats-row highlight" style="margin-bottom: 15px;">
+                    <span>Leer (Im Regal):</span>
+                    <span id="glass-250-frei" style="color: #4caf50; font-size: 1.2rem;">0</span>
                 </div>
 
-                <div style="text-align: center; margin-top: 25px; font-size: 0.95rem; background: #111; padding: 10px; border-radius: 8px;">
+                <div style="display: flex; gap: 10px; margin-bottom: 30px;">
+                    <button class="outline-btn green" onclick="window.lagerManager.changeGlass('250', 1)"><span style="font-size: 1.5rem;">+</span> Eingang</button>
+                    <button class="outline-btn red" onclick="window.lagerManager.changeGlass('250', -1)"><span style="font-size: 1.5rem;">-</span> Abziehen</button>
+                </div>
+
+                <hr style="border: 0; border-top: 1px dashed #333; margin-bottom: 30px;">
+
+                <div style="display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 5px;">
+                    <h3 style="margin: 0; font-size: 1.3rem;">400ml Gläser</h3>
+                    <div style="text-align: right;">
+                        <span style="color: #fff; font-size: 1.5rem; font-weight: bold;" id="glass-400-stock">0</span>
+                        <div style="font-size: 0.7rem; color: #888; text-transform: uppercase;">Gesamtbesitz</div>
+                    </div>
+                </div>
+                
+                <div class="glass-stats-row">
+                    <span>Gefüllt (Wurststand):</span>
+                    <span id="glass-400-wurst" style="color: #ddd;">0</span>
+                </div>
+                <div class="glass-stats-row">
+                    <span>Beim Kunden (Pfand):</span>
+                    <span id="glass-400-kunden" style="color: var(--accent-danger);">0</span>
+                </div>
+                <div class="glass-stats-row highlight" style="margin-bottom: 15px;">
+                    <span>Leer (Im Regal):</span>
+                    <span id="glass-400-frei" style="color: var(--accent-amber); font-size: 1.2rem;">0</span>
+                </div>
+
+                <div style="display: flex; gap: 10px; margin-bottom: 20px;">
+                    <button class="outline-btn green" onclick="window.lagerManager.changeGlass('400', 1)"><span style="font-size: 1.5rem;">+</span> Eingang</button>
+                    <button class="outline-btn red" onclick="window.lagerManager.changeGlass('400', -1)"><span style="font-size: 1.5rem;">-</span> Abziehen</button>
+                </div>
+
+                <div style="text-align: center; margin-top: 20px; font-size: 0.95rem;">
                     <span style="color: #4d4dff; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 5px;" onclick="window.location.href='kunden.html'">
                         <span class="material-symbols-outlined" style="font-size: 1.2rem;">group</span> Zeige Kunden mit Pfandschulden
                     </span>
                 </div>
+                <p style="color: var(--text-muted); font-size: 0.85rem; margin-top: 15px; text-align: center;" id="pfand-info-text">Keine Gläser im Umlauf.</p>
             </div>
 
             <div class="filter-container">
@@ -159,7 +164,7 @@
 
     </main>
 
-      <nav>
+    <nav>
         <div class="nav-item" onclick="window.location.href='index.html'"><span class="material-symbols-outlined">dashboard</span><span>Home</span></div>
         <div class="nav-item" onclick="window.location.href='rezepte.html'"><span class="material-symbols-outlined">menu_book</span><span>Rezepte</span></div>
         <div class="nav-item active" onclick="window.location.href='lager.html'"><span class="material-symbols-outlined">inventory</span><span>Lager</span></div>
@@ -167,9 +172,8 @@
         <div class="nav-item" onclick="window.location.href='kunden.html'"><span class="material-symbols-outlined">group</span><span>Kunden</span></div>
     </nav>
 
-
-    <script src="db.js?v=50"></script>
-    <script src="app.js?v=50"></script>
-    <script src="lager.js?v=50"></script>
+    <script src="db.js?v=55"></script>
+    <script src="app.js?v=55"></script>
+    <script src="lager.js?v=55"></script>
 </body>
 </html>
