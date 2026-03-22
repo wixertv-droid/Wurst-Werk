@@ -9,7 +9,6 @@ window.produktionManager = {
         const params = new URLSearchParams(window.location.search);
         const id = params.get('id');
 
-        // Globaler Herzschlag für die Timer
         setInterval(() => this.tickTimers(), 1000);
 
         if (!id) {
@@ -296,7 +295,6 @@ window.produktionManager = {
         const checked = this.currentRun.state.checked || [];
         const btnFinish = document.getElementById('btn-finish-prod');
         
-        // NUR WENN DER LETZTE SCHRITT ABGEHAKT IST, KOMMT DER BUTTON
         if (checked.includes(lastIndex)) {
             btnFinish.style.display = 'flex';
         } else {
@@ -353,6 +351,11 @@ window.produktionManager = {
     showFinalStep: function() {
         document.getElementById('step-2-checklist').style.display = 'none';
         document.getElementById('step-3-finish').style.display = 'block';
+        
+        // HIER WIRD DER REZEPT-NAME EINGEFÜGT!
+        if (this.recipe && this.recipe.name) {
+            document.getElementById('finish-title').innerHTML = `<span style="color: var(--accent-amber);">${this.recipe.name}</span><br>erfolgreich produziert!`;
+        }
     },
 
     saveToWurststand: async function() {
@@ -365,7 +368,6 @@ window.produktionManager = {
         }
 
         try {
-            // FIX: Schaut jetzt auf NAME und EINHEIT, damit 250ml und 400ml sich nicht überschreiben!
             const checkRes = await fetch(`${supabaseUrl}/rest/v1/wurst_bestand?name=eq.${encodeURIComponent(this.recipe.name)}&unit=eq.${encodeURIComponent(finalUnit)}`, {
                 headers: { 'apikey': supabaseKey, 'Authorization': `Bearer ${supabaseKey}` }
             });
