@@ -13,8 +13,6 @@ window.lagerManager = {
         try {
             this.inventoryData = await db.getInventory();
             this.renderFilteredList();
-            
-            // WICHTIG: await hinzugefügt, damit das Lager die fertige Wurst sicher berechnet!
             await this.updateGlassStats();
         } catch (e) {
             container.innerHTML = '<p class="text-muted" style="color: var(--accent-danger);">Fehler beim Laden des Lagers.</p>';
@@ -101,7 +99,7 @@ window.lagerManager = {
             });
         } catch (e) {}
 
-        // 3. Gefüllt (Wurststand) - Hier war das Problem, jetzt liest er die Wurst 100% aus!
+        // 3. Gefüllt (Wurststand)
         try {
             const res = await fetch(`${supabaseUrl}/rest/v1/wurst_bestand?select=*`, { 
                 headers: { 'apikey': supabaseKey, 'Authorization': `Bearer ${supabaseKey}` } 
@@ -122,9 +120,7 @@ window.lagerManager = {
                     }
                 });
             }
-        } catch(e) {
-            console.error("Fehler beim Laden der gefüllten Gläser:", e);
-        }
+        } catch(e) {}
 
         // 4. Leer im Regal
         const frei250 = total250 - gefuellt250 - kunden250;
@@ -150,9 +146,12 @@ window.lagerManager = {
             elFrei400.style.color = frei400 < 0 ? 'var(--accent-danger)' : 'var(--accent-amber)';
         }
 
+        // KUGELSICHER: Pfand Info Text aktualisieren
         const infoText = document.getElementById('pfand-info-text');
-        if (kunden250 > 0 || kunden400 > 0) {
-            infoText.innerText = "⚠️ Achtung: Gläser im Umlauf!";
+        const gesamtKundenGlaeser = kunden250 + kunden400;
+        
+        if (gesamtKundenGlaeser > 0) {
+            infoText.innerHTML = `⚠️ Achtung: <b>${gesamtKundenGlaeser} Gläser</b> im Umlauf (Pfand)!`;
             infoText.style.color = "var(--accent-amber)";
         } else {
             infoText.innerText = "Keine Gläser im Umlauf.";
@@ -160,7 +159,6 @@ window.lagerManager = {
         }
     },
 
-    // Deine bevorzugte Variante (Zwei Knöpfe: Eingang / Abziehen)
     changeGlass: async function(type, modifier) {
         let amountStr = prompt(`Wie viele ${type}ml Gläser möchtest du zum GESAMTBESTAND ${modifier > 0 ? 'hinzufügen' : 'abziehen'}?`, "10");
         if (!amountStr) return;
@@ -195,6 +193,17 @@ window.lagerManager = {
         document.getElementById('inventory-list-view').style.display = 'none';
         document.getElementById('inventory-editor-view').style.display = 'block';
 
+        // Befüllt die automatische Vorschlagsliste für die Namen!
+        const dataList = document.getElementById('inventory-names');
+        if (dataList) {
+            dataList.innerHTML = '';
+            // Nur einzigartige Namen aus dem Lager holen
+            const uniqueNames = [...new Set(this.inventoryData.filter(i => i.category !== 'Pfandglas').map(i => i.name))];
+            uniqueNames.forEach(n => {
+                dataList.innerHTML += `<option value="${n}">`;
+            });
+        }
+
         if (encodedData) {
             const item = JSON.parse(decodeURIComponent(encodedData));
             document.getElementById('editor-title').innerText = "Artikel bearbeiten";
@@ -219,25 +228,49 @@ window.lagerManager = {
     },
 
     saveItem: async function() {
-        const id = document.getElementById('edit-id').value;
-        const payload = {
-            name: document.getElementById('edit-name').value.trim(),
-            category: document.getElementById('edit-category').value,
-            amount: Number(document.getElementById('edit-amount').value),
-            unit: document.getElementById('edit-unit').value,
-            price: Number(document.getElementById('edit-price').value)
+        let id = document.getElementById('edit-id').value;
+        const inputName = document.getElementById('edit-name').value.trim();
+        const inputCategory = document.getElementById('edit-category').value;
+        const inputAmount = Number(document.getElementById('edit-amount').value) || 0;
+        const inputUnit = document.getElementById('edit-unit').value;
+        const inputPrice = Number(document.getElementById('edit-price').value) || 0;
+
+        if (!inputName) { alert("Bitte gib einen Namen ein!"); return; }
+
+        let method = 'POST';
+        let url = `${supabaseUrl}/rest/v1/inventory`;
+        
+        let payload = {
+            name: inputName,
+            category: inputCategory,
+            amount: inputAmount,
+            unit: inputUnit,
+            price: inputPrice
         };
 
-        if (!payload.name) { alert("Bitte gib einen Namen ein!"); return; }
+        // DIE MAGIE: Wenn der Benutzer auf "Neu" gedrückt hat (keine ID vorhanden)
+        // ABER er einen Namen eintippt, den es schon gibt!
+        if (!id) {
+            const existingItem = this.inventoryData.find(i => i.name.toLowerCase() === inputName.toLowerCase());
+            
+            if (existingItem) {
+                // Den Artikel gibt es schon! Wir rüsten ihn einfach auf.
+                id = existingItem.id;
+                payload.amount = Number(existingItem.amount || 0) + inputAmount;
+                payload.price = Number(existingItem.price || 0) + inputPrice;
+                // Behalte die Original-Kategorie und Einheit zur Sicherheit
+                payload.category = existingItem.category;
+                payload.unit = existingItem.unit;
+            }
+        }
+
+        // Wenn wir jetzt eine ID haben (entweder durch Bearbeiten oder durch die Magie oben), mache ein PATCH
+        if (id) {
+            url += `?id=eq.${id}`;
+            method = 'PATCH';
+        }
 
         try {
-            let url = `${supabaseUrl}/rest/v1/inventory`;
-            let method = 'POST';
-            if (id) {
-                url += `?id=eq.${id}`;
-                method = 'PATCH';
-            }
-
             const res = await fetch(url, {
                 method: method,
                 headers: { 'apikey': supabaseKey, 'Authorization': `Bearer ${supabaseKey}`, 'Content-Type': 'application/json' },
@@ -248,8 +281,16 @@ window.lagerManager = {
                 this.closeEditor();
                 await this.loadList();
                 if(window.app && window.app.refreshData) window.app.refreshData(); 
-            } else { alert("Fehler beim Speichern!"); }
-        } catch (e) { alert("Netzwerkfehler beim Speichern."); }
+                
+                if (!document.getElementById('edit-id').value && id) {
+                    alert(`Artikel "${inputName}" wurde erkannt. Die Menge und der Preis wurden automatisch dazuaddiert!`);
+                }
+            } else { 
+                alert("Fehler beim Speichern!"); 
+            }
+        } catch (e) { 
+            alert("Netzwerkfehler beim Speichern."); 
+        }
     },
 
     deleteItem: async function(id, name) {
