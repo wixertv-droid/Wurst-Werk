@@ -153,7 +153,9 @@ window.app = {
                 return;
             }
 
-            container.innerHTML = '';
+            let htmlContent = '';
+            let timersToStart = []; // Hier sammeln wir die Timer, um sie SPÄTER zu starten
+
             runs.forEach(run => {
                 const state = run.state || {};
                 const timers = state.timers || {};
@@ -161,23 +163,40 @@ window.app = {
                 
                 for (const [stepIdx, endTime] of Object.entries(timers)) {
                     if (new Date(endTime).getTime() > Date.now() || new Date(endTime).getTime() <= Date.now()) {
-                        timerHtml += `<div id="dash-timer-${run.id}-${stepIdx}" style="color:var(--accent-amber); font-weight:bold; font-size:1.1rem; margin-top:8px;">Berechne...</div>`;
-                        this.startCountdown(`dash-timer-${run.id}-${stepIdx}`, endTime);
+                        const stepNum = Number(stepIdx) + 1;
+                        timerHtml += `
+                            <div style="margin-top: 8px;">
+                                <span style="font-size:0.75rem; color:#aaa; text-transform:uppercase; letter-spacing: 0.5px;">Aktueller Schritt ${stepNum}:</span>
+                                <div id="dash-timer-${run.id}-${stepIdx}" style="color:var(--accent-amber); font-weight:bold; font-size:1.1rem; margin-top:2px;">Berechne...</div>
+                            </div>
+                        `;
+                        timersToStart.push({ id: `dash-timer-${run.id}-${stepIdx}`, end: endTime });
                     }
                 }
 
-                container.innerHTML += `
+                // Wenn gerade kein Timer läuft, aber die Produktion offen ist:
+                if (timerHtml === '') {
+                    timerHtml = '<p style="margin:8px 0 0 0; font-size:0.85rem; color: #888; font-style: italic;">Wartet auf nächste Eingabe...</p>';
+                }
+
+                htmlContent += `
                     <div class="prod-card" style="border-left:4px solid #4d4dff; margin-bottom:10px; background:#1a1a1a; padding:15px; border-radius:10px; cursor:pointer;" onclick="window.location.href='produktion.html?id=${run.recipe_id}'">
                         <div style="display:flex; justify-content:space-between; align-items: flex-start;">
                             <div style="flex: 1; padding-right: 10px;">
-                                <b style="color:#4d4dff; font-size:0.85rem; text-transform:uppercase;">${run.recipe_name}</b>
-                                <p style="margin:5px 0 0 0; font-size:0.95rem; color: #eee; line-height: 1.3;">Produktion läuft (Klicke zum Öffnen)</p>
+                                <b style="color:#4d4dff; font-size:0.95rem; text-transform:uppercase;">${run.recipe_name}</b>
                                 ${timerHtml}
                             </div>
                             <span class="material-symbols-outlined" style="color:var(--accent-danger); cursor:pointer; padding: 5px;" onclick="event.stopPropagation(); window.app.stopProcess('${run.id}')">delete</span>
                         </div>
                     </div>`;
             });
+
+            // 1. ZUERST den HTML Code ins Dashboard einbauen
+            container.innerHTML = htmlContent;
+
+            // 2. DANACH die Timer starten (jetzt existieren sie auf dem Bildschirm!)
+            timersToStart.forEach(t => this.startCountdown(t.id, t.end));
+
         } catch (e) {
             console.error(e);
         }
@@ -188,7 +207,7 @@ window.app = {
         
         const update = () => {
             const el = document.getElementById(elId);
-            if (!el) return; 
+            if (!el) return; // Bricht ab, falls das Element nicht existiert
             
             const dist = end - Date.now();
             
@@ -226,12 +245,10 @@ window.app = {
         }
     },
 
-    // NEU: Setzt alle Finanzen auf 0 zurück (Ausgaben & Einnahmen)
     resetFinances: async function() {
         if (!confirm("⚠️ ACHTUNG: Möchtest du die Gewinn/Verlust-Rechnung wirklich zurücksetzen?\n\nDadurch werden alle bisherigen Umsätze am Wurststand UND alle hinterlegten Einkaufspreise im Lager auf 0,00 € gesetzt. Deine tatsächlichen Wurst- und Lagerbestände (Mengen) bleiben komplett erhalten!")) return;
 
         try {
-            // Alle Preise im Lager nullen
             const invUpdates = this.inventoryData.map(item => 
                 fetch(`${supabaseUrl}/rest/v1/inventory?id=eq.${item.id}`, {
                     method: 'PATCH',
@@ -240,7 +257,6 @@ window.app = {
                 })
             );
 
-            // Alle Umsätze im Wurststand nullen
             const wurstUpdates = this.wurstData.map(wurst => 
                 fetch(`${supabaseUrl}/rest/v1/wurst_bestand?id=eq.${wurst.id}`, {
                     method: 'PATCH',
@@ -249,11 +265,10 @@ window.app = {
                 })
             );
 
-            // Ausführen
             await Promise.all([...invUpdates, ...wurstUpdates]);
 
             alert("✅ Finanzen wurden erfolgreich auf 0,00 € zurückgesetzt! Du bist bereit für den echten Modus.");
-            await this.refreshData(); // Lädt das Dashboard sofort neu
+            await this.refreshData();
 
         } catch (e) {
             alert("Fehler beim Zurücksetzen der Finanzen.");
