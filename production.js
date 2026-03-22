@@ -9,6 +9,7 @@ window.produktionManager = {
         const params = new URLSearchParams(window.location.search);
         const id = params.get('id');
 
+        // Globaler Herzschlag für die Timer
         setInterval(() => this.tickTimers(), 1000);
 
         if (!id) {
@@ -348,14 +349,23 @@ window.produktionManager = {
         });
     },
 
-    // Hier ist der 100% kugelsichere Block
+    // DIE KUGELSICHERE TEXT-ERSETZUNG (Egal welches Design!)
     showFinalStep: function() {
         document.getElementById('step-2-checklist').style.display = 'none';
-        document.getElementById('step-3-finish').style.display = 'block';
+        const finishContainer = document.getElementById('step-3-finish');
+        finishContainer.style.display = 'block';
         
-        const titleEl = document.getElementById('finish-title');
-        if (titleEl && this.recipe && this.recipe.name) {
-            titleEl.innerHTML = `<span style="color: var(--accent-amber); font-size: 1.4rem;">${this.recipe.name}</span><br><span style="font-size: 1.1rem; color: #fff;">erfolgreich produziert!</span>`;
+        if (this.recipe && this.recipe.name) {
+            // Sucht JEDE Überschrift oder fetten Text in Schritt 3
+            const headings = finishContainer.querySelectorAll('h1, h2, h3, h4, h5, p, b, strong');
+            for (let el of headings) {
+                // Wenn die Worte "Produktion erfolgreich" drin stehen...
+                if (el.innerText && el.innerText.includes('Produktion erfolgreich')) {
+                    // ...dann ersetze es durch den Rezeptnamen!
+                    el.innerHTML = `<span style="color: var(--accent-amber); font-size: 1.3em; line-height: 1.2; display: block; margin-bottom: 5px;">${this.recipe.name}</span><span style="font-size: 0.85em; color: #fff;">erfolgreich produziert!</span>`;
+                    break; // Nur das erste finden und stoppen
+                }
+            }
         }
     },
 
