@@ -9,7 +9,7 @@ window.produktionManager = {
         const params = new URLSearchParams(window.location.search);
         const id = params.get('id');
 
-        // Globaler Herzschlag auch hier in der Produktion
+        // Globaler Herzschlag für die Timer
         setInterval(() => this.tickTimers(), 1000);
 
         if (!id) {
@@ -240,7 +240,6 @@ window.produktionManager = {
                 if (step.type === 'interval') extra = `<br><b style="color:var(--accent-amber);">🔁 ${step.cycles}x ${step.duration} ${step.unit} (Pause: ${step.pauses}h)</b>`;
                 
                 if (activeTimerEnd) {
-                    // HIER IST DER MAGISCHE STEMPEL AUCH FÜR DIE PRODUKTIONS-SEITE!
                     timerBtn = `
                         <div style="padding-left:50px; margin-top: 10px; color:#4caf50; font-weight: bold;">
                             <span class="material-symbols-outlined" style="vertical-align: middle;">hourglass_bottom</span> Läuft: 
@@ -297,6 +296,7 @@ window.produktionManager = {
         const checked = this.currentRun.state.checked || [];
         const btnFinish = document.getElementById('btn-finish-prod');
         
+        // NUR WENN DER LETZTE SCHRITT ABGEHAKT IST, KOMMT DER BUTTON
         if (checked.includes(lastIndex)) {
             btnFinish.style.display = 'flex';
         } else {
@@ -320,10 +320,9 @@ window.produktionManager = {
         this.currentRun.state.timers[index] = end;
 
         await this.syncState();
-        this.buildChecklist(); // Zeichnet die Liste neu -> Erstellt das Stempel-Feld -> Herzschlag übernimmt!
+        this.buildChecklist(); 
     },
 
-    // Der kugelsichere Herzschlag
     tickTimers: function() {
         const timerElements = document.querySelectorAll('.live-timer');
         
@@ -366,7 +365,8 @@ window.produktionManager = {
         }
 
         try {
-            const checkRes = await fetch(`${supabaseUrl}/rest/v1/wurst_bestand?name=eq.${encodeURIComponent(this.recipe.name)}`, {
+            // FIX: Schaut jetzt auf NAME und EINHEIT, damit 250ml und 400ml sich nicht überschreiben!
+            const checkRes = await fetch(`${supabaseUrl}/rest/v1/wurst_bestand?name=eq.${encodeURIComponent(this.recipe.name)}&unit=eq.${encodeURIComponent(finalUnit)}`, {
                 headers: { 'apikey': supabaseKey, 'Authorization': `Bearer ${supabaseKey}` }
             });
             const existing = checkRes.ok ? await checkRes.json() : [];
@@ -376,7 +376,7 @@ window.produktionManager = {
                 await fetch(`${supabaseUrl}/rest/v1/wurst_bestand?id=eq.${existing[0].id}`, {
                     method: 'PATCH',
                     headers: { 'apikey': supabaseKey, 'Authorization': `Bearer ${supabaseKey}`, 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ amount: newAmount, unit: finalUnit })
+                    body: JSON.stringify({ amount: newAmount })
                 });
             } else {
                 await fetch(`${supabaseUrl}/rest/v1/wurst_bestand`, {
