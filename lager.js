@@ -13,7 +13,9 @@ window.lagerManager = {
         try {
             this.inventoryData = await db.getInventory();
             this.renderFilteredList();
-            this.updateGlassStats();
+            
+            // WICHTIG: await hinzugefügt, damit das Lager die fertige Wurst sicher berechnet!
+            await this.updateGlassStats();
         } catch (e) {
             container.innerHTML = '<p class="text-muted" style="color: var(--accent-danger);">Fehler beim Laden des Lagers.</p>';
         }
@@ -83,14 +85,14 @@ window.lagerManager = {
         let kunden250 = 0, kunden400 = 0;
         let gefuellt250 = 0, gefuellt400 = 0;
         
-        // 1. Gesamtbestand aus dem Lager holen
+        // 1. Gesamtbestand
         const gl250Item = this.inventoryData.find(i => i.category === 'Pfandglas' && i.name.includes('250'));
         const gl400Item = this.inventoryData.find(i => i.category === 'Pfandglas' && i.name.includes('400'));
         
-        if (gl250Item) total250 = Number(gl250Item.amount);
-        if (gl400Item) total400 = Number(gl400Item.amount);
+        if (gl250Item) total250 = Number(gl250Item.amount) || 0;
+        if (gl400Item) total400 = Number(gl400Item.amount) || 0;
 
-        // 2. Gläser beim Kunden (Pfand) holen
+        // 2. Pfand (Kunden)
         try {
             const kunden = await db.getCustomers();
             kunden.forEach(k => {
@@ -99,7 +101,7 @@ window.lagerManager = {
             });
         } catch (e) {}
 
-        // 3. Gefüllte Gläser aus dem Wurststand holen
+        // 3. Gefüllt (Wurststand) - Hier war das Problem, jetzt liest er die Wurst 100% aus!
         try {
             const res = await fetch(`${supabaseUrl}/rest/v1/wurst_bestand?select=*`, { 
                 headers: { 'apikey': supabaseKey, 'Authorization': `Bearer ${supabaseKey}` } 
@@ -120,13 +122,15 @@ window.lagerManager = {
                     }
                 });
             }
-        } catch(e) {}
+        } catch(e) {
+            console.error("Fehler beim Laden der gefüllten Gläser:", e);
+        }
 
-        // 4. Leere Gläser berechnen
+        // 4. Leer im Regal
         const frei250 = total250 - gefuellt250 - kunden250;
         const frei400 = total400 - gefuellt400 - kunden400;
 
-        // 5. DOM updaten
+        // 5. Anzeigen in der HTML
         if(document.getElementById('glass-250-stock')) {
             document.getElementById('glass-250-stock').innerText = total250;
             document.getElementById('glass-400-stock').innerText = total400;
@@ -145,26 +149,37 @@ window.lagerManager = {
             elFrei400.innerText = Math.floor(frei400);
             elFrei400.style.color = frei400 < 0 ? 'var(--accent-danger)' : 'var(--accent-amber)';
         }
+
+        const infoText = document.getElementById('pfand-info-text');
+        if (kunden250 > 0 || kunden400 > 0) {
+            infoText.innerText = "⚠️ Achtung: Gläser im Umlauf!";
+            infoText.style.color = "var(--accent-amber)";
+        } else {
+            infoText.innerText = "Keine Gläser im Umlauf.";
+            infoText.style.color = "var(--text-muted)";
+        }
     },
 
+    // Deine bevorzugte Variante (Zwei Knöpfe: Eingang / Abziehen)
     changeGlass: async function(type, modifier) {
-        let amountStr = prompt(`Du bist im Bereich: Gesamtbestand.\nWie viele ${type}ml Gläser möchtest du zum GESAMTBESTAND hinzufügen oder abziehen? (Verwende ein - für Abziehen)`, "10");
+        let amountStr = prompt(`Wie viele ${type}ml Gläser möchtest du zum GESAMTBESTAND ${modifier > 0 ? 'hinzufügen' : 'abziehen'}?`, "10");
         if (!amountStr) return;
+        
         let amount = parseInt(amountStr);
-        if (isNaN(amount)) return;
+        if (isNaN(amount) || amount <= 0) return;
 
         let item = this.inventoryData.find(i => i.category === 'Pfandglas' && i.name.includes(type));
         
         try {
             if (item) {
-                let newAmount = Number(item.amount) + amount;
+                let newAmount = Number(item.amount) + (amount * modifier);
                 if (newAmount < 0) newAmount = 0;
                 await fetch(`${supabaseUrl}/rest/v1/inventory?id=eq.${item.id}`, {
                     method: 'PATCH',
                     headers: { 'apikey': supabaseKey, 'Authorization': `Bearer ${supabaseKey}`, 'Content-Type': 'application/json' },
                     body: JSON.stringify({ amount: newAmount })
                 });
-            } else if (amount > 0) {
+            } else if (modifier > 0) {
                 await fetch(`${supabaseUrl}/rest/v1/inventory`, {
                     method: 'POST',
                     headers: { 'apikey': supabaseKey, 'Authorization': `Bearer ${supabaseKey}`, 'Content-Type': 'application/json' },
