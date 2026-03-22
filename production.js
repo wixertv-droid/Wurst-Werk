@@ -9,7 +9,6 @@ window.produktionManager = {
         const params = new URLSearchParams(window.location.search);
         const id = params.get('id');
 
-        // Globaler Herzschlag für die Timer
         setInterval(() => this.tickTimers(), 1000);
 
         if (!id) {
@@ -349,23 +348,41 @@ window.produktionManager = {
         });
     },
 
-    // DIE KUGELSICHERE TEXT-ERSETZUNG (Egal welches Design!)
+    // ABSOLUTER HOLZHAMMER FÜR DEN LETZTEN SCHRITT
     showFinalStep: function() {
         document.getElementById('step-2-checklist').style.display = 'none';
         const finishContainer = document.getElementById('step-3-finish');
         finishContainer.style.display = 'block';
         
-        if (this.recipe && this.recipe.name) {
-            // Sucht JEDE Überschrift oder fetten Text in Schritt 3
-            const headings = finishContainer.querySelectorAll('h1, h2, h3, h4, h5, p, b, strong');
-            for (let el of headings) {
-                // Wenn die Worte "Produktion erfolgreich" drin stehen...
-                if (el.innerText && el.innerText.includes('Produktion erfolgreich')) {
-                    // ...dann ersetze es durch den Rezeptnamen!
-                    el.innerHTML = `<span style="color: var(--accent-amber); font-size: 1.3em; line-height: 1.2; display: block; margin-bottom: 5px;">${this.recipe.name}</span><span style="font-size: 0.85em; color: #fff;">erfolgreich produziert!</span>`;
-                    break; // Nur das erste finden und stoppen
-                }
+        // Wir erstellen ein brandneues Banner, das 100% funktioniert
+        let banner = document.getElementById('wurst-success-banner');
+        if (!banner) {
+            banner = document.createElement('div');
+            banner.id = 'wurst-success-banner';
+            banner.style.background = 'rgba(255, 140, 0, 0.15)';
+            banner.style.border = '2px dashed var(--accent-amber)';
+            banner.style.padding = '20px';
+            banner.style.borderRadius = '12px';
+            banner.style.marginBottom = '25px';
+            banner.style.textAlign = 'center';
+            
+            // Ganz oben in die prod-card einfügen
+            const card = finishContainer.querySelector('.prod-card');
+            if (card) {
+                card.insertBefore(banner, card.firstChild);
+            } else {
+                finishContainer.insertBefore(banner, finishContainer.firstChild);
             }
+        }
+        
+        if (this.recipe && this.recipe.name) {
+            banner.innerHTML = `
+                <span style="font-size: 1.5rem; font-weight: bold; color: var(--accent-amber); display: block; margin-bottom: 5px;">
+                    ${this.recipe.name}
+                </span>
+                <span style="font-size: 1rem; color: #ddd;">
+                    ist fertig und kann eingebucht werden!
+                </span>`;
         }
     },
 
