@@ -22,7 +22,6 @@ window.lagerManager = {
     setFilter: function(filterName) {
         this.currentFilter = filterName;
         
-        // Pillen umfärben
         document.getElementById('filter-all').className = filterName === 'Alles' ? 'filter-pill' : 'filter-pill inactive';
         document.getElementById('filter-fleisch').className = filterName === 'Fleisch' ? 'filter-pill' : 'filter-pill inactive';
         document.getElementById('filter-gewuerze').className = filterName === 'Gewürze' ? 'filter-pill' : 'filter-pill inactive';
@@ -37,7 +36,6 @@ window.lagerManager = {
 
         let filteredItems = this.inventoryData.filter(i => i.category !== 'Pfandglas');
 
-        // SCHLAUER FILTER: Sucht auch nach Teilwörtern (z.B. "Gewürz" statt streng "Gewürze")
         if (this.currentFilter !== 'Alles') {
             filteredItems = filteredItems.filter(i => {
                 const cat = (i.category || '').toLowerCase();
@@ -56,7 +54,6 @@ window.lagerManager = {
         filteredItems.forEach(i => {
             const safeData = encodeURIComponent(JSON.stringify(i));
             
-            // Icon Logik (passt sich jetzt auch an den schlauen Filter an)
             let icon = 'grain';
             const cat = (i.category || '').toLowerCase();
             if (cat.includes('fleisch')) icon = 'set_meal';
@@ -82,17 +79,18 @@ window.lagerManager = {
     },
 
     updateGlassStats: async function() {
-        let g250 = 0, g400 = 0;
+        let total250 = 0, total400 = 0;
+        let kunden250 = 0, kunden400 = 0;
+        let gefuellt250 = 0, gefuellt400 = 0;
         
-        // Aus dem Lager zählen
+        // 1. Gesamtbestand aus dem Lager holen
         const gl250Item = this.inventoryData.find(i => i.category === 'Pfandglas' && i.name.includes('250'));
         const gl400Item = this.inventoryData.find(i => i.category === 'Pfandglas' && i.name.includes('400'));
         
-        if (gl250Item) g250 = Number(gl250Item.amount);
-        if (gl400Item) g400 = Number(gl400Item.amount);
+        if (gl250Item) total250 = Number(gl250Item.amount);
+        if (gl400Item) total400 = Number(gl400Item.amount);
 
-        // Vom Kunden zählen
-        let kunden250 = 0, kunden400 = 0;
+        // 2. Gläser beim Kunden (Pfand) holen
         try {
             const kunden = await db.getCustomers();
             kunden.forEach(k => {
@@ -101,41 +99,72 @@ window.lagerManager = {
             });
         } catch (e) {}
 
-        document.getElementById('glass-250-stock').innerText = g250 - kunden250;
-        document.getElementById('glass-250-kunden').innerText = kunden250;
-        
-        document.getElementById('glass-400-stock').innerText = g400 - kunden400;
-        document.getElementById('glass-400-kunden').innerText = kunden400;
+        // 3. Gefüllte Gläser aus dem Wurststand holen
+        try {
+            const res = await fetch(`${supabaseUrl}/rest/v1/wurst_bestand?select=*`, { 
+                headers: { 'apikey': supabaseKey, 'Authorization': `Bearer ${supabaseKey}` } 
+            });
+            if(res.ok) {
+                const wurstData = await res.json();
+                wurstData.forEach(w => {
+                    const unit = (w.unit || '').toLowerCase();
+                    const name = (w.name || '').toLowerCase();
+                    const amount = Number(w.amount) || 0;
+                    
+                    if (unit.includes('250') || name.includes('250')) {
+                        gefuellt250 += amount;
+                    } else if (unit.includes('400') || name.includes('400')) {
+                        gefuellt400 += amount;
+                    } else if (unit.includes('glas') || name.includes('glas')) {
+                        gefuellt250 += amount; 
+                    }
+                });
+            }
+        } catch(e) {}
 
-        const infoText = document.getElementById('pfand-info-text');
-        if (kunden250 > 0 || kunden400 > 0) {
-            infoText.innerText = "⚠️ Achtung: Gläser im Umlauf!";
-            infoText.style.color = "var(--accent-amber)";
-        } else {
-            infoText.innerText = "Keine Gläser im Umlauf.";
-            infoText.style.color = "var(--text-muted)";
+        // 4. Leere Gläser berechnen
+        const frei250 = total250 - gefuellt250 - kunden250;
+        const frei400 = total400 - gefuellt400 - kunden400;
+
+        // 5. DOM updaten
+        if(document.getElementById('glass-250-stock')) {
+            document.getElementById('glass-250-stock').innerText = total250;
+            document.getElementById('glass-400-stock').innerText = total400;
+            
+            document.getElementById('glass-250-wurst').innerText = Math.floor(gefuellt250);
+            document.getElementById('glass-400-wurst').innerText = Math.floor(gefuellt400);
+
+            document.getElementById('glass-250-kunden').innerText = kunden250;
+            document.getElementById('glass-400-kunden').innerText = kunden400;
+            
+            const elFrei250 = document.getElementById('glass-250-frei');
+            elFrei250.innerText = Math.floor(frei250);
+            elFrei250.style.color = frei250 < 0 ? 'var(--accent-danger)' : '#4caf50';
+
+            const elFrei400 = document.getElementById('glass-400-frei');
+            elFrei400.innerText = Math.floor(frei400);
+            elFrei400.style.color = frei400 < 0 ? 'var(--accent-danger)' : 'var(--accent-amber)';
         }
     },
 
     changeGlass: async function(type, modifier) {
-        let amountStr = prompt(`Wie viele ${type}ml Gläser möchtest du ${modifier > 0 ? 'hinzufügen' : 'abziehen'}?`, "10");
+        let amountStr = prompt(`Du bist im Bereich: Gesamtbestand.\nWie viele ${type}ml Gläser möchtest du zum GESAMTBESTAND hinzufügen oder abziehen? (Verwende ein - für Abziehen)`, "10");
         if (!amountStr) return;
         let amount = parseInt(amountStr);
-        if (isNaN(amount) || amount <= 0) return;
+        if (isNaN(amount)) return;
 
         let item = this.inventoryData.find(i => i.category === 'Pfandglas' && i.name.includes(type));
         
         try {
             if (item) {
-                let newAmount = Number(item.amount) + (amount * modifier);
+                let newAmount = Number(item.amount) + amount;
                 if (newAmount < 0) newAmount = 0;
                 await fetch(`${supabaseUrl}/rest/v1/inventory?id=eq.${item.id}`, {
                     method: 'PATCH',
                     headers: { 'apikey': supabaseKey, 'Authorization': `Bearer ${supabaseKey}`, 'Content-Type': 'application/json' },
                     body: JSON.stringify({ amount: newAmount })
                 });
-            } else if (modifier > 0) {
-                // Neues Glas anlegen
+            } else if (amount > 0) {
                 await fetch(`${supabaseUrl}/rest/v1/inventory`, {
                     method: 'POST',
                     headers: { 'apikey': supabaseKey, 'Authorization': `Bearer ${supabaseKey}`, 'Content-Type': 'application/json' },
