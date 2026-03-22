@@ -1,6 +1,7 @@
 window.lagerManager = {
     currentFilter: 'Alles',
     inventoryData: [],
+    detectedItem: null, // Speichert den gefundenen Artikel im Hintergrund
 
     init: async function() {
         await this.loadList();
@@ -83,14 +84,12 @@ window.lagerManager = {
         let kunden250 = 0, kunden400 = 0;
         let gefuellt250 = 0, gefuellt400 = 0;
         
-        // 1. Gesamtbestand
         const gl250Item = this.inventoryData.find(i => i.category === 'Pfandglas' && i.name.includes('250'));
         const gl400Item = this.inventoryData.find(i => i.category === 'Pfandglas' && i.name.includes('400'));
         
         if (gl250Item) total250 = Number(gl250Item.amount) || 0;
         if (gl400Item) total400 = Number(gl400Item.amount) || 0;
 
-        // 2. Pfand (Kunden)
         try {
             const kunden = await db.getCustomers();
             kunden.forEach(k => {
@@ -99,7 +98,6 @@ window.lagerManager = {
             });
         } catch (e) {}
 
-        // 3. Gefüllt (Wurststand)
         try {
             const res = await fetch(`${supabaseUrl}/rest/v1/wurst_bestand?select=*`, { 
                 headers: { 'apikey': supabaseKey, 'Authorization': `Bearer ${supabaseKey}` } 
@@ -122,11 +120,9 @@ window.lagerManager = {
             }
         } catch(e) {}
 
-        // 4. Leer im Regal
         const frei250 = total250 - gefuellt250 - kunden250;
         const frei400 = total400 - gefuellt400 - kunden400;
 
-        // 5. Anzeigen in der HTML
         if(document.getElementById('glass-250-stock')) {
             document.getElementById('glass-250-stock').innerText = total250;
             document.getElementById('glass-400-stock').innerText = total400;
@@ -146,7 +142,6 @@ window.lagerManager = {
             elFrei400.style.color = frei400 < 0 ? 'var(--accent-danger)' : 'var(--accent-amber)';
         }
 
-        // KUGELSICHER: Pfand Info Text aktualisieren
         const infoText = document.getElementById('pfand-info-text');
         const gesamtKundenGlaeser = kunden250 + kunden400;
         
@@ -193,32 +188,123 @@ window.lagerManager = {
         document.getElementById('inventory-list-view').style.display = 'none';
         document.getElementById('inventory-editor-view').style.display = 'block';
 
-        // Befüllt die automatische Vorschlagsliste für die Namen!
+        // Befüllt die automatische Vorschlagsliste
         const dataList = document.getElementById('inventory-names');
         if (dataList) {
             dataList.innerHTML = '';
-            // Nur einzigartige Namen aus dem Lager holen
             const uniqueNames = [...new Set(this.inventoryData.filter(i => i.category !== 'Pfandglas').map(i => i.name))];
             uniqueNames.forEach(n => {
                 dataList.innerHTML += `<option value="${n}">`;
             });
         }
 
+        // Editor zurücksetzen
+        this.detectedItem = null;
+        document.getElementById('existing-warning').style.display = 'none';
+        document.getElementById('add-stock-section').style.display = 'none';
+        document.getElementById('add-amount').value = '';
+        document.getElementById('add-price').value = '';
+
         if (encodedData) {
             const item = JSON.parse(decodeURIComponent(encodedData));
-            document.getElementById('editor-title').innerText = "Artikel bearbeiten";
-            document.getElementById('edit-id').value = item.id;
-            document.getElementById('edit-name').value = item.name;
-            document.getElementById('edit-category').value = item.category;
-            document.getElementById('edit-amount').value = item.amount;
-            document.getElementById('edit-unit').value = item.unit;
-            document.getElementById('edit-price').value = item.price;
+            this.setupEditMode(item);
         } else {
             document.getElementById('editor-title').innerText = "Neuer Artikel";
             document.getElementById('edit-id').value = '';
             document.getElementById('edit-name').value = '';
             document.getElementById('edit-amount').value = '';
             document.getElementById('edit-price').value = '';
+            document.getElementById('stock-title').innerText = "Startbestand anlegen";
+            document.getElementById('save-btn-text').innerText = "Artikel anlegen";
+        }
+    },
+
+    // Richtet die Ansicht für einen bestehenden Artikel ein (Zubuchen wird sichtbar)
+    setupEditMode: function(item) {
+        document.getElementById('editor-title').innerText = "Artikel verwalten";
+        document.getElementById('edit-id').value = item.id;
+        document.getElementById('edit-name').value = item.name;
+        document.getElementById('edit-category').value = item.category;
+        document.getElementById('edit-amount').value = item.amount;
+        document.getElementById('edit-unit').value = item.unit;
+        document.getElementById('edit-price').value = Number(item.price).toFixed(2);
+        
+        // Zubuchen einblenden, Warnung ausblenden
+        document.getElementById('add-stock-section').style.display = 'block';
+        document.getElementById('existing-warning').style.display = 'none';
+        
+        document.getElementById('stock-title').innerText = "Aktuellen Bestand überschreiben (Korrektur)";
+        document.getElementById('save-btn-text').innerText = "Korrektur speichern";
+    },
+
+    // Wird beim Tippen des Namens ausgeführt (Auto-Detect)
+    checkExistingItem: function() {
+        const inputName = document.getElementById('edit-name').value.trim().toLowerCase();
+        const currentId = document.getElementById('edit-id').value;
+        
+        // Wenn wir sowieso schon im Bearbeiten-Modus sind, brauchen wir keine Warnung
+        if (currentId) return;
+
+        // Suche im Lager nach dem Namen
+        const existing = this.inventoryData.find(i => i.category !== 'Pfandglas' && i.name.toLowerCase() === inputName);
+        
+        const warningBox = document.getElementById('existing-warning');
+        if (existing) {
+            this.detectedItem = existing;
+            document.getElementById('existing-stock-text').innerText = `${existing.amount} ${existing.unit} (${Number(existing.price).toFixed(2)} €)`;
+            warningBox.style.display = 'block';
+        } else {
+            this.detectedItem = null;
+            warningBox.style.display = 'none';
+        }
+    },
+
+    // Klick auf den "Aufrufen" Button im orangenen Warn-Kasten
+    loadExistingItem: function() {
+        if (this.detectedItem) {
+            this.setupEditMode(this.detectedItem);
+        }
+    },
+
+    // Die neue Logik fürs bequeme Addieren
+    addStock: async function() {
+        const id = document.getElementById('edit-id').value;
+        if (!id) {
+            alert("Fehler: Kein Artikel zum Zubuchen ausgewählt!");
+            return;
+        }
+
+        const addAmount = Number(document.getElementById('add-amount').value);
+        const addPrice = Number(document.getElementById('add-price').value);
+
+        if (!addAmount || addAmount <= 0) {
+            alert("Bitte gib eine gültige Menge ein, die zugebucht werden soll.");
+            return;
+        }
+
+        const currentAmount = Number(document.getElementById('edit-amount').value) || 0;
+        const currentPrice = Number(document.getElementById('edit-price').value) || 0;
+
+        const newAmount = currentAmount + addAmount;
+        const newPrice = currentPrice + (addPrice || 0);
+
+        try {
+            const res = await fetch(`${supabaseUrl}/rest/v1/inventory?id=eq.${id}`, {
+                method: 'PATCH',
+                headers: { 'apikey': supabaseKey, 'Authorization': `Bearer ${supabaseKey}`, 'Content-Type': 'application/json' },
+                body: JSON.stringify({ amount: newAmount, price: newPrice })
+            });
+
+            if (res.ok) {
+                alert(`✅ Erfolgreich zugebucht!\n\nNeuer Bestand: ${newAmount} ${document.getElementById('edit-unit').value}\nNeuer Gesamtwert: ${newPrice.toFixed(2)} €`);
+                this.closeEditor();
+                await this.loadList();
+                if(window.app && window.app.refreshData) window.app.refreshData(); 
+            } else {
+                alert("Fehler beim Zubuchen!");
+            }
+        } catch (e) {
+            alert("Netzwerkfehler beim Speichern.");
         }
     },
 
@@ -227,50 +313,27 @@ window.lagerManager = {
         document.getElementById('inventory-editor-view').style.display = 'none';
     },
 
+    // Das harte Überschreiben (für Neuanlage oder Fehler-Korrekturen)
     saveItem: async function() {
-        let id = document.getElementById('edit-id').value;
-        const inputName = document.getElementById('edit-name').value.trim();
-        const inputCategory = document.getElementById('edit-category').value;
-        const inputAmount = Number(document.getElementById('edit-amount').value) || 0;
-        const inputUnit = document.getElementById('edit-unit').value;
-        const inputPrice = Number(document.getElementById('edit-price').value) || 0;
-
-        if (!inputName) { alert("Bitte gib einen Namen ein!"); return; }
-
-        let method = 'POST';
-        let url = `${supabaseUrl}/rest/v1/inventory`;
-        
-        let payload = {
-            name: inputName,
-            category: inputCategory,
-            amount: inputAmount,
-            unit: inputUnit,
-            price: inputPrice
+        const id = document.getElementById('edit-id').value;
+        const payload = {
+            name: document.getElementById('edit-name').value.trim(),
+            category: document.getElementById('edit-category').value,
+            amount: Number(document.getElementById('edit-amount').value),
+            unit: document.getElementById('edit-unit').value,
+            price: Number(document.getElementById('edit-price').value)
         };
 
-        // DIE MAGIE: Wenn der Benutzer auf "Neu" gedrückt hat (keine ID vorhanden)
-        // ABER er einen Namen eintippt, den es schon gibt!
-        if (!id) {
-            const existingItem = this.inventoryData.find(i => i.name.toLowerCase() === inputName.toLowerCase());
-            
-            if (existingItem) {
-                // Den Artikel gibt es schon! Wir rüsten ihn einfach auf.
-                id = existingItem.id;
-                payload.amount = Number(existingItem.amount || 0) + inputAmount;
-                payload.price = Number(existingItem.price || 0) + inputPrice;
-                // Behalte die Original-Kategorie und Einheit zur Sicherheit
-                payload.category = existingItem.category;
-                payload.unit = existingItem.unit;
-            }
-        }
-
-        // Wenn wir jetzt eine ID haben (entweder durch Bearbeiten oder durch die Magie oben), mache ein PATCH
-        if (id) {
-            url += `?id=eq.${id}`;
-            method = 'PATCH';
-        }
+        if (!payload.name) { alert("Bitte gib einen Namen ein!"); return; }
 
         try {
+            let url = `${supabaseUrl}/rest/v1/inventory`;
+            let method = 'POST';
+            if (id) {
+                url += `?id=eq.${id}`;
+                method = 'PATCH';
+            }
+
             const res = await fetch(url, {
                 method: method,
                 headers: { 'apikey': supabaseKey, 'Authorization': `Bearer ${supabaseKey}`, 'Content-Type': 'application/json' },
@@ -281,16 +344,8 @@ window.lagerManager = {
                 this.closeEditor();
                 await this.loadList();
                 if(window.app && window.app.refreshData) window.app.refreshData(); 
-                
-                if (!document.getElementById('edit-id').value && id) {
-                    alert(`Artikel "${inputName}" wurde erkannt. Die Menge und der Preis wurden automatisch dazuaddiert!`);
-                }
-            } else { 
-                alert("Fehler beim Speichern!"); 
-            }
-        } catch (e) { 
-            alert("Netzwerkfehler beim Speichern."); 
-        }
+            } else { alert("Fehler beim Speichern!"); }
+        } catch (e) { alert("Netzwerkfehler beim Speichern."); }
     },
 
     deleteItem: async function(id, name) {
