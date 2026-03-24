@@ -10,10 +10,10 @@
 }
 
 /* =======================================================
-   1. APP-LAYOUT: Sperrt das Gummi-Band-Scrollen!
+   1. APP-LAYOUT: KUGELSICHER FÜR ANDROID & iOS
    ======================================================= */
 html, body {
-    margin: 0; padding: 0; width: 100%; height: 100dvh;
+    margin: 0; padding: 0; width: 100%; height: 100%; height: 100dvh;
     background-color: var(--bg-color); color: var(--text-main);
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
     -webkit-user-select: none; user-select: none;
@@ -38,26 +38,32 @@ header {
 .back-btn { color: var(--accent-amber); cursor: pointer; display: flex; align-items: center; font-size: 1.1rem; font-weight: bold; text-decoration: none; }
 .header-title { flex: 1; text-align: center; font-weight: bold; text-transform: uppercase; margin-right: 30px; letter-spacing: 1px; }
 
-/* Scroll-Bereich Mitte */
+/* Scroll-Bereich Mitte (Mit extra Puffer nach unten für Android!) */
 main, main#main-content { 
     flex-grow: 1; overflow-y: auto; -webkit-overflow-scrolling: touch; 
-    padding: 20px; padding-bottom: 60px; box-sizing: border-box; height: 100%;
+    padding: 20px; 
+    padding-bottom: 120px !important; /* Verhindert, dass Listen unterm Menü verschwinden */
+    box-sizing: border-box; height: 100%;
 }
 
-/* Feste Navigation unten */
+/* =======================================================
+   DER HOLZHAMMER FÜRS MENÜ (Immer sichtbar!)
+   ======================================================= */
 nav { 
-    flex-shrink: 0; background-color: var(--nav-bg); 
+    position: fixed; bottom: 0; left: 0; right: 0; width: 100%;
+    background-color: var(--nav-bg); 
     display: flex; justify-content: space-around; 
-    padding: 12px 0; padding-bottom: calc(12px + env(safe-area-inset-bottom, 20px)); 
-    border-top: 1px solid #222; z-index: 1000;
+    padding: 12px 0; padding-bottom: calc(12px + env(safe-area-inset-bottom, 0px)); 
+    border-top: 1px solid #222; z-index: 9999;
 }
 .nav-item { color: #555; display: flex; flex-direction: column; align-items: center; gap: 4px; cursor: pointer; transition: 0.2s; flex: 1;}
 .nav-item span:last-child { font-size: 0.75rem; font-weight: 500; }
 .nav-item.active { color: var(--accent-amber); }
 .nav-item .material-symbols-outlined { font-size: 1.8rem; }
 
+
 /* =======================================================
-   2. REZEPTBUCH (Das kompakte Design wiederherstellen!)
+   2. REZEPTBUCH 
    ======================================================= */
 .list-card { 
     background: var(--surface-color); border: 1px solid #222; 
@@ -68,29 +74,18 @@ nav {
 }
 .list-card:active { background: #222; }
 
-/* Linker Teil (Symbol und Text) */
 .icon-box { 
     width: 40px; height: 40px; border-radius: 8px; 
     display: flex; justify-content: center; align-items: center; margin-right: 15px; flex-shrink: 0;
 }
 .info { flex: 1; display: flex; flex-direction: column;}
 
-/* Rechter Teil (Schieberegler) */
-.recipe-delete-slider {
-    position: relative; width: 60px; height: 34px; margin-left: 10px; flex-shrink: 0;
-}
-.delete-slider-track {
-    position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0;
-    background-color: #333; transition: .4s; border-radius: 34px;
-}
-.delete-slider-handle {
-    position: absolute; height: 26px; width: 26px; left: 4px; bottom: 4px;
-    background-color: var(--text-muted); transition: .4s; border-radius: 50%;
-}
+.recipe-delete-slider { position: relative; width: 60px; height: 34px; margin-left: 10px; flex-shrink: 0; }
+.delete-slider-track { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #333; transition: .4s; border-radius: 34px; }
+.delete-slider-handle { position: absolute; height: 26px; width: 26px; left: 4px; bottom: 4px; background-color: var(--text-muted); transition: .4s; border-radius: 50%; }
 .recipe-delete-slider.active .delete-slider-track { background-color: var(--accent-danger); }
 .recipe-delete-slider.active .delete-slider-handle { transform: translateX(26px); background-color: white; }
 
-/* Details (falls man in die Detail-Ansicht klickt) */
 .ing-row { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px dashed #333; font-size: 0.95rem; }
 .ing-row:last-child { border-bottom: none; }
 .step-row { margin-bottom: 12px; padding: 12px; background: #1a1a1a; border-radius: 6px; font-size: 0.95rem; line-height: 1.4; display: flex; gap: 15px; align-items: center; }
@@ -108,7 +103,6 @@ nav {
 
 .prod-card, .wurst-card, .stat-card { background: var(--surface-color); border: 1px solid #222; border-radius: 12px; padding: 20px; margin-bottom: 15px; }
 
-/* Wurststand & Produktion Eingabefelder */
 .wurst-input, .wurst-select, .calc-input, .finish-input, .finish-select, .recipe-input, .recipe-select { 
     width: 100%; box-sizing: border-box; padding: 15px; 
     background: transparent; border: 1px solid #333; 
@@ -117,7 +111,6 @@ nav {
 .wurst-input:focus, .wurst-select:focus, .calc-input:focus, .recipe-input:focus, .recipe-select:focus { border-color: var(--success-green); }
 .editor-label { display: block; color: var(--text-muted); font-size: 0.75rem; margin-bottom: 5px; text-transform: uppercase; letter-spacing: 0.5px; }
 
-/* Dashboard Grid */
 .dashboard-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-top: 15px; }
 .glass-stats-table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 0.85rem; }
 .glass-stats-table th { text-align: left; color: var(--text-muted); font-weight: normal; padding-bottom: 5px; border-bottom: 1px solid #333; }
@@ -126,7 +119,6 @@ nav {
 .col-250 { color: var(--success-green); }
 .col-400 { color: var(--accent-amber); }
 
-/* Checkliste Produktion */
 .match-row { display: flex; flex-direction: column; gap: 5px; padding: 12px 0; border-bottom: 1px dashed #333; }
 .match-header { display: flex; justify-content: space-between; align-items: center; font-size: 1.1rem; }
 .match-select { width: 100%; box-sizing: border-box; padding: 12px; background: transparent; border: 1px solid #333; color: white; border-radius: 8px; font-size: 0.95rem; outline: none; }
@@ -145,11 +137,9 @@ nav {
 .btn-start { background: #4d4dff; color: white; border: none; padding: 12px; border-radius: 8px; flex: 1; font-weight: bold; cursor: pointer; }
 .btn-skip { background: #333; color: white; border: 1px solid #555; padding: 12px; border-radius: 8px; flex: 1; cursor: pointer; }
 
-/* Speziell für den Editor (die flexiblen Zeilen) */
 .dynamic-row { display: flex; gap: 10px; align-items: center; background: #1a1a1a; padding: 10px; border-radius: 8px; margin-bottom: 10px; border: 1px solid #333;}
 .dynamic-row .recipe-input, .dynamic-row .recipe-select { margin-bottom: 0; padding: 10px;}
 
-/* Sichtbarkeits-Hilfe */
 .view { display: none; width: 100%; animation: fadeIn 0.3s ease; }
 .view.active { display: block; }
 @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
