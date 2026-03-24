@@ -1,3 +1,10 @@
+// Service Worker registrieren (Für die App-Installation)
+if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('sw.js').then(() => {
+        console.log('Service Worker läuft!');
+    });
+}
+
 window.app = {
     inventoryData: [],
     kundenData: [],
