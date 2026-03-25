@@ -7,6 +7,13 @@
     <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined" rel="stylesheet" />
     <link rel="stylesheet" href="style.css?v=75">
 </head>
+    <script>
+        // Der Wurstwerk-Türsteher: Werft jeden raus, der nicht durch den Tresor kam!
+        if (!sessionStorage.getItem('wurstwerk_auth')) {
+            window.location.replace('index.html');
+        }
+    </script>
+
 <body>
     <header style="text-transform: uppercase; letter-spacing: 2px;">Einstellungen</header>
 
