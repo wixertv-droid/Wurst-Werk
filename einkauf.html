@@ -25,6 +25,13 @@
         .form-card { background-color: var(--surface-color); border-radius: 16px; padding: 20px; border: 1px solid #222; margin-top: 15px; }
     </style>
 </head>
+    <script>
+        // Der Wurstwerk-Türsteher: Werft jeden raus, der nicht durch den Tresor kam!
+        if (!sessionStorage.getItem('wurstwerk_auth')) {
+            window.location.replace('index.html');
+        }
+    </script>
+
 <body>
 
     <div class="sub-header">
