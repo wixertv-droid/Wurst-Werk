@@ -30,6 +30,13 @@
         .order-card { background: #111; border-left: 3px solid #4caf50; padding: 12px; border-radius: 8px; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; }
     </style>
 </head>
+    <script>
+        // Der Wurstwerk-Türsteher: Werft jeden raus, der nicht durch den Tresor kam!
+        if (!sessionStorage.getItem('wurstwerk_auth')) {
+            window.location.replace('index.html');
+        }
+    </script>
+
 <body>
     <header style="text-transform: uppercase; letter-spacing: 2px;">Kunden & Pfand</header>
     
