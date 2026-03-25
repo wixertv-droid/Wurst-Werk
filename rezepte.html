@@ -30,6 +30,13 @@
         .step-row.interval { border-left-color: var(--accent-amber); background: rgba(255, 140, 0, 0.05); }
     </style>
 </head>
+    <script>
+        // Der Wurstwerk-Türsteher: Werft jeden raus, der nicht durch den Tresor kam!
+        if (!sessionStorage.getItem('wurstwerk_auth')) {
+            window.location.replace('index.html');
+        }
+    </script>
+
 <body>
 
     <header>Rezeptbuch</header>
