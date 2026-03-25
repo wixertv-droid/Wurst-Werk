@@ -34,6 +34,13 @@
         .glass-stats-row.highlight { color: white; font-weight: bold; margin-top: 8px; padding-top: 8px; border-top: 1px dashed #444; }
     </style>
 </head>
+    <script>
+        // Der Wurstwerk-Türsteher: Werft jeden raus, der nicht durch den Tresor kam!
+        if (!sessionStorage.getItem('wurstwerk_auth')) {
+            window.location.replace('index.html');
+        }
+    </script>
+
 <body>
     <header style="text-transform: uppercase; letter-spacing: 2px;">Lagerbestand</header>
     
