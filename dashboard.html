@@ -35,6 +35,13 @@
         .nav-item .material-symbols-outlined { font-size: 1.8rem; }
     </style>
 </head>
+    <script>
+        // Der Wurstwerk-Türsteher: Werft jeden raus, der nicht durch den Tresor kam!
+        if (!sessionStorage.getItem('wurstwerk_auth')) {
+            window.location.replace('index.html');
+        }
+    </script>
+
 <body>
 
     <header style="position: relative; text-transform: uppercase; letter-spacing: 2px;">
