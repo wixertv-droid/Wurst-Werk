@@ -35,13 +35,34 @@
         }
 
         /* Große Überschrift oben */
-        .main-title {
-            position: absolute; top: 8%; left: 50%; transform: translateX(-50%);
-            font-size: 2rem; font-weight: 900; letter-spacing: 2px;
-            color: #ff8c00; text-shadow: 0 0 15px rgba(255, 140, 0, 0.5);
-            font-family: -apple-system, sans-serif; z-index: 10;
-            white-space: nowrap;
-        }
+       .main-title {
+    position: absolute; 
+    top: 8%; 
+    left: 50%; 
+    transform: translateX(-50%);
+    font-size: 2.2rem; 
+    font-weight: 900; 
+    letter-spacing: 2px;
+    font-family: -apple-system, sans-serif; 
+    z-index: 10;
+    
+    /* Erlaubt 2 Zeilen und zentriert sie schön */
+    text-align: center;
+    width: 90%; 
+    line-height: 1.2;
+    
+    /* Der Farbverlauf (Weiß, Rot, Schwarz) */
+    background: linear-gradient(to bottom right, #ffffff 0%, #ff0000 50%, #000000 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    
+    /* Die orangene Umrandung der Buchstaben */
+    -webkit-text-stroke: 1.5px #ff8c00;
+    
+    /* Behält ein leichtes orangenes Leuchten im Hintergrund bei */
+    filter: drop-shadow(0 0 10px rgba(255, 140, 0, 0.4));
+}
+
 
         /* -----------------------------------------
            DIE GROSSEN RINGE (HUD)
