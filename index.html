@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Login - Wurstwerk</title>
+    <title>System Login - Wurstwerk</title>
     
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#0a0a0a">
@@ -12,40 +12,91 @@
     <link rel="apple-touch-icon" href="icon.png">
 
     <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined" rel="stylesheet" />
-    <link rel="stylesheet" href="style.css?v=80">
+    <link rel="stylesheet" href="style.css?v=85">
     
     <style>
         body { 
             display: flex; flex-direction: column; align-items: center; justify-content: center; 
             height: 100dvh; background-color: var(--bg-color); margin: 0; padding: 0; overflow: hidden;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
         }
-        
-        .vault-container { text-align: center; width: 100%; max-width: 350px; padding: 20px; }
-        
-        .logo-area { margin-bottom: 40px; }
-        .logo-area .material-symbols-outlined { font-size: 4rem; color: var(--accent-amber); margin-bottom: 10px; }
-        .logo-text { font-size: 1.8rem; font-weight: 800; letter-spacing: 4px; text-transform: uppercase; color: white; }
-        .sub-text { color: var(--text-muted); font-size: 0.9rem; letter-spacing: 2px; text-transform: uppercase; margin-top: 5px; }
 
-        /* Die 4 PIN-Punkte */
-        .pin-display { display: flex; justify-content: center; gap: 20px; margin-bottom: 40px; height: 20px; }
-        .pin-dot { width: 16px; height: 16px; border-radius: 50%; border: 2px solid #444; transition: 0.2s ease; }
-        .pin-dot.filled { background-color: var(--accent-amber); border-color: var(--accent-amber); box-shadow: 0 0 10px rgba(255, 140, 0, 0.5); }
-        .pin-dot.error { background-color: var(--accent-danger); border-color: var(--accent-danger); box-shadow: 0 0 10px rgba(255, 68, 68, 0.5); }
+        /* Der coole Ladescreen vom Kalender */
+        .loader-container {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: var(--bg-color); z-index: 9999;
+            display: flex; flex-direction: column; justify-content: center; align-items: center;
+            transition: opacity 0.5s ease;
+        }
+        .cyber-spinner {
+            width: 50px; height: 50px;
+            border: 4px solid #222; border-top-color: var(--accent-amber);
+            border-radius: 50%; animation: spin 1s linear infinite;
+            margin-bottom: 20px;
+        }
+        .loader-text {
+            color: var(--accent-amber); font-weight: bold; letter-spacing: 3px;
+            text-transform: uppercase; font-size: 0.9rem;
+            animation: pulse 1.5s infinite;
+        }
 
-        /* Das Numpad */
-        .numpad { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; justify-items: center; }
-        .num-btn { 
-            width: 75px; height: 75px; border-radius: 50%; background: #1a1a1a; border: 2px solid #222; 
-            color: white; font-size: 1.8rem; font-weight: 600; display: flex; align-items: center; justify-content: center;
+        @keyframes spin { 100% { transform: rotate(360deg); } }
+        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+
+        /* Das Cyber-Tresor Layout */
+        .vault-wrapper {
+            width: 100%; max-width: 320px; padding: 20px; text-align: center;
+        }
+
+        .header-info { margin-bottom: 40px; }
+        .titel-neon {
+            font-size: 2.2rem; font-weight: 900; letter-spacing: 5px; text-transform: uppercase;
+            color: var(--accent-amber); text-shadow: 0 0 15px rgba(255, 140, 0, 0.4);
+            margin-bottom: 5px;
+        }
+        .status-text {
+            color: var(--text-muted); font-size: 0.9rem; letter-spacing: 2px; text-transform: uppercase;
+            background: #1a1a1a; padding: 5px 15px; border-radius: 4px; display: inline-block;
+            border: 1px solid #333;
+        }
+
+        /* Die PIN Boxen (Eckig statt rund) */
+        .pin-display { 
+            display: flex; justify-content: center; gap: 15px; margin-bottom: 40px; 
+        }
+        .pin-box { 
+            width: 20px; height: 20px; background: #111; border: 2px solid #333; 
+            border-radius: 4px; transition: 0.2s ease; 
+        }
+        .pin-box.filled { 
+            background-color: var(--accent-amber); border-color: var(--accent-amber); 
+            box-shadow: 0 0 12px rgba(255, 140, 0, 0.6); 
+        }
+        .pin-box.error { 
+            background-color: var(--accent-danger); border-color: var(--accent-danger); 
+            box-shadow: 0 0 12px rgba(255, 68, 68, 0.6); 
+        }
+
+        /* Das Matrix-Numpad */
+        .cyber-numpad { 
+            display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; 
+        }
+        .cyber-num { 
+            background: #1a1a1a; border: 1px solid #333; border-radius: 8px;
+            color: white; font-size: 1.8rem; font-weight: bold; font-family: monospace;
+            display: flex; align-items: center; justify-content: center; height: 75px;
             cursor: pointer; transition: 0.1s; user-select: none;
         }
-        .num-btn:active { background: var(--accent-amber); color: #000; transform: scale(0.95); border-color: var(--accent-amber); }
-        .num-btn.empty { background: transparent; border: none; cursor: default; }
-        .num-btn.empty:active { transform: none; }
-        .num-btn.del { background: #1a1a1a; color: var(--text-muted); font-size: 1.5rem; }
+        .cyber-num:active { 
+            background: var(--accent-amber); color: #000; border-color: var(--accent-amber);
+            transform: scale(0.95); box-shadow: 0 0 15px rgba(255, 140, 0, 0.5); 
+        }
+        .cyber-num.empty { background: transparent; border: none; cursor: default; }
+        .cyber-num.empty:active { transform: none; box-shadow: none; background: transparent; }
+        .cyber-num.del { background: #111; color: var(--text-muted); }
+        .cyber-num.del:active { background: var(--accent-danger); color: white; border-color: var(--accent-danger); box-shadow: 0 0 15px rgba(255, 68, 68, 0.5); }
 
-        /* Fehler-Wackeln */
+        /* Wackeln bei Fehler */
         @keyframes shake {
             0%, 100% { transform: translateX(0); }
             20%, 60% { transform: translateX(-10px); }
@@ -56,47 +107,59 @@
 </head>
 <body>
 
-    <div class="vault-container" id="vault">
-        <div class="logo-area">
-            <span class="material-symbols-outlined">lock</span>
-            <div class="logo-text">Wurstwerk</div>
-            <div class="sub-text" id="status-text">System gesperrt</div>
+    <div class="loader-container" id="app-loader">
+        <div class="cyber-spinner"></div>
+        <div class="loader-text">ACCESSING SYSTEM...</div>
+    </div>
+
+    <div class="vault-wrapper" id="vault">
+        <div class="header-info">
+            <div class="titel-neon">Wurstwerk</div>
+            <div class="status-text" id="status-text">System gesperrt</div>
         </div>
 
         <div class="pin-display" id="pin-dots">
-            <div class="pin-dot"></div>
-            <div class="pin-dot"></div>
-            <div class="pin-dot"></div>
-            <div class="pin-dot"></div>
+            <div class="pin-box"></div>
+            <div class="pin-box"></div>
+            <div class="pin-box"></div>
+            <div class="pin-box"></div>
         </div>
 
-        <div class="numpad">
-            <div class="num-btn" onclick="vault.addNumber(1)">1</div>
-            <div class="num-btn" onclick="vault.addNumber(2)">2</div>
-            <div class="num-btn" onclick="vault.addNumber(3)">3</div>
+        <div class="cyber-numpad">
+            <div class="cyber-num" onclick="vault.addNumber(1)">1</div>
+            <div class="cyber-num" onclick="vault.addNumber(2)">2</div>
+            <div class="cyber-num" onclick="vault.addNumber(3)">3</div>
             
-            <div class="num-btn" onclick="vault.addNumber(4)">4</div>
-            <div class="num-btn" onclick="vault.addNumber(5)">5</div>
-            <div class="num-btn" onclick="vault.addNumber(6)">6</div>
+            <div class="cyber-num" onclick="vault.addNumber(4)">4</div>
+            <div class="cyber-num" onclick="vault.addNumber(5)">5</div>
+            <div class="cyber-num" onclick="vault.addNumber(6)">6</div>
             
-            <div class="num-btn" onclick="vault.addNumber(7)">7</div>
-            <div class="num-btn" onclick="vault.addNumber(8)">8</div>
-            <div class="num-btn" onclick="vault.addNumber(9)">9</div>
+            <div class="cyber-num" onclick="vault.addNumber(7)">7</div>
+            <div class="cyber-num" onclick="vault.addNumber(8)">8</div>
+            <div class="cyber-num" onclick="vault.addNumber(9)">9</div>
             
-            <div class="num-btn empty"></div>
-            <div class="num-btn" onclick="vault.addNumber(0)">0</div>
-            <div class="num-btn del" onclick="vault.deleteNumber()"><span class="material-symbols-outlined">backspace</span></div>
+            <div class="cyber-num empty"></div>
+            <div class="cyber-num" onclick="vault.addNumber(0)">0</div>
+            <div class="cyber-num del" onclick="vault.deleteNumber()"><span class="material-symbols-outlined">backspace</span></div>
         </div>
     </div>
 
-    <script src="app.js?v=80"></script>
+    <script src="db.js?v=85"></script>
+    <script src="app.js?v=85"></script>
+    
     <script>
         window.vault = {
             enteredPin: "",
             realPin: "0000", // Fallback, falls DB lädt
 
             init: async function() {
-                // Holt den echten PIN aus Supabase
+                // Den Loader kurz anzeigen, dann ausblenden (wie in Agenda 2050)
+                setTimeout(() => {
+                    const loader = document.getElementById('app-loader');
+                    if(loader) { loader.style.opacity = '0'; setTimeout(() => loader.remove(), 500); }
+                }, 800);
+
+                // Holt den echten PIN aus Supabase (Jetzt funktioniert es, weil db.js geladen ist!)
                 try {
                     const res = await fetch(`${supabaseUrl}/rest/v1/app_settings?id=eq.1&select=pin_code`, {
                         headers: { 'apikey': supabaseKey, 'Authorization': `Bearer ${supabaseKey}` }
@@ -127,13 +190,13 @@
             },
 
             updateDots: function(isError = false) {
-                const dots = document.querySelectorAll('.pin-dot');
-                dots.forEach((dot, index) => {
-                    dot.className = 'pin-dot'; // Reset
+                const boxes = document.querySelectorAll('.pin-box');
+                boxes.forEach((box, index) => {
+                    box.className = 'pin-box'; // Reset
                     if (isError) {
-                        dot.classList.add('error');
+                        box.classList.add('error');
                     } else if (index < this.enteredPin.length) {
-                        dot.classList.add('filled');
+                        box.classList.add('filled');
                     }
                 });
             },
@@ -141,12 +204,13 @@
             checkPin: function() {
                 if (this.enteredPin === this.realPin) {
                     // PIN KORREKT!
-                    document.getElementById('status-text').innerText = "ZUGANG GEWÄHRT";
-                    document.getElementById('status-text').style.color = "var(--success-green)";
-                    document.querySelector('.material-symbols-outlined').innerText = "lock_open";
-                    document.querySelector('.material-symbols-outlined').style.color = "var(--success-green)";
+                    const status = document.getElementById('status-text');
+                    status.innerText = "ZUGANG GEWÄHRT";
+                    status.style.color = "#000";
+                    status.style.backgroundColor = "var(--success-green)";
+                    status.style.borderColor = "var(--success-green)";
                     
-                    // Türsteher-Ticket ausstellen
+                    // Türsteher-Ticket ausstellen!
                     sessionStorage.setItem('wurstwerk_auth', 'granted');
                     
                     // Weiterleiten zum Dashboard
@@ -168,7 +232,7 @@
             }
         };
 
-        // Startet das Laden des PINs
+        // Startet das Laden des PINs und den Ladescreen
         document.addEventListener('DOMContentLoaded', () => window.vault.init());
     </script>
 </body>
