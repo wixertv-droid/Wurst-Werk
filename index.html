@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>System Login - Wurstwerk Core</title>
+    <title>Wurstwerk Dashboard</title>
     
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#0a0a0a">
@@ -12,219 +12,202 @@
     <link rel="apple-touch-icon" href="icon.png">
 
     <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined" rel="stylesheet" />
-    <link rel="stylesheet" href="style.css?v=95">
+    <link rel="stylesheet" href="style.css?v=100">
     
     <style>
         /* =======================================================
-           DER JARVIS / CYBER TRESOR (Wurstwerk Edition)
+           CYBER HUD DESIGN (Wie auf dem Bild)
            ======================================================= */
         body { 
-            background-color: #0a0a0a; color: #ff8c00; 
+            background-color: #050505; color: #ff8c00; 
             font-family: monospace, sans-serif; 
             margin: 0; padding: 0; height: 100dvh; overflow: hidden;
-            display: flex; align-items: center; justify-content: center;
-        }
-
-        /* Scanlines über dem gesamten Bildschirm */
-        .scanlines {
-            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: linear-gradient(to bottom, rgba(255,255,255,0), rgba(255,255,255,0) 50%, rgba(0,0,0,0.3) 50%, rgba(0,0,0,0.3));
-            background-size: 100% 4px; z-index: 100; pointer-events: none;
-        }
-
-        /* Hauptcontainer */
-        .loader-container {
             display: flex; flex-direction: column; align-items: center; justify-content: center;
-            width: 100%; height: 100%; position: relative;
+        }
+
+        /* Das feine Gitternetz im Hintergrund */
+        body::before {
+            content: ""; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background-image: 
+                linear-gradient(rgba(255, 140, 0, 0.07) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(255, 140, 0, 0.07) 1px, transparent 1px);
+            background-size: 40px 40px; z-index: 0; pointer-events: none;
+        }
+
+        /* Große Überschrift oben */
+        .main-title {
+            position: absolute; top: 8%; left: 50%; transform: translateX(-50%);
+            font-size: 2rem; font-weight: 900; letter-spacing: 2px;
+            color: #ff8c00; text-shadow: 0 0 15px rgba(255, 140, 0, 0.5);
+            font-family: -apple-system, sans-serif; z-index: 10;
+            white-space: nowrap;
         }
 
         /* -----------------------------------------
-           DIE ROTIERENDEN RINGE
+           DIE GROSSEN RINGE (HUD)
            ----------------------------------------- */
-        .ring-group {
-            position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
-            width: 340px; height: 340px;
-            display: flex; align-items: center; justify-content: center;
+        .hud-wrapper {
+            position: relative; width: 380px; height: 380px;
+            display: flex; align-items: center; justify-content: center; z-index: 5;
+            margin-top: 20px;
         }
 
-        .ring-outer, .ring-main, .ring-inner {
-            position: absolute; border-radius: 50%; box-sizing: border-box; transition: border-color 0.5s;
-        }
+        .ring { position: absolute; border-radius: 50%; box-sizing: border-box; }
 
-        /* Äußerster Ring */
-        .ring-outer {
-            width: 100%; height: 100%; 
-            border: 2px solid rgba(255, 140, 0, 0.15); 
-            border-top: 2px solid #ff8c00; border-bottom: 2px solid #ff8c00; 
-            animation: spin 10s linear infinite;
-        }
-
-        /* Hauptring (Gestrichelt, dreht rückwärts) */
-        .ring-main {
-            width: 85%; height: 85%; 
-            border: 2px dashed rgba(255, 140, 0, 0.4); 
-            animation: spin-reverse 15s linear infinite;
-        }
-
-        /* Innerster Ring */
-        .ring-inner {
-            width: 70%; height: 70%; 
-            border: 1px solid rgba(255, 140, 0, 0.1); 
-            border-left: 2px solid #ff8c00; border-right: 2px solid #ff8c00; 
-            animation: spin 6s linear infinite;
-        }
-
-        /* Das Fadenkreuz im Hintergrund */
-        .hud-crosshair {
+        .ring-1 { width: 100%; height: 100%; border: 1px solid rgba(255, 140, 0, 0.2); animation: spin 20s linear infinite; border-top: 2px solid #ff8c00;}
+        .ring-2 { width: 92%; height: 92%; border: 2px dashed rgba(255, 140, 0, 0.4); animation: spin-reverse 25s linear infinite; }
+        .ring-3 { width: 85%; height: 85%; border: 1px solid rgba(255, 140, 0, 0.3); }
+        .ring-4 { width: 70%; height: 70%; border: 1px dashed rgba(255, 140, 0, 0.2); animation: spin 15s linear infinite; }
+        
+        /* Das Fadenkreuz (Crosshair) */
+        .crosshair {
             position: absolute; width: 120%; height: 120%;
             background: 
-                linear-gradient(transparent 49.8%, rgba(255, 140, 0, 0.2) 49.8%, rgba(255, 140, 0, 0.2) 50.2%, transparent 50.2%), 
-                linear-gradient(90deg, transparent 49.8%, rgba(255, 140, 0, 0.2) 49.8%, rgba(255, 140, 0, 0.2) 50.2%, transparent 50.2%);
-            border-radius: 50%; z-index: 1;
+                linear-gradient(transparent 49.8%, rgba(255, 140, 0, 0.3) 49.8%, rgba(255, 140, 0, 0.3) 50.2%, transparent 50.2%), 
+                linear-gradient(90deg, transparent 49.8%, rgba(255, 140, 0, 0.3) 49.8%, rgba(255, 140, 0, 0.3) 50.2%, transparent 50.2%);
+            z-index: 1; pointer-events: none;
         }
-
-        /* Die Deko-Texte an den Ringen */
-        .deco-data { position: absolute; font-size: 0.75rem; color: #ff8c00; letter-spacing: 2px; text-shadow: 0 0 5px #ff8c00; transition: color 0.5s; }
-        .top-left { top: 10px; left: 10px; }
-        .bottom-right { bottom: 10px; right: 10px; }
 
         @keyframes spin { 100% { transform: rotate(360deg); } }
         @keyframes spin-reverse { 100% { transform: rotate(-360deg); } }
 
         /* -----------------------------------------
-           DAS NUMPAD & DER INHALT IN DER MITTE
+           TECHNISCHE DATEN (Außen am HUD)
            ----------------------------------------- */
-        .gateway-content {
-            position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
-            display: flex; flex-direction: column; align-items: center; z-index: 10;
-        }
-
-        /* Die PIN-Punkte */
-        .pin-display { display: flex; gap: 12px; margin-bottom: 20px; }
-        .pin-dot { 
-            width: 14px; height: 14px; border: 1px solid #ff8c00; background: transparent; 
-            border-radius: 2px; transition: 0.2s; box-shadow: 0 0 5px rgba(255, 140, 0, 0.3);
-        }
-        .pin-dot.filled { background: #ff8c00; box-shadow: 0 0 10px #ff8c00; }
-        .pin-dot.error { border-color: #ff4444; background: #ff4444; box-shadow: 0 0 10px #ff4444; }
-
-        /* Die Tasten */
-        .numpad { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
-        .num-btn {
-            width: 55px; height: 55px; display: flex; align-items: center; justify-content: center;
-            font-size: 1.4rem; font-weight: bold; cursor: pointer; color: white;
-            border: 1px solid rgba(255, 140, 0, 0.3); background: rgba(0, 0, 0, 0.7); 
-            backdrop-filter: blur(2px); border-radius: 6px; transition: 0.1s; user-select: none;
-        }
-        .num-btn:active { background: #ff8c00; color: #000; box-shadow: 0 0 15px #ff8c00; transform: scale(0.95); }
-        
-        /* Sonder-Tasten */
-        .action-btn { font-size: 1.2rem; }
-        .error-btn { color: #ff4444; border-color: rgba(255, 68, 68, 0.3); }
-        .error-btn:active { background: #ff4444; color: #fff; box-shadow: 0 0 15px #ff4444; }
-        .reset-btn { color: #aaa; border-color: rgba(170, 170, 170, 0.3); }
-
-        /* Der große Prozent-Zähler (Versteckt bis Login) */
-        #prozent { 
-            font-size: 3rem; font-weight: bold; text-shadow: 0 0 15px #ff8c00; 
-            margin-bottom: 10px; display: none; 
-        }
-
-        /* System-Status Text ganz unten */
-        .loader-status {
-            position: absolute; bottom: 40px; font-size: 0.85rem; letter-spacing: 3px; 
-            color: #ff8c00; text-shadow: 0 0 8px rgba(255, 140, 0, 0.8);
-            animation: blink 1.5s infinite; text-transform: uppercase;
-        }
-        @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
+        .hud-data { position: absolute; font-size: 0.75rem; letter-spacing: 1px; color: #ff8c00; text-shadow: 0 0 5px rgba(255, 140, 0, 0.5); }
+        .data-tl { top: 0; left: -40px; }
+        .data-tr { top: 0; right: -40px; text-align: left; }
+        .data-bc { bottom: 20px; left: 50%; transform: translateX(-50%); font-size: 0.7rem; opacity: 0.7; }
 
         /* -----------------------------------------
-           DER SUCCESS-MODE (Alles wird grün!)
+           DAS TASTENFELD (Zentriert im HUD)
            ----------------------------------------- */
-        .success-mode .ring-outer, .success-mode .ring-main, .success-mode .ring-inner {
-            border-color: rgba(76, 175, 80, 0.3) !important;
+        .keypad-container {
+            position: absolute; z-index: 10; display: flex; flex-direction: column; align-items: center;
         }
-        .success-mode .ring-outer { border-top-color: #4caf50 !important; border-bottom-color: #4caf50 !important; }
-        .success-mode .ring-main { border-color: #4caf50 !important; }
-        .success-mode .ring-inner { border-left-color: #4caf50 !important; border-right-color: #4caf50 !important; }
-        
-        .success-mode .hud-crosshair {
-            background: 
-                linear-gradient(transparent 49.8%, rgba(76, 175, 80, 0.2) 49.8%, rgba(76, 175, 80, 0.2) 50.2%, transparent 50.2%), 
-                linear-gradient(90deg, transparent 49.8%, rgba(76, 175, 80, 0.2) 49.8%, rgba(76, 175, 80, 0.2) 50.2%, transparent 50.2%);
-        }
-        .success-mode .deco-data, .success-mode #prozent { color: #4caf50; text-shadow: 0 0 10px #4caf50; }
-        .success-mode .loader-status { color: #4caf50; text-shadow: 0 0 10px #4caf50; animation: none; font-weight: bold;}
 
+        /* Wurst.Core und PIN-Kästchen */
+        .pin-header {
+            display: flex; align-items: center; gap: 10px; margin-bottom: 20px;
+            font-size: 0.8rem; letter-spacing: 2px;
+            background: rgba(0,0,0,0.6); padding: 5px 10px; border-radius: 4px;
+        }
+        .pin-boxes { display: flex; gap: 6px; }
+        .pin-box { width: 10px; height: 10px; border: 1px solid #ff8c00; border-radius: 2px; transition: 0.2s; }
+        .pin-box.filled { background: #ff8c00; box-shadow: 0 0 8px #ff8c00; }
+        .pin-box.error { background: #ff4444; border-color: #ff4444; box-shadow: 0 0 8px #ff4444; }
+
+        /* Die Matrix: Alle Tasten exakt gleich groß! */
+        .numpad { display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; }
+        .num-btn {
+            width: 65px; height: 65px; /* Einheitliche Größe für ALLE Tasten */
+            display: flex; align-items: center; justify-content: center;
+            font-size: 1.5rem; font-family: -apple-system, sans-serif; font-weight: 500;
+            color: #fff; background: rgba(10, 10, 10, 0.8); backdrop-filter: blur(4px);
+            border: 1px solid rgba(255, 140, 0, 0.4); border-radius: 12px;
+            cursor: pointer; transition: 0.1s; user-select: none;
+        }
+        .num-btn:active { background: rgba(255, 140, 0, 0.3); border-color: #ff8c00; box-shadow: 0 0 15px rgba(255, 140, 0, 0.6); transform: scale(0.95); }
+        
+        /* Spezial-Tasten */
+        .btn-del { color: #ff4444; }
+        .btn-del:active { background: rgba(255, 68, 68, 0.3); border-color: #ff4444; box-shadow: 0 0 15px rgba(255, 68, 68, 0.6); }
+        .btn-help { color: #888; border-color: rgba(136, 136, 136, 0.4); }
+
+        /* -----------------------------------------
+           TEXT UNTEN
+           ----------------------------------------- */
+        .status-footer {
+            position: absolute; bottom: 8%; left: 50%; transform: translateX(-50%);
+            font-size: 0.9rem; letter-spacing: 4px; text-transform: uppercase;
+            animation: pulseText 2s infinite; z-index: 10;
+        }
+
+        /* Der Lade-Prozent-Zähler (Versteckt bis Erfolg) */
+        #prozent-display {
+            font-size: 3.5rem; font-weight: bold; text-shadow: 0 0 20px #4caf50;
+            color: #4caf50; display: none; position: absolute; z-index: 20;
+        }
+
+        @keyframes pulseText { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
+
+        /* -----------------------------------------
+           SUCCESS MODE (Grün)
+           ----------------------------------------- */
+        .success-mode .ring { border-color: rgba(76, 175, 80, 0.4); border-top-color: #4caf50; border-bottom-color: #4caf50;}
+        .success-mode .crosshair { filter: hue-rotate(270deg); }
+        .success-mode .hud-data, .success-mode .status-footer { color: #4caf50; text-shadow: 0 0 5px #4caf50; animation: none;}
     </style>
 </head>
 <body>
 
-    <div class="scanlines"></div>
+    <div class="main-title">WURSTWERK DASHBOARD</div>
 
-    <div class="loader-container" id="main-loader">
+    <div class="hud-wrapper" id="main-hud">
+        <div class="crosshair"></div>
+        <div class="ring ring-1"></div>
+        <div class="ring ring-2"></div>
+        <div class="ring ring-3"></div>
+        <div class="ring ring-4"></div>
 
-        <div class="ring-group">
-            <div class="hud-crosshair"></div>
-            <div class="ring-outer"></div>
-            <div id="cyberRing" class="ring-main"></div>
-            <div class="ring-inner"></div>
+        <div class="hud-data data-tl">TEMP: 32.7°C</div>
+        <div class="hud-data data-tr">TEMP: 32.7°C<br>FAN:  18%<br>LOAD: 21%</div>
+        <div class="hud-data data-bc">AUTH.REQ // F433 SECURE</div>
 
-            <div class="deco-data top-left">WURST.CORE // v3.1</div>
-            <div class="deco-data bottom-right">AUTH.REQ // SECURE</div>
-        </div>
+        <div id="prozent-display">0%</div>
 
-        <div class="gateway-content">
-            <div id="pinBox">
-                <div class="pin-display">
-                    <div class="pin-dot"></div>
-                    <div class="pin-dot"></div>
-                    <div class="pin-dot"></div>
-                    <div class="pin-dot"></div>
+        <div class="keypad-container" id="keypad-box">
+            
+            <div class="pin-header">
+                WURST.CORE // v3.1
+                <div class="pin-boxes">
+                    <div class="pin-box"></div>
+                    <div class="pin-box"></div>
+                    <div class="pin-box"></div>
+                    <div class="pin-box"></div>
                 </div>
             </div>
 
-            <div id="prozent" class="loader-text">0%</div>
-
-            <div id="numpadBox" class="numpad">
+            <div class="numpad">
                 <div class="num-btn" onclick="vaultAuth.addNumber('1')">1</div>
                 <div class="num-btn" onclick="vaultAuth.addNumber('2')">2</div>
                 <div class="num-btn" onclick="vaultAuth.addNumber('3')">3</div>
+                
                 <div class="num-btn" onclick="vaultAuth.addNumber('4')">4</div>
                 <div class="num-btn" onclick="vaultAuth.addNumber('5')">5</div>
                 <div class="num-btn" onclick="vaultAuth.addNumber('6')">6</div>
+                
                 <div class="num-btn" onclick="vaultAuth.addNumber('7')">7</div>
                 <div class="num-btn" onclick="vaultAuth.addNumber('8')">8</div>
                 <div class="num-btn" onclick="vaultAuth.addNumber('9')">9</div>
-
-                <div class="num-btn action-btn error-btn" onclick="vaultAuth.clearPin()">✖</div>
+                
+                <div class="num-btn btn-del" onclick="vaultAuth.clearPin()">
+                    <span class="material-symbols-outlined">backspace</span>
+                </div>
                 <div class="num-btn" onclick="vaultAuth.addNumber('0')">0</div>
-                <div class="num-btn action-btn reset-btn" onclick="alert('SYSTEM-HINWEIS: Bitte Master-Admin kontaktieren, um PIN zurückzusetzen.')">?</div>
+                <div class="num-btn btn-help" onclick="alert('SYSTEM-HINWEIS: PIN in den App-Einstellungen anpassbar.')">?</div>
             </div>
         </div>
-
-        <div class="loader-status" id="status-text">AWAITING INPUT...</div>
     </div>
 
-    <script src="db.js?v=95"></script>
-    <script src="app.js?v=95"></script>
+    <div class="status-footer" id="status-text">AWAITING INPUT...</div>
+
+    <script src="db.js?v=100"></script>
+    <script src="app.js?v=100"></script>
     
     <script>
         window.vaultAuth = {
             currentPin: "",
-            dbPin: "0000", // Fallback, falls DB nicht lädt
+            dbPin: "0000",
 
             init: async function() {
-                // Pin aus der echten Supabase Datenbank laden
                 try {
                     const res = await fetch(`${supabaseUrl}/rest/v1/app_settings?id=eq.1&select=pin_code`, {
                         headers: { 'apikey': supabaseKey, 'Authorization': `Bearer ${supabaseKey}` }
                     });
                     if(res.ok) {
                         const data = await res.json();
-                        if(data.length > 0) {
-                            this.dbPin = data[0].pin_code;
-                        }
+                        if(data.length > 0) this.dbPin = data[0].pin_code;
                     }
                 } catch(e) { console.error("Fehler beim Laden der PIN", e); }
             },
@@ -246,9 +229,9 @@
             },
 
             updateDots: function(isError = false) {
-                const dots = document.querySelectorAll('.pin-dot');
+                const dots = document.querySelectorAll('.pin-box');
                 dots.forEach((dot, i) => {
-                    dot.className = 'pin-dot'; // Reset
+                    dot.className = 'pin-box';
                     if (isError) {
                         dot.classList.add('error');
                     } else if (i < this.currentPin.length) {
@@ -259,39 +242,28 @@
 
             checkPin: function() {
                 if(this.currentPin === this.dbPin) {
-                    // PIN KORREKT - SYSTEM ENTSPERREN
-                    document.getElementById('status-text').innerText = "ACCESS GRANTED // BOOTING...";
+                    // PIN KORREKT -> Erfolgsscreen
+                    document.getElementById('status-text').innerText = "ACCESS GRANTED // SYSTEM BOOT";
+                    document.getElementById('keypad-box').style.display = 'none';
                     
-                    // Numpad und Pin-Boxen ausblenden
-                    document.getElementById('numpadBox').style.display = 'none';
-                    document.getElementById('pinBox').style.display = 'none';
-                    
-                    // Prozentzähler einblenden und Farben auf Grün (Success) umschalten
-                    const proz = document.getElementById('prozent');
+                    const proz = document.getElementById('prozent-display');
                     proz.style.display = 'block';
-                    document.getElementById('main-loader').classList.add('success-mode');
+                    document.body.classList.add('success-mode');
 
-                    // Cooler Zähler-Effekt
                     let count = 0;
                     let interval = setInterval(() => {
-                        count += Math.floor(Math.random() * 12) + 4; // Zufällige Sprünge
+                        count += Math.floor(Math.random() * 15) + 5; 
                         if(count >= 100) {
                             count = 100;
                             clearInterval(interval);
-                            
-                            // Ticket ausstellen
                             sessionStorage.setItem('wurstwerk_auth', 'granted');
-                            
-                            // Zum Dashboard springen
-                            setTimeout(() => { 
-                                window.location.replace('dashboard.html'); 
-                            }, 500);
+                            setTimeout(() => { window.location.replace('dashboard.html'); }, 400);
                         }
                         proz.innerText = count + "%";
                     }, 80);
 
                 } else {
-                    // PIN FALSCH - FEHLER ANZEIGEN
+                    // PIN FALSCH
                     this.updateDots(true);
                     document.getElementById('status-text').innerText = "ACCESS DENIED";
                     document.getElementById('status-text').style.color = "#ff4444";
@@ -301,13 +273,12 @@
                         this.clearPin();
                         document.getElementById('status-text').innerText = "AWAITING INPUT...";
                         document.getElementById('status-text').style.color = "";
-                        document.getElementById('status-text').style.animation = "blink 1.5s infinite";
+                        document.getElementById('status-text').style.animation = "pulseText 2s infinite";
                     }, 800);
                 }
             }
         };
 
-        // Skript beim Start ausführen
         document.addEventListener('DOMContentLoaded', () => window.vaultAuth.init());
     </script>
 </body>
