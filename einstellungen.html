@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Einstellungen - Wurstwerk</title>
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined" rel="stylesheet" />
+    <link rel="stylesheet" href="style.css?v=75">
+</head>
+<body>
+    <header style="text-transform: uppercase; letter-spacing: 2px;">Einstellungen</header>
+
+    <main id="main-content">
+        <div class="sub-header" style="margin-bottom: 20px; border-bottom: 1px solid #333; padding-bottom: 15px;">
+            <div class="back-btn" onclick="window.location.href='index.html'"><span class="material-symbols-outlined">arrow_back_ios</span> Zurück</div>
+            <div class="header-title" style="color: white;">Sicherheit</div>
+        </div>
+
+        <div class="prod-card" style="border-top: 3px solid var(--accent-amber);">
+            <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 15px;">
+                <span class="material-symbols-outlined" style="font-size: 2rem; color: var(--accent-amber);">lock</span>
+                <h3 style="margin: 0; font-size: 1.2rem;">Tresor-PIN ändern</h3>
+            </div>
+            <p style="color: var(--text-muted); font-size: 0.85rem; margin-bottom: 20px;">Hier kannst du den Zugangs-PIN für die Wurstwerk-App ändern. (Standard: 0000)</p>
+
+            <label class="editor-label">Aktueller PIN</label>
+            <input type="password" pattern="[0-9]*" inputmode="numeric" id="old-pin" class="calc-input" placeholder="****" style="text-align: left;">
+
+            <label class="editor-label">Neuer PIN</label>
+            <input type="password" pattern="[0-9]*" inputmode="numeric" id="new-pin" class="calc-input" placeholder="4 Ziffern" style="text-align: left; border-color: var(--accent-amber);">
+
+            <label class="editor-label">Neuer PIN (Wiederholen)</label>
+            <input type="password" pattern="[0-9]*" inputmode="numeric" id="confirm-pin" class="calc-input" placeholder="4 Ziffern" style="text-align: left; border-color: var(--accent-amber);">
+
+            <button id="save-pin-btn" class="action-btn" onclick="window.settingsManager.changePin()">
+                <span class="material-symbols-outlined">save</span> PIN speichern
+            </button>
+        </div>
+    </main>
+
+    <nav>
+        <div class="nav-item" onclick="window.location.href='index.html'"><span class="material-symbols-outlined">dashboard</span><span>Home</span></div>
+        <div class="nav-item" onclick="window.location.href='rezepte.html'"><span class="material-symbols-outlined">menu_book</span><span>Rezepte</span></div>
+        <div class="nav-item" onclick="window.location.href='lager.html'"><span class="material-symbols-outlined">inventory</span><span>Lager</span></div>
+        <div class="nav-item" onclick="window.location.href='wurststand.html'"><span class="material-symbols-outlined">storefront</span><span>Bestand</span></div>
+        <div class="nav-item" onclick="window.location.href='kunden.html'"><span class="material-symbols-outlined">group</span><span>Kunden</span></div>
+    </nav>
+
+    <script src="db.js?v=75"></script>
+    <script src="einstellungen.js?v=75"></script>
+</body>
+</html>
